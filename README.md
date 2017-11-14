@@ -6,8 +6,8 @@ This repo hosts deliverables from P4 Applications WG.
 - Reference source code
 - Test cases
 
-The application specs and drafts are placed in the [p4-spec repo]
-(https://github.com/p4lang/p4-spec/tree/master/applications).
+The application specs and drafts are placed in the 
+[p4-spec repo](https://github.com/p4lang/p4-spec/tree/master/applications).
 
 ## Working Group Charter
 
