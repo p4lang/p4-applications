@@ -35,7 +35,6 @@
 *~
 
 # autotools files
-Makefile
 Makefile.in
 .deps/
 .libs/
