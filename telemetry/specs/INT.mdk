@@ -528,7 +528,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|Rep|C|E|R R R R R| Ins Cnt |  Max Hop Cnt  | Total Hop Cnt |
+   |  Ver  |Rep|C|E|R R R| Ins Cnt |  Max Hop Cnt  | Total Hop Cnt |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           | 
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -571,7 +571,7 @@ metadata values that are asked for), it must skip processing that particular INT
 packet entirely. This ensures that each INT Transit device adds **_either_**
 zero bytes or a fixed/well- known number of bytes to the INT packet.
 * The fields in the INT metadata header are interpreted the following way:
-  - Ver (2b): INT metadata header version. Should be zero for this version.
+  - Ver (4b): INT metadata header version. Should be zero for this version.
   - Rep (2b): Replication requested. Support for this request is optional. If
 this value is non-zero, the device may replicate the INT packet. This is useful
 to explore all the valid physical forwarding paths when multi-path forwarding
@@ -623,7 +623,7 @@ Instruction Bitmap
   - Intermediate devices can set the following fields:
     - C, E, Total Hop Count
 * In an INT packet, the length (in bytes) of the INT metadata stack must always
-be (Instruction Count * 4 * Total Hop Count).
+be (Instruction Count \* 4 \* Total Hop Count).
 
 ## Examples
 
@@ -741,7 +741,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|Rep|C|E|    R    | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=2 |
+   |  Ver  |Rep|C|E|  R  | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=2 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -804,7 +804,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|Rep|C|E|    R    | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|  R  | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -839,7 +839,7 @@ followed by encapsulated Ethernet payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|Rep|C|E|    R    | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|  R  | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -890,7 +890,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|Rep|C|E|     R   | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|  R  | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -924,7 +924,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|Rep|C|E|    R    | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|  R  | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -970,11 +970,11 @@ header intl4_tail_t {
 
 /* INT headers */
 header int_header_t {
-    bit<2>  ver;
+    bit<4>  ver;
     bit<2>  rep;
     bit<1>  c;
     bit<1>  e;
-    bit<5>  rsvd1;
+    bit<3>  rsvd1;
     bit<5>  ins_cnt;
     bit<8>  max_hop_cnt;
     bit<8>  total_hop_cnt;
@@ -1542,8 +1542,8 @@ definition and examples
   - Moved the INT transit P4 program from Appendix to the main section
 [#sec-p4-program-specification-for-int-transit]. Re-wrote the program in
 p4_16.
-* 2017-12-08
+* 2017-12-11
+  - Increaed the size of Version field from 2b to 4b in INT Metadata Header
   - Improved the header presentation of the examples and clarified the
 assumptions in section [#sec-examples]
   - Formatted the spec as a Madoko file
-

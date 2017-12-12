@@ -1,16 +1,17 @@
 
 INT=INT
 
-all: build/${INT}.pdf build/${INT}.html
+all: ${INT}.pdf 
 
-build/${INT}.pdf: ${INT}.mdk
+${INT}.pdf: ${INT}.mdk
 	madoko --pdf -vv --odir=build $<
+	cp build/${INT}.pdf ../../docs
 
-build/${INT}.html: ${INT}.mdk
+${INT}.html: ${INT}.mdk
 	madoko -vv --odir=build $<
 
-build/${INT}.pdf: p4.json
-build/${INT}.html: p4.json
+${INT}.pdf: p4.json
+${INT}.html: p4.json
 
 clean:
 	${RM} -rf build
