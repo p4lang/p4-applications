@@ -34,8 +34,12 @@
 # Emacs files
 *~
 
+# vi/vim files
+*.swp
+
 # autotools files
 Makefile.in
+build/
 .deps/
 .libs/
 config.*
