@@ -1,7 +1,8 @@
 
 INT=INT
+REPORT=telemetry_report
 
-all: ${INT}.pdf 
+all: ${INT}.pdf ${REPORT}.pdf
 
 ${INT}.pdf: ${INT}.mdk
 	madoko --pdf -vv --odir=build $<
@@ -12,6 +13,10 @@ ${INT}.html: ${INT}.mdk
 
 ${INT}.pdf: p4.json
 ${INT}.html: p4.json
+
+${REPORT}.pdf: ${REPORT}.mdk
+	madoko --pdf -vv --odir=build $<
+	cp build/${REPORT}.pdf ../../docs
 
 clean:
 	${RM} -rf build
