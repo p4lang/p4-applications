@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : (working draft)
-Title Footer : 2017-11-10
+Title Footer : 2018-1-18
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *Barefoot Networks, VMware, Xilinx*
 Heading depth : 5
@@ -54,8 +54,8 @@ packets, and timestamps that can be used to determine hop-by-hop and
 end-to-end delay. Generation of telemetry reports can be triggered by
 various events in categories such as flow monitoring, queue congestion, and
 packet drops. For further information regarding the motivation and usage of
-detailed telemetry information can be found in the IETF draft for In-situ OAM [^IOAM_reqs].
-
+detailed telemetry information can be found in the IETF draft for
+In-situ OAM [^IOAM_reqs].
 
 Specifications are being defined for embedding telemetry metadata within
 data packets, such as INT [^INT] and IOAM [^IOAM]. This allows for telemetry
@@ -144,6 +144,8 @@ telemetry report generation:
     telemetry specific access control list (called a drop watchlist in this
     specification). This provides visibility into the impact of packet
     drops on user traffic.
+
+[]{tex-cmd: "\newpage"}
 
 * Congested Queues
   : Telemetry reports are generated for traffic entering a specific queue
@@ -236,7 +238,7 @@ be done in the data plane itself without any need to punt to the control
 plane for further processing.
 
 The sink switch has the option to add its local telemetry metadata either
-in the telemetry report headers defined in this specification, or in the
+in the telemetry report header defined in this specification, or in the
 embedded telemetry metadata intermingled with the original packet headers.
 
 ### Using Different Telemetry Modes for Different Telemetry Categories
@@ -311,27 +313,54 @@ The Destination Port is user configurable. The expectation is that the same
 Destination Port value will be used for all telemetry reports in a
 particular deployment.
 
-## Telemetry Report Headers
-
-### Telemetry Report Fixed Header (12 octets)
+## Telemetry Report Header (16+ octets)
 
 `
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |  Ver  |NProto |D|Q|F|         Reserved            |   hw_id   |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |  Ver  |Length |NProt|RepMdBits|  Reserved   |D|Q|F|   hw_id   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                           Switch id                           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                        Sequence Number                        |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                       Ingress Timestamp                       |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                  Variable Optional Metadata                   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
+
+* Ver: Version
+  : This specification defines version 1.
+
+* Length
+  : Indicates the length of the telemetry report header in multiples of
+    4 octets.
 
 * NProt: Next Protocol
   :
     * 0: Ethernet
-    * 1: Telemetry Drop header, followed by Ethernet
-    * 2: Telemetry Switch Local header, followed by Ethernet
+    * 1: IPv4
+    * 2: IPv6
+
+* RepMdBits: Report Metadata Bits
+  : Bitmap that indicates which optional metadata is present in the
+    telemetry report header. Each bit represents 4 octets of optional
+    metadata.
+    * bit 0 (MSB): Ingress port id (16 bits) + Egress port id (16 bits)
+    * bit 1: Hop latency
+    * bit 2: Queue id (8 bits) + Queue occupancy (24 bits)
+    * bit 3: Egress Timestamp (32 bits)
+    * bit 4: Queue id (8 bits) + Drop reason (8 bits) + Padding (16 bits)
+
+    This specification defines the following metadata:
+    * Drop reason
+      : An enumeration that indicates the reason why a packet was dropped, for
+        example as defined in
+        [github.com/p4lang/switch](https://github.com/p4lang/switch/blob/master/p4src/includes/drop_reason_codes.h).
+
+    See the INT specification [^INT] for definitions of the remaining metadata.
 
 * D: Dropped
   : Indicates that at least one packet matching a drop watchlist was dropped.
@@ -349,76 +378,24 @@ particular deployment.
     other network devices.
 
 * hw_id
-  : Identifies the hardware subsystem within the source that generated this
-    report. For example, in a chassis with multiple linecards this could
-    identify a specific linecard, or a subsystem within a linecard.
+  : Identifies the hardware subsystem within the network device that generated
+    this report. For example, in a chassis with multiple linecards this could
+    identify a specific linecard, or a subsystem within a linecard. The hw_id
+    is unique within the scope of a Switch id.
+
+* Switch id
+  : The unique ID of a switch (generally administratively assigned). Switch IDs
+    must be unique within a management domain.
 
 * Sequence Number
-  : Reflects the sequence of reports from a specific hw_id to a particular
-    telemetry report destination. This can be used to detect loss of
-    telemetry reports before they reach their intended destination.
-    Ingress Timestamp: The device local time when the packet was first
-    received on the ingress physical or logical port, in nanoseconds.
+  : Reflects the sequence of reports from a specific combination of
+    (Switch id, hw_id) to a particular telemetry report destination. This
+    can be used to detect loss of telemetry reports before they reach their
+    intended destination.
 
-### Telemetry Drop Report Header (12 octets)
-
-This header is used to report telemetry metadata from a network device that dropped a packet.
-`
-       0                   1                   2                   3
-       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                           Switch id                           |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |        Ingress port id        |        Egress port id         |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |   Queue id    |  Drop reason  |              Pad              |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
-
-The following metadata are defined in the INT spec [^INT]:
-
-* Switch id
-* Ingress port id
-* Egress port id
-* Queue id
-
-In addition, the Telemetry Report Header defines the following metadata:
-
-* Drop reason
-  - An enumeration that indicates the reason why a packet was dropped, for
-    example as defined in
-    [github.com/p4lang/switch](https://github.com/p4lang/switch/blob/master/p4src/includes/drop_reason_codes.h).
-
-### Telemetry Switch Local Report Header (16 octets)
-
-This header may be used to include telemetry metadata from the network
-device generating the report.
-`
-       0                   1                   2                   3
-       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                           Switch id                           |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |        Ingress port id        |        Egress port id         |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |   Queue id    |                Queue occupancy                |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                       Egress timestamp                        |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
-
-The following metadata are defined in INT:
-
-* Switch id
-* Ingress port id
-* Egress port id
-* Queue id
-* Queue occupancy
-* Egress timestamp
-
-Note that the ingress timestamp is already included in the Telemetry Report
-Fixed Header, so there is no need to include it in the Telemetry Switch
-Local Report Header.
+* Ingress Timestamp
+  : The device local time when the packet was first received on the ingress
+    physical or logical port, in nanoseconds.
 
 ## Flow Identification
 
@@ -430,7 +407,7 @@ and identify flows in any manner that it desires.
 ## Embedded Telemetry Metadata { #embedded }
 
 There may still be further telemetry metadata embedded within the payload
-after the Telemetry Report headers. For example, this is typically the case
+after the Telemetry Report header. For example, this is typically the case
 when there is telemetry metadata from hops prior to the network device
 generating the report. The telemetry metadata will typically be encoded
 using a defined data plane format such as INT and IOAM.
@@ -440,13 +417,12 @@ telemetry metadata in any of the following:
 
 * the embedded telemetry metadata,
 
-* the Telemetry Switch Local Report header or Telemetry Drop Report header
-in the same telemetry report as the embedded telemetry metadata from
-previous hops, or
-* the Telemetry Switch Local Report header or Telemetry Drop Report header
-in a separate telemetry report from the embedded telemetry metadata from
-previous hops. Note that in this case the ingress timestamp will be the
-same in the Telemetry Report Fixed Header in both telemetry reports.
+* the Telemetry Report header in the same telemetry report as the embedded
+telemetry metadata from previous hops, or
+* the Telemetry Report header in a separate telemetry report from the
+embedded telemetry metadata from previous hops. Note that in this case the
+ingress timestamp will be the same in the Telemetry Report Fixed Header in
+both telemetry reports.
 
 If the Tracked Flow Association bit is set to 0, then there will not be any
 embedded telemetry metadata in the report.
@@ -460,7 +436,7 @@ parsing considerations.
            "Telemetry Report Outer Encapsulation Format" }
 ![outer-encap]
 ~
-[outer-encap]: images/telemetry_report_outer_encap.jpg { width: 3.8in }
+[outer-encap]: images/telemetry_report_outer_encap.jpg { width: 3.4in }
 
 ~ Figure { #fig-flat-packet; caption: \
            "Remaining Packet Format - Flat Packet" }
@@ -514,11 +490,11 @@ encapsulated packet such as a VXLAN packet. When processing a telemetry
 report for an encapsulated packet, the distributed telemetry monitoring
 system may desire to categorize flows based on inner headers. In this case,
 it should parse the telemetry report all the way down past any embedded
-telemetry metadata (if present), even when a Telemetry Report Drop Header
-or Telemetry Report Switch Local Header is present. It may also want to
-process the embedded telemetry metadata, for example to recognize the case
-where a path change directs traffic to a congested switch where packets are
-being dropped.
+telemetry metadata (if present), even when the Telemetry Report Header
+includes optional metadata such as drop reason. It may also want to process
+the embedded telemetry metadata, for example to recognize the case where a
+path change directs traffic to a congested switch where packets are being
+dropped.
 
 Figure [#fig-int-over-l4-vxlan] shows the remaining packet format when the
 original packet is a VXLAN packet and there is embedded INT over
@@ -543,7 +519,21 @@ specification.
 * 2017-11-10
   - Initial release
 
-
+* 2018-1-18
+  + Promote *Switch id* to fixed portion of the Telemetry Report Header
+    - The Switch id is always present.
+  + Flexible format allowing for arbitrary combinations of optional telemetry
+    metadata in the Telemetry Report Header
+    - Replaces previous Telemetry Drop Header and Telemetry Switch Local
+      Report Header
+    - Adds a small 4 bit length field indicating the Telemetry Report Header
+      length in multiples of 4 octets
+    - Adds a bitmap indicating which optional metadata is present in the
+      Telemetry Report Header
+    - Rearranges fields in the first 32 bits of the Telemetry Report Header in
+      order to achieve proper alignment, and to place reserved bits between
+      the report metadata bitmap and the association bits so that either one
+      can expand as necessary
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
 
