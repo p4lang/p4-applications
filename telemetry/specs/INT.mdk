@@ -298,10 +298,57 @@ exhausting header space in the case of a forwarding loop or any other anomalies,
 it is strongly recommended to limit the number of total INT metadata fields
 added by devices.
 
+### MTU Settings
+
 As with any modification that potentially changes the packet size, this
-on-the-fly allocation may “grow” a packet beyond the original MTU, resulting
-in fragmentation. It is advisable to plan network/NIC/MTU settings accordingly
-to leave headroom for the additional headers.
+on-the-fly allocation may “grow” the packet size, potentially causing it to
+exceed the MTU on an INT switch egress link.
+
+This may be addressed in the following ways -
+
+* It is recommended that the MTU of links between INT sources and sinks is
+configured to be higher than the MTU of preceding link MTUs (server/VM NIC MTUs)
+by an appropriate amount. Configuring an MTU differential of
+(Instruction Count\*4\*INT Hop Count + 8), based on conservative values of
+total number of INT hops and instruction count being used, will prevent egress
+MTU being exceeded due to INT metadata insertion at INT hops.
+
+* An INT source/transit switch may optionally aid in dynamic discovery of Path MTU
+along flows being monitored by INT by transmitting ICMP message as per Path MTU
+Discovery mechanisms of the corresponding IP protocol
+(RFC 1191 for IPv4, RFC 1981 for IPv6). An INT source or transit switch may report
+a conservative MTU in the ICMP message, accounting for cumulative metadata insertion at
+all INT hops and assuming egress MTU at downstream hops is the same as its own
+egress link MTU. This
+will help in the path MTU discovery source converging to a path MTU estimate
+faster, although this would be a conservative path MTU estimate.
+Alternatively, each INT hop may report an MTU only accounting for the metadata
+it inserts. This would enable the path MTU discovery source converge to a
+precise path MTU, at the cost of receiving more ICMP messages, one from each
+INT hop.
+
+Regardless of whether or not an INT transit switch participates in Path MTU
+discovery, if it cannot insert all requested metadata because doing so will
+cause the packet length to exceed egress link MTU, it
+**must not insert any metadata and set the M bit** in the
+INT header, indicating that egress MTU was exceeded at an INT hop.
+
+An INT source needs to be able to insert 8 bytes of INT header plus Instruction Count \* 4
+bytes of its own metadata. If inserting 8 bytes of INT header itself causes
+egress link MTU to be exceeded, INT will not be initiated for such
+packets (**TBD - handling of such scenarios**). If there is enough room to
+insert INT header, but not first-hop INT metadata at the source, the source must
+initiate INT and set the M bit at the first hop itself.
+
+In theory, an INT transit switch can perform IPv4 fragmentation to overcome
+egress MTU limitation when inserting its metadata. However, IPv4 fragmentation
+can have adverse impact on applications. Moreover, IPv6 packets cannot be
+fragmented at intermediate hops. Also, fragmenting packets at INT transit hops,
+with or without copying preceding INT metadata into fragments imposes
+extra complexity of correlating fragments in the INT monitoring engine.
+Considering all these factors, the INT specification requires that an INT
+switch **must not fragment** packets in order to append INT information to
+the packet.
 
 ## Header Format
 
@@ -528,7 +575,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|R R R| Ins Cnt |  Max Hop Cnt  | Total Hop Cnt |
+   |  Ver  |Rep|C|E|M|R R| Ins Cnt |  Max Hop Cnt  | Total Hop Cnt |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -577,6 +624,21 @@ The original packet must have C bit set to 0.
 reaching the Max Hop Count.   If the Total Hop Count of an incoming INT packet
 is identical to the Max Hop Count, the INT device cannot add its own INT
 metadata and must set this flag to 1.
+  - M (1b): MTU exceeded
+    - This flag must be set if a device cannot add all of the requested metadata
+      because doing so will cause the packet length to exceed egress link MTU.
+      In this case, the device must not add any metadata to the packet, but set
+      the M bit in the INT header. Note that it is possible for egress MTU
+      limitation to prevent INT metadata insertion at multiple hops along a
+      path. The M bit simply serves as an indication that INT metadata was not inserted
+      at one or more hops and corrective action such as reconfiguring MTU at
+      some links may be needed, particularly when INT switches are not
+      participating in path MTU discovery. The M bit is not aimed at readily
+      identifying which switch(es) did not insert INT metadata due to egress MTU
+      limitation. In theory, if this does not occur at consecutive hops,
+      it may be possible for the monitoring system to derive which
+      switch(es) set the M bit based on knowledge of the network topology
+      and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT metadata stack.
   - R: Reserved bits.
   - Instruction Count (5b): The number of instructions that are set (i.e.,
 number of 1’s) in the instruction bitmap.
@@ -612,12 +674,13 @@ similar to the push operation on a stack. Hence, the most recently added
 metadata appears at the top of the stack. The device must add metadata in the
 order of bits set in the instruction bitmap.
   - If a device is unable to provide a metadata value specified in the
-instruction bitmap because its value is not available, it must add a special
-reserved value  0xFFFF_FFFF indicating “invalid”.
-  - If a device cannot add all the number of bytes (i.e., Instruction Count\*4) required by the instruction bitmap (irrespective of the availability of the
-metadata values that are asked for), it must skip processing that particular INT
-packet entirely. This ensures that each INT Transit device adds **_either_**
-zero bytes or Instruction Count\*4 bytes to the packet.
+    instruction bitmap because its value is not available, it must add a special
+    reserved value  0xFFFF_FFFF indicating “invalid”.
+  - If a device cannot add all the number of bytes (i.e., Instruction Count\*4)
+    required by the instruction bitmap (irrespective of the availability of the
+    metadata values that are asked for), it must skip processing that particular INT
+    packet entirely. This ensures that each INT Transit device adds **_either_**
+    zero bytes or Instruction Count\*4 bytes to the packet.
   - Reserved bits in the instruction bitmap are to be handled similarly. If an
     INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
     set by a INT source that is running a newer version), the transit hop must
@@ -752,7 +815,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=2 |
+   |  Ver  |Rep|C|E|M| R | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=2 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -850,7 +913,7 @@ followed by encapsulated Ethernet payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|M| R | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -901,7 +964,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|M| R | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -985,7 +1048,8 @@ header int_header_t {
     bit<2>  rep;
     bit<1>  c;
     bit<1>  e;
-    bit<3>  rsvd1;
+    bit<1>  m;
+    bit<2>  rsvd1;
     bit<5>  ins_cnt;
     bit<8>  max_hop_cnt;
     bit<8>  total_hop_cnt;
@@ -1364,7 +1428,8 @@ control Int_outer_encap(inout headers hdr,
     }
 }
 
-
+/* TBD - Check egress link MTU, do not insert any metadata and
+   set M bit if adding metadata will cause egress MTU to be exceeded */
 control Int_egress(inout headers hdr, inout metadata meta,
         inout standard_metadata_t standard_metadata)
 {
