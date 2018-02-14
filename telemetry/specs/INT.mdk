@@ -404,7 +404,12 @@ the reserved or configured values are
 per domain decisions that all INT capable devices should follow. (Note: in
 general, encoding into DSCP field will be less intrusive compared to changing
 the layer 4 port field. The latter may alter ECMP behavior and can complicate
-ACL and network debugging.)
+ACL and network debugging. If DSCP field can not be reseved for INT, and 
+retaining ECMP behavior is desired, adding probe marker fields could be an
+option. With arbitary values being inserted after TCP/UDP header, the chance
+to conflict with user traffic in a data center is low, but can not be completely 
+eliminated.)
+
 
 INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
 changed. However, the sink device will remove INT headers before passing the
