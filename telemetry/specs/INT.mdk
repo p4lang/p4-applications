@@ -371,7 +371,7 @@ both INT header stacks carry information for respective layers and need not be
 considered interfering with each other.)
 
 A field in the lower layers of Ethernet, IP, or TCP/UDP should indicate if the
-INT header exists after the TCP/UDP header. We propose two options:
+INT header exists after the TCP/UDP header. We propose three options:
 
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit will be reserved to
 indicate the existence of INT after TCP/UDP. INT source will put the reserved
@@ -384,8 +384,23 @@ ignore the designated bit position.)
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
+* New Probe Marker fields: arbitrary 32-bit values are inserted after IP TCP/UDP header
+to indicate the existence of INT after TCP/UDP. These fileds should be interpreted
+as unsigned integer values and are initialized to a configured value. 
 
-The decision to use DSCP or destination port field and the reserved values are
+INT probe marker for TCP/UDP:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Probe Marker (1)                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Probe Marker (2)                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+The decision to use DSCP, destination port field or probe marker, and 
+the reserved or configured values are
 per domain decisions that all INT capable devices should follow. (Note: in
 general, encoding into DSCP field will be less intrusive compared to changing
 the layer 4 port field. The latter may alter ECMP behavior and can complicate
