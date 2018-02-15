@@ -411,11 +411,11 @@ general, encoding into DSCP field will be less intrusive compared to changing
 the layer 4 port field. The latter may alter ECMP behavior and can complicate
 ACL and network debugging. If DSCP field cannot be reserved for INT, and 
 retaining ECMP behavior is desired, probe marker option could be followed.
-With arbitrary values being inserted after TCP/UDP header, the likelihood
-of conflicting with user traffic in a data center is low, but cannot be 
-completely eliminated. To further reduce the chance of conflict, a user 
-deploys probe marker option could choose to combine probe marker with port 
-number together as an INT indicator.) 
+With arbitrary values being inserted after TCP/UDP header in probe marker
+option, the likelihood of conflicting with user traffic in a data center is 
+low, but cannot be completely eliminated. To further reduce the chance of 
+conflict, a user deploys probe marker option could choose to check more into
+port number to identify the existence of INT.) 
 
 
 INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
