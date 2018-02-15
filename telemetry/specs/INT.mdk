@@ -1623,3 +1623,9 @@ p4_16.
   - Improved the header presentation of the examples and clarified the
 assumptions in section [#sec-examples]
   - Formatted the spec as a Madoko file
+* 2018-02-13
+  - Elaborated on interactions between INT and MTU settings. Defined switch
+    behavior when inserting INT metadata in a packet would result in egress
+    link MTU to be exceeded.
+  - Defined behavior of INT transit switch when it receives reserved bits
+    set in the INT header
