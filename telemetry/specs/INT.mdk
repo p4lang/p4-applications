@@ -384,12 +384,12 @@ ignore the designated bit position.)
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
-* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP header
-to indicate the existence of INT after TCP/UDP. These fileds should be interpreted
-as unsigned integer values, stored in network byte order and are initialized to a 
-configured value.  This Probe marker is a variation of an early IETF draft
-https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01 (expired), with existing
-implemetations.
+* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP 
+header to indicate the existence of INT after TCP/UDP. These fields should be 
+interpreted as unsigned integer values, stored in network byte order and are 
+initialized to a configured value.  This Probe marker is a variation of an early 
+IETF draft with existing implementations. More information can be found at 
+https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01.
 
 INT probe marker for TCP/UDP:
 
@@ -402,17 +402,20 @@ INT probe marker for TCP/UDP:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
-The decision to use DSCP, destination port field or probe marker, and 
-the reserved or configured values are
-per domain decisions that all INT capable devices should follow. (Note: in
+The decision to use DSCP, destination port field or probe marker option
+are per domain decisions that all INT capable devices should follow. The
+same applies to the reserved value of DSCP or port number, and the 
+configured probe marker value, which should be consistent within a domain.
+It is recommended that only one option is deployed per domain. (Note: in
 general, encoding into DSCP field will be less intrusive compared to changing
 the layer 4 port field. The latter may alter ECMP behavior and can complicate
-ACL and network debugging. If DSCP field cannot be reseved for INT, and 
-retaining ECMP behavior is desired, adding probe marker fields could be an
-option. With arbitary values being inserted after TCP/UDP header, the chance
-to conflict with user traffic in a data center is low, but cannot be completely 
-eliminated. A user could choose to combine port number along with 64-bit marker
-as an INT indicator to reduce the conflicting even more.) 
+ACL and network debugging. If DSCP field cannot be reserved for INT, and 
+retaining ECMP behavior is desired, probe marker option could be followed.
+With arbitrary values being inserted after TCP/UDP header, the likelihood
+of conflicting with user traffic in a data center is low, but cannot be 
+completely eliminated. To further reduce the chance of conflict, a user 
+deploys probe marker option could choose to combine probe marker with port 
+number together as an INT indicator.) 
 
 
 INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
