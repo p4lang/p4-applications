@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : (working draft)
-Title Footer : 2018-1-26
+Title Footer : 2018-2-14
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *Barefoot Networks, VMware, Xilinx*
 Heading depth : 5
@@ -332,11 +332,11 @@ particular deployment.
 `
 
 * Ver: Version
-  : This specification defines version 1.
+  : This specification defines **version 1**.
 
 * Length
   : Indicates the length of the telemetry report header in multiples of
-    4 octets.
+    4 octets, including the variable optional metadata.
 
 * NProt: Next Protocol
   :
@@ -422,8 +422,8 @@ telemetry metadata in any of the following:
 telemetry metadata from previous hops, or
 * the Telemetry Report header in a separate telemetry report from the
 embedded telemetry metadata from previous hops. Note that in this case the
-ingress timestamp will be the same in the Telemetry Report Fixed Header in
-both telemetry reports.
+ingress timestamp will be the same in the Telemetry Report Header in both
+telemetry reports.
 
 If the Tracked Flow Association bit is set to 0, then there will not be any
 embedded telemetry metadata in the report.
@@ -520,15 +520,15 @@ specification.
 * 2017-11-10
   - Initial release
 
-* 2018-1-26
+* 2018-2-14
   + Promote *Switch id* to fixed portion of the Telemetry Report Header
     - The Switch id is always present.
   + Flexible format allowing for arbitrary combinations of optional telemetry
     metadata in the Telemetry Report Header
     - Replaces previous Telemetry Drop Header and Telemetry Switch Local
       Report Header
-    - Adds a small 4 bit length field indicating the Telemetry Report Header
-      length in multiples of 4 octets
+    - Adds a 4 bit length field indicating the Telemetry Report Header length
+      in multiples of 4 octets
     - Adds a bitmap indicating which optional metadata is present in the
       Telemetry Report Header
     - Rearranges fields in the first 32 bits of the Telemetry Report Header in
