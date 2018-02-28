@@ -388,8 +388,9 @@ Port, and sink must restore the original port number.
 header to indicate the existence of INT after TCP/UDP. These fields should be 
 interpreted as unsigned integer values, stored in network byte order and are 
 initialized to a configured value.  This Probe marker is a variation of an early 
-IETF draft with existing implementations. More information can be found at 
-https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01.
+IETF draft with existing implementations [^DPP].
+[^DPP] : Data-plane probe for in-band telemetry collection,
+https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
 INT probe marker for TCP/UDP:
 
@@ -415,7 +416,7 @@ With arbitrary values being inserted after TCP/UDP header in probe marker
 option, the likelihood of conflicting with user traffic in a data center is 
 low, but cannot be completely eliminated. To further reduce the chance of 
 conflict, the user who deploys probe marker option could choose to check more 
-into TCP/UDP port numbers to identify the existence of INT.) 
+into TCP/UDP port numbers to validate INT probe marker) 
 
 
 INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
