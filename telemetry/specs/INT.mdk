@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
 Title Note : (working draft)
-Title Footer: 2018-2-14
+Title Footer: 2018-2-28
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
 Heading depth: 5
@@ -393,7 +393,7 @@ IETF draft with existing implementations [^DPP].
 https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
 INT probe marker for TCP/UDP:
-
+`
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -401,7 +401,7 @@ INT probe marker for TCP/UDP:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                         Probe Marker (2)                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
+`
 
 The decision to use DSCP, destination port field or probe marker option
 are per domain decisions that all INT capable devices should follow. The
@@ -603,7 +603,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|R R| Ins Cnt |   Reserved    |RemainingHopCnt|
+   |  Ver  |Rep|C|E|M|     Reserved      | Ins Cnt |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -725,7 +725,11 @@ order of bits set in the instruction bitmap.
   - Intermediate devices can set the following fields:
     - C, E, Remaining Hop Count
 * In an INT packet, the length (in bytes) of the INT metadata stack must always
-be a multiple of (Instruction Count \* 4).
+be a multiple of (Instruction Count \* 4). This length can be determined by
+subtracting the total INT fixed header sizes (for INT over TCP/UDP, 16 bytes;
+for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4). For INT over
+Geneve it is 8 bytes subtracted from (length in Geneve tunnel option header \*
+4).
 
 ## Examples
 
@@ -842,7 +846,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M| R | InsCnt=2|   Reserved    |RemainingHopC=6|
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -905,7 +909,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=2|   Reserved    |RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -940,7 +944,7 @@ followed by encapsulated Ethernet payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M| R | InsCnt=1|   Reserved    |RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=1|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -991,7 +995,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M| R | InsCnt=2|   Reserved    |RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1025,7 +1029,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=1|   Reserved    |RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=1|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1076,9 +1080,9 @@ header int_header_t {
     bit<1>  c;
     bit<1>  e;
     bit<1>  m;
-    bit<2>  rsvd1;
+    bit<7>  rsvd1;
+    bit<3>  rsvd2;
     bit<5>  ins_cnt;
-    bit<8>  rsvd2;
     bit<8>  remaining_hop_cnt;
     bit<4>  instruction_mask_0003;  /* split the bits for lookup */
     bit<4>  instruction_mask_0407;
