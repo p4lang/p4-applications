@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
 Title Note : (working draft)
-Title Footer: 2018-2-28
+Title Footer: 2018-02-28
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
 Heading depth: 5
@@ -388,9 +388,8 @@ Port, and sink must restore the original port number.
 header to indicate the existence of INT after TCP/UDP. These fields should be 
 interpreted as unsigned integer values, stored in network byte order and are 
 initialized to a configured value.  This Probe marker is a variation of an early 
-IETF draft with existing implementations [^DPP].
-[^DPP] : Data-plane probe for in-band telemetry collection,
-https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
+IETF draft with existing implementations[^DPP].
+[^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
 INT probe marker for TCP/UDP:
 `
@@ -1629,6 +1628,7 @@ specification and implementation of this spec.
 * Changhoon Kim
 * Jeongkeun Lee
 * Masoud Moshref
+* Heidi OU
 * Mickey Spiegel
 
 # Change log
@@ -1662,3 +1662,6 @@ assumptions in section [#sec-examples]
     set in the INT header
 * 2018-02-14
   - Replaced Max Hop Count and Total Hop Count with Remaining Hop Count
+* 2018-02-28
+  - Added Probe Marker approach as another way to indicate the existence of
+    INT over TCP/UDP (section [#sec-header-location-and-format----int-over-tcpudp]).
