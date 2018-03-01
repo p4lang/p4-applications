@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
 Title Note : (working draft)
-Title Footer: 2017-12-11
+Title Footer: 2018-02-28
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
 Heading depth: 5
@@ -388,12 +388,11 @@ Port, and sink must restore the original port number.
 header to indicate the existence of INT after TCP/UDP. These fields should be 
 interpreted as unsigned integer values, stored in network byte order and are 
 initialized to a configured value.  This Probe marker is a variation of an early 
-IETF draft with existing implementations [^DPP].
-[^DPP] : Data-plane probe for in-band telemetry collection,
-https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
+IETF draft with existing implementations[^DPP].
+[^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
 INT probe marker for TCP/UDP:
-
+`
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -401,7 +400,7 @@ INT probe marker for TCP/UDP:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                         Probe Marker (2)                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
+`
 
 The decision to use DSCP, destination port field or probe marker option
 are per domain decisions that all INT capable devices should follow. The
@@ -1626,6 +1625,7 @@ specification and implementation of this spec.
 * Changhoon Kim
 * Jeongkeun Lee
 * Masoud Moshref
+* Heidi OU
 * Mickey Spiegel
 
 # Change log
@@ -1657,3 +1657,6 @@ assumptions in section [#sec-examples]
     link MTU to be exceeded.
   - Defined behavior of INT transit switch when it receives reserved bits
     set in the INT header
+* 2018-02-28
+  - Added Probe Marker approach as another way to indicate the existence of
+    INT over TCP/UDP (section [#sec-header-location-and-format----int-over-tcpudp]).
