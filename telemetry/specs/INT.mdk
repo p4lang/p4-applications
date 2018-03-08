@@ -146,22 +146,48 @@ must be unique within a management domain.
 
 ## Ingress Information
 
-* Ingress port id
-  - The logical port on which the INT packet was received. The semantics
-(meaning) of this value may differ for individual devices.  A device may expose
-physical and logical port identifiers separately.
+* Ingress port identifier
+  - The port on which the INT packet was received. A packet may be received
+    on an arbitrary stack of port constructs starting with a physical port, e.g. a
+    packet may be received on a physical port that belongs to a link aggregation
+    port group, which in turn is part of a Layer 3 Switched Virtual Interface,
+    and at Layer 3 the packet may be received in a tunnel. Although the entire
+    port stack may be monitored in theory, this specification allows for monitoring
+    of up to two levels of ingress port identifiers (See section 5.3 for
+    details). First level of ingress port identifier would typically be used to monitor
+    the physical port on which the packet was received,
+    hence a 16-bit field (half of a 4-Byte metadata) is deemed adequate.
+    Second level of ingress port identifier occupies a full 4-Byte metadata field,
+    which may be used to monitor a logical port on which the packet was received.
+    A 32-bit space at the second level allows for adequately large number of
+    logical ports at a network element. The semantics of port identifiers may
+    differ across devices, each INT hop chooses the port type it reports
+    at each of the two levels.
+
 * Ingress timestamp
   - The device local time when the INT packet was received on the ingress
 physical or logical port.
 
 ## Egress Information
 
-* Egress port ID
-  - The ID of the output port via which the INT packet was sent out. The exact
-meaning of this value can differ for individual devices, and defining that is
-beyond the scope of this document. For example, some devices may encode the
-physical port ID, whereas the other may encode the logical port ID. Some other
-types of devices can encode both (2B each).
+* Egress port identifier
+  - The port on which the INT packet was sent out. A packet may
+    be transmitted on an arbitrary stack of port constructs ending at a physical port,
+    e.g. a packet may be transmitted on a tunnel, out of a Layer 3 Switched Virtual
+    Interface, on a Link Aggregation Group, out of a particular physical port
+    belonging to the Link Aggregation Group. Although the entire
+    port stack may be monitored in theory, this specification allows for monitoring
+    of up to two levels of egress port identifiers (See section 5.3 for details).
+    First level of egress port identifier would typically be
+    used to monitor the physical port on which the packet was transmitted,
+    hence a 16-bit field (half of a 4-Byte metadata) is deemed adequate.
+    Second level of egress port identifier occupies a full 4-Byte metadata field,
+    which may be used to monitor a logical port on which the packet was
+    transmitted. A 32-bit space at the second level allows for adequately large number of
+    logical ports at a network element. The semantics of port identifiers may
+    differ across devices, each INT hop chooses the port type it reports
+    at each of the two levels.
+
 * Hop latency
   - Time taken for the INT packet to be switched within the device.
 * Egress port TX Link utilization
@@ -384,6 +410,7 @@ ignore the designated bit position.)
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
+
 * New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP 
 header to indicate the existence of INT after TCP/UDP. These fields should be 
 interpreted as unsigned integer values, stored in network byte order and are 
@@ -404,18 +431,18 @@ INT probe marker for TCP/UDP:
 
 The decision to use DSCP, destination port field or probe marker option
 are per domain decisions that all INT capable devices should follow. The
-same applies to the reserved value of DSCP or port number, and the 
+same applies to the reserved value of DSCP or port number, and the
 configured probe marker value, which should be consistent within a domain.
 It is recommended that only one option is deployed per domain. (Note: in
 general, encoding into DSCP field will be less intrusive compared to changing
 the layer 4 port field. The latter may alter ECMP behavior and can complicate
-ACL and network debugging. If DSCP field cannot be reserved for INT, and 
+ACL and network debugging. If DSCP field cannot be reserved for INT, and
 retaining ECMP behavior is desired, probe marker option could be followed.
 With arbitrary values being inserted after TCP/UDP header in probe marker
-option, the likelihood of conflicting with user traffic in a data center is 
-low, but cannot be completely eliminated. To further reduce the chance of 
-conflict, the user who deploys probe marker option could choose to check more 
-into TCP/UDP port numbers to validate INT probe marker) 
+option, the likelihood of conflicting with user traffic in a data center is
+low, but cannot be completely eliminated. To further reduce the chance of
+conflict, the user who deploys probe marker option could choose to check more
+into TCP/UDP port numbers to validate INT probe marker)
 
 
 INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
@@ -684,13 +711,15 @@ case it would cease processing an INT packet with a higher Instruction Count .
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
-  - bit1: Ingress port ID + egress port ID
+  - bit1: Level 1 Ingress port ID + egress port ID
   - bit2: Hop latency
   - bit3: Queue ID + Queue occupancy
   - bit4: Ingress timestamp
   - bit5: Egress timestamp
   - bit6: Queue ID + Queue congestion status
   - bit7: Egress port tx utilization
+  - bit8: Level 2 Ingress Port ID
+  - bit9: Level 2 Egress Port ID
   - The remaining bits are reserved.
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
@@ -1549,10 +1578,16 @@ at the time packets were forwarded.
 
 ## Ingress Information
 
-* Ingress port id
-  - The logical port on which the INT packet was received. The semantics
-(meaning) of this value may differ for individual devices.  A device may expose
-physical and logical port identifiers separately.
+* Ingress port identifier
+  - The port on which the INT packet was received. A packet may be received
+    on an arbitrary stack of port constructs starting with a physical port, e.g. a
+    packet may be received on a physical port that belongs to a link aggregation
+    port group, which in turn is part of a Layer 3 Switched Virtual Interface,
+    and at Layer 3 the packet may be received in a tunnel. Although the entire
+    port stack may be monitored in theory, this specification allows for monitoring
+    of up to two levels of ingress port identifiers. The semantics of port identifiers may
+    differ across devices, each INT hop chooses the port type it reports at
+    each of the two levels.
 * Ingress timestamp
   - The device local time when the INT packet was received on the **_ingress_**
 physical or logical port.
@@ -1574,8 +1609,16 @@ INT framework leaves those decisions to device vendors.
 
 ## Egress Information
 
-* Egress physical port id
-  - The ID of the port via which the INT packet was sent out.
+* Egress port identifier
+  - The port on which the INT packet was sent out. A packet may
+    be transmitted on an arbitrary stack of port constructs ending at a physical port,
+    e.g. a packet may be transmitted on a tunnel, out of a Layer 3 Switched Virtual
+    Interface, on a Link Aggregation Group, out of a particular physical port
+    belonging to the Link Aggregation Group. Although the entire
+    port stack may be monitored in theory, this specification allows for monitoring
+    of up to two levels of egress port identifiers. The semantics of port
+    identifiers may differ across devices, each INT hop chooses the port type
+    it reports at each of the two levels.
 * Egress timestamp
   - Device local time capturing when the INT packet leaves the egress port.
 * Egress port TX pkt count
@@ -1665,3 +1708,6 @@ assumptions in section [#sec-examples]
 * 2018-02-28
   - Added Probe Marker approach as another way to indicate the existence of
     INT over TCP/UDP (section [#sec-header-location-and-format----int-over-tcpudp]).
+* 2018-02-28
+  - Added support for monitoring of two levels of ingress and egress
+    port identifiers
