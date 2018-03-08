@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
 Title Note : (working draft)
-Title Footer: 2017-12-11
+Title Footer: 2018-02-28
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
 Heading depth: 5
@@ -410,16 +410,16 @@ ignore the designated bit position.)
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
-* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP
-header to indicate the existence of INT after TCP/UDP. These fields should be
-interpreted as unsigned integer values, stored in network byte order and are
-initialized to a configured value.  This Probe marker is a variation of an early
-IETF draft with existing implementations [^DPP].
-[^DPP] : Data-plane probe for in-band telemetry collection,
-https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
+
+* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP 
+header to indicate the existence of INT after TCP/UDP. These fields should be 
+interpreted as unsigned integer values, stored in network byte order and are 
+initialized to a configured value.  This Probe marker is a variation of an early 
+IETF draft with existing implementations[^DPP].
+[^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
 INT probe marker for TCP/UDP:
-
+`
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -427,7 +427,7 @@ INT probe marker for TCP/UDP:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                         Probe Marker (2)                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
+`
 
 The decision to use DSCP, destination port field or probe marker option
 are per domain decisions that all INT capable devices should follow. The
@@ -629,7 +629,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|R R| Ins Cnt |  Max Hop Cnt  | Total Hop Cnt |
+   |  Ver  |Rep|C|E|M|     Reserved      | Ins Cnt |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -675,9 +675,7 @@ The original packet must have C bit set to 0.
     - C bit must always be set to 0 by INT source
   - E (1b): Max Hop Count exceeded.
     - This flag must be set if a device cannot prepend its own metadata due to
-reaching the Max Hop Count.   If the Total Hop Count of an incoming INT packet
-is identical to the Max Hop Count, the INT device cannot add its own INT
-metadata and must set this flag to 1.
+      the Remaining Hop Count reaching the value 0.
   - M (1b): MTU exceeded
     - This flag must be set if a device cannot add all of the requested metadata
       because doing so will cause the packet length to exceed egress link MTU.
@@ -699,15 +697,17 @@ number of 1’s) in the instruction bitmap.
     - While the largest value of Instruction Count is 31, an INT-capable device
 may be limited in the maximum value of Instruction Count it supports, in which
 case it would cease processing an INT packet with a higher Instruction Count .
-  - Max Hop Count (8b): The maximum number of hops that are allowed to add their
-metadata to the packet. If Total Hop Count (see below) equals Max Hop Count, a
-device **must** ignore the INT instruction, pushing no new metadata onto the
-stack.
-  - Total Hop Count (8b): The total number of hops that added their metadata
-instance(s) to the packet.
-    - The INT Source must set this value to zero upon creation of an INT
-metadata header, and each INT-capable device on the path must increment the
-Total Hop Count as it pushes its local metadata onto the stack.
+  - Remaining Hop Count (8b): The remaining number of hops that are allowed to
+    add their metadata to the packet.
+    - Upon creation of an INT metadata header, the INT Source must set this
+      value to the maximum number of hops that are allowed to add metadata
+      instance(s) to the packet. Each INT-capable device on the path, including
+      the INT Source as well as INT Transit Hops, **must** decrement the
+      Remaining Hop Count if and when it pushes its local metadata onto the
+      stack.
+    - When a packet is received with the Remaining Hop Count equal to 0, the
+      device **must** ignore the INT instruction, pushing no new metadata onto
+      the stack, and the device **must** set the E bit.
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
@@ -743,17 +743,21 @@ order of bits set in the instruction bitmap.
     either add corresponding metadata filled with the reserved value 0xFFFF_FFFF
     or must not add any INT metadata to the packet.
   - If an INT transit hop does not add metadata to a packet due to any of the
-    above reasons, it must not increment the total INT hop count in the INT
+    above reasons, it must not decrement the remaining INT hop count in the INT
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, Rep, C, Instruction Count, Max Hop Count, Total Hop Count (0), and
-Instruction Bitmap.
+    - Ver, Rep, C, Instruction Count, Remaining Hop Count, and Instruction
+      Bitmap.
     - INT Source must set all reserved bits to zero.
   - Intermediate devices can set the following fields:
-    - C, E, Total Hop Count
+    - C, E, Remaining Hop Count
 * In an INT packet, the length (in bytes) of the INT metadata stack must always
-be (Instruction Count \* 4 \* Total Hop Count).
+be a multiple of (Instruction Count \* 4). This length can be determined by
+subtracting the total INT fixed header sizes (for INT over TCP/UDP, 16 bytes;
+for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4). For INT over
+Geneve it is 8 bytes subtracted from (length in Geneve tunnel option header \*
+4).
 
 ## Examples
 
@@ -790,6 +794,7 @@ both metadata (switch id and queue occupancy).
 * INT type value for the hop-by-hop INT Header type (i.e., the one that
 intermediate switches must process) is 1, and that the type value for the
 destination INT Header is 2.
+* The maximum number of hops (network diameter) is 8.
 * The INT metadata header uses the following field values in the metadata header,
 unless specified otherwise in each example.
   - Ver = 0
@@ -797,7 +802,6 @@ unless specified otherwise in each example.
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - Instruction Count = 2 (for switch id & queue occupancy)
-  - Max Hop Count = 16 (network diameter)
 * The piggybacked metadata header happens to use the same INT metadata header
 format with the following field values. Again, note this is only for example;
 we do not propose any designs for the piggybacked metadata format other than
@@ -808,7 +812,6 @@ special option type for this kind of data (i.e., INT Source-to-sink data).
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - Instruction Count = 1 (for queue occupancy)
-  - Max Hop Count = 16 (network diameter)
 
 ## Example with INT over TCP
 
@@ -871,7 +874,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M| R | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=2 |
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -934,7 +937,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -969,7 +972,7 @@ followed by encapsulated Ethernet payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M| R | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=1|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1020,7 +1023,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M| R | InsCnt=2|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1054,7 +1057,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|  R  | InsCnt=1|  MaxHopCnt=16 | TotalHopCnt=3 |
+   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=1|RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1105,15 +1108,15 @@ header int_header_t {
     bit<1>  c;
     bit<1>  e;
     bit<1>  m;
-    bit<2>  rsvd1;
+    bit<7>  rsvd1;
+    bit<3>  rsvd2;
     bit<5>  ins_cnt;
-    bit<8>  max_hop_cnt;
-    bit<8>  total_hop_cnt;
+    bit<8>  remaining_hop_cnt;
     bit<4>  instruction_mask_0003;  /* split the bits for lookup */
     bit<4>  instruction_mask_0407;
     bit<4>  instruction_mask_0811;
     bit<4>  instruction_mask_1215;
-    bit<16> rsvd2;
+    bit<16> rsvd3;
 }
 
 /* INT meta-value headers - different header for each value type */
@@ -1502,9 +1505,9 @@ control Int_egress(inout headers hdr, inout metadata meta,
     Int_metadata_insert() int_metadata_insert;
     Int_outer_encap() int_outer_encap;
 
-    action int_hop_cnt_increment() {
-        hdr.int_header.total_hop_cnt =
-            hdr.int_header.total_hop_cnt + 1;
+    action int_hop_cnt_decrement() {
+        hdr.int_header.remaining_hop_cnt =
+            hdr.int_header.remaining_hop_cnt - 1;
     }
     action int_hop_cnt_exceeded() {
         hdr.int_header.e = 1;
@@ -1512,9 +1515,9 @@ control Int_egress(inout headers hdr, inout metadata meta,
 
     apply{
         if(hdr.int_header.isValid()) {
-            if(hdr.int_header.max_hop_cnt != hdr.int_header.total_hop_cnt
+            if(hdr.int_header.remaining_hop_cnt != 0
                     && hdr.int_header.e == 0) {
-                int_hop_cnt_increment();
+                int_hop_cnt_decrement();
                 int_prep.apply();
                 int_metadata_insert.apply(
                     hdr, meta.int_metadata, standard_metadata);
@@ -1668,6 +1671,7 @@ specification and implementation of this spec.
 * Changhoon Kim
 * Jeongkeun Lee
 * Masoud Moshref
+* Heidi OU
 * Mickey Spiegel
 
 # Change log
@@ -1699,6 +1703,11 @@ assumptions in section [#sec-examples]
     link MTU to be exceeded.
   - Defined behavior of INT transit switch when it receives reserved bits
     set in the INT header
+* 2018-02-14
+  - Replaced Max Hop Count and Total Hop Count with Remaining Hop Count
+* 2018-02-28
+  - Added Probe Marker approach as another way to indicate the existence of
+    INT over TCP/UDP (section [#sec-header-location-and-format----int-over-tcpudp]).
 * 2018-02-28
   - Added support for monitoring of two levels of ingress and egress
     port identifiers
