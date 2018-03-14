@@ -366,10 +366,11 @@ formats.
 
 In case the packet is not encapsulated by any virtualization header, INT over
 VXLAN or INT over GENEVE is not helpful. Instead, one can put the INT metadata
-just after layer 4 headers (TCP/UDP). If TCP has any options, the INT stack
-comes after the TCP options. The scheme assumes that the non-INT devices between
+just after layer 4 headers (TCP/UDP). The scheme assumes that the non-INT devices between
 the INT source and the INT sink either do not parse beyond layer-4 headers or
 can skip through the INT stack using the Length field of INT shim header.
+If TCP has any options, the INT stack may come before or after the TCP options
+but the decision must be consistent within an INT domain.
 (Note: INT over UDP can be used even when the packet is encapsulated by VXLAN,
 GENEVE, or GUE (Generic UDP Encapsulation). INT over TCP/UDP also makes it
 easier to add INT stack into outer, inner, or even both layers. In such cases
