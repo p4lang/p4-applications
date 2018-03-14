@@ -2,7 +2,7 @@ Title         : In-band Network Telemetry (INT)
 Title Note : (working draft)
 Title Footer: 2018-02-28
 Author : The P4.org Applications Working Group
-Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
+Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, VMware*
 Heading depth: 5
 
 
@@ -377,6 +377,44 @@ Considering all these factors, the INT specification requires that an INT
 switch **must not fragment** packets in order to append INT information to
 the packet.
 
+### Checksum Update
+
+INT may be transported over an L4 protocol such as TCP or UDP, or over an
+encapsulation header that includes an L4 header, such as VXLAN. In these cases,
+an INT source or transit switch may be required to update the L4 Checksum of
+the encapsulating header.
+
+In some cases, an L4 Checksum update is not necessary. For example, when UDP is 
+transported over IPv4, it is possible to assign a zero Checksum, causing the 
+receiver to ignore the value of the Checksum field. For UDP over IPv6, there
+are specific use cases in which it is possible to assign a zero Checksum 
+(as defined in RFC 6936).
+
+If an L4 Checksum update is required, an INT source/transit switch may perform
+it in one of two ways:
+
+* Update the L4 Checksum field such that the new value is equal to the Checksum 
+of the new packet, after the INT-related updates, or
+
+* Assign a value to the Checksum Complement metadata which guarantees that the 
+existing L4 Checksum is the correct value of the packet after the INT-related 
+updates.
+
+The motivation for the Checksum Complement is that some hardware implementations
+process data packets in a serial order, which may impose a problem when INT
+fields and metadata that reside after the L4 Checksum field are inserted or 
+modified. Therefore, the Checksum Complement metadata, if present, is the last
+metadata field in the stack. 
+
+Note that when the Checksum Complement metadata is present source/transit 
+switches may choose to update the L4 Checksum field instead of using the
+Checksum Complement metadata. In this case the Checksum Complement will be 
+assigned zero. A host that verifies the L4 Checksum will be unaffected by 
+whether some or all of the nodes chose not to use the Checksum Complement, since
+the value of the L4 Checksum should fit the Checksum of the payload in either 
+of the cases.
+
+
 ## Header Format
 
 This subsection proposes the INT Header format. Where necessary, we use examples
@@ -724,6 +762,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit6: Queue ID + Queue congestion status
   - bit7: Egress port tx utilization
   - bit8: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
+  - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
   except if bit 8 is set, which requires 8 bytes of metadata. Per-hop metadata
@@ -1661,6 +1700,13 @@ This value is used primarily to determine how much space is left in the queue.
 * Queue drop count
   - Total # of packets dropped from the queue
 
+## Miscellaneous
+
+* Checksum Complement
+  - This field enables a Checksum-neutral update when INT is encapsulated over 
+an L4 protocol that uses a Checksum field, such as TCP or UDP.
+  
+  
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
@@ -1676,6 +1722,7 @@ specification and implementation of this spec.
 * Hugh Holbrook
 * Changhoon Kim
 * Jeongkeun Lee
+* Tal Mizrahi
 * Masoud Moshref
 * Heidi OU
 * Mickey Spiegel
@@ -1717,3 +1764,5 @@ assumptions in section [#sec-examples]
 * 2018-03-08
   - Added support for monitoring of two levels of ingress and egress
     port identifiers
+* 2018-03-14
+  - Added the Checksum Complement metadata.
