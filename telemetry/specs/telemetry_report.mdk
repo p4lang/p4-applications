@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : (working draft)
-Title Footer : 2018-2-14
+Title Footer : 2018-3-14
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *Barefoot Networks, VMware, Xilinx*
 Heading depth : 5
@@ -313,7 +313,7 @@ The Destination Port is user configurable. The expectation is that the same
 Destination Port value will be used for all telemetry reports in a
 particular deployment.
 
-## Telemetry Report Header (16+ octets)
+## Telemetry Report Header (16+ octets) { #telem-report-header }
 
 `
        0                   1                   2                   3
@@ -343,6 +343,7 @@ particular deployment.
     * 0: Ethernet
     * 1: IPv4
     * 2: IPv6
+    * 3: Telemetry opaque data
 
 * RepMdBits: Report Metadata Bits
   : Bitmap that indicates which optional metadata is present in the
@@ -397,6 +398,37 @@ particular deployment.
 * Ingress Timestamp
   : The device local time when the packet was first received on the ingress
     physical or logical port, in nanoseconds.
+
+## Telemetry Opaque Data Header
+
+`
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      | NProt |        Length         |           Schema ID           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                                                               |
+      |                          Opaque data                          |
+      |                                                               |
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+* NProt: Next Protocol
+  : Same definition as **NProt** in the Telemetry Report Header defined in
+    Section [#telem-report-header].
+
+* Length
+  : Indicates the length of the telemetry opaque data header in multiples
+    of 4 octets.
+
+* Schema ID
+  : 2-octet unsigned integer identifying the schema of the opaque data.
+
+* Opaque data
+  : Variable length field. This field is interpreted as specified by the
+    schema identified by the Schema ID.
 
 ## Flow Identification
 
@@ -535,6 +567,9 @@ specification.
       order to achieve proper alignment, and to place reserved bits between
       the report metadata bitmap and the association bits so that either one
       can expand as necessary
+
+* 2018-3-14
+  + Add telemetry opaque data header
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
 
