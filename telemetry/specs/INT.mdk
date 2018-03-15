@@ -396,9 +396,11 @@ it in one of two ways:
 * Update the L4 Checksum field such that the new value is equal to the Checksum 
 of the new packet, after the INT-related updates, or
 
-* Assign a value to the Checksum Complement metadata which guarantees that the 
-existing L4 Checksum is the correct value of the packet after the INT-related 
-updates.
+* If the INT source indicates that Checksum-neutral updates are allowed by 
+setting an instruction bit corresponding to the Checksum Complement metadata, 
+then the INT source/transit switches may assign a value to the Checksum 
+Complement metadata which guarantees that the existing L4 Checksum is the 
+correct value of the packet after the INT-related updates.
 
 The motivation for the Checksum Complement is that some hardware implementations
 process data packets in a serial order, which may impose a problem when INT
@@ -408,11 +410,11 @@ metadata field in the stack.
 
 Note that when the Checksum Complement metadata is present source/transit 
 switches may choose to update the L4 Checksum field instead of using the
-Checksum Complement metadata. In this case the Checksum Complement will be 
-assigned zero. A host that verifies the L4 Checksum will be unaffected by 
-whether some or all of the nodes chose not to use the Checksum Complement, since
-the value of the L4 Checksum should fit the Checksum of the payload in either 
-of the cases.
+Checksum Complement metadata. In this case the Checksum Complement metadata will 
+be assigned the reserved value 0xFFFFFFFF. A host that verifies the L4 Checksum 
+will be unaffected by whether some or all of the nodes chose not to use the 
+Checksum Complement, since the value of the L4 Checksum should fit the Checksum 
+of the payload in either of the cases.
 
 
 ## Header Format
