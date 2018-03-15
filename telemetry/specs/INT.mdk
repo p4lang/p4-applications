@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
-Title Note : (working draft)
-Title Footer: 2018-02-28
+Title Note : (NOTE: This is a working draft. Consider using tagged versions for implementations.)
+Title Footer: 2018-03-13
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
 Heading depth: 5
@@ -95,29 +95,35 @@ of Little Minions paper [^Minions].
 
 # Terminologies
 
-**INT Header**: Any packet header that carries INT information. There are two
+* **INT Header**: Any packet header that carries INT information. There are two
 types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
 [#sec-int-header-types]).
 
-**INT Packet**: Any packet containing an INT Header.
+* **INT Packet**: Any packet containing an INT Header.
 
-**INT Instruction**: Embedded packet instructions indicating which INT Metadata
+* **INT Instruction**: Embedded packet instructions indicating which INT Metadata
 to collect (defined below). The collected data is written into an INT Header.
 
-**INT Source**: A trusted entity that creates and inserts INT Headers into the
+* **INT Source**: A trusted entity that creates and inserts INT Headers into the
 packets it sends. The INT Headers contain, at minimum, INT Instructions
 indicating what to collect.
 
-**INT Sink**: A trusted entity that extracts the INT Headers and collects the
+* **INT Sink**: A trusted entity that extracts the INT Headers and collects the
 path state contained in the INT Headers. The INT Sink is responsible for
 removing INT Headers so as to make INT transparent to upper layers. (Note that
 this does not preclude having nested or hierarchical INT domains.)
 
-**INT Transit Hop**: A networking device that adds its own INT Metadata to an
+* **INT Transit Hop**: A networking device that adds its own INT Metadata to an
 INT Packet by following the INT Instructions in the INT Header.
 
-**INT Metadata**: Information that an INT Source or an INT Transit Hop device
+* **INT Metadata**: Information that an INT Source or an INT Transit Hop device
 inserts into the INT Header.  Examples of metadata are described below.
+
+* **INT Domain**: A set of inter-connected INT devices under the same administration.
+The INT devices within the same domain must be configured in a consistent way to
+ensure interoperability between the devices.
+Operators of an INT domain should deploy INT Sink capability at domain edges to
+prevent INT information from leaking out of the domain. 
 
 # What To Monitor
 
@@ -134,7 +140,8 @@ device for any number of reasons, including the heterogeneity of device
 architecture, feature sets, resource limits, etc. Thus, defining the exact
 meaning of each metadata is beyond the scope of this document. Instead we assume
 the users of INT will communicate the precise meanings of these metadata for
-each device model they use in their networks.
+each device model they use in their networks. For example, metadata units may
+be communicated out-of-band.
 
 Each metadata is encoded as a 4B unsigned value.
 
@@ -142,7 +149,7 @@ Each metadata is encoded as a 4B unsigned value.
 
 * Switch id
   - The unique ID of a switch (generally administratively assigned). Switch IDs
-must be unique within a management domain.
+must be unique within an INT domain.
 
 ## Ingress Information
 
@@ -387,10 +394,11 @@ formats.
 
 In case the packet is not encapsulated by any virtualization header, INT over
 VXLAN or INT over GENEVE is not helpful. Instead, one can put the INT metadata
-just after layer 4 headers (TCP/UDP). If TCP has any options, the INT stack
-comes after the TCP options. The scheme assumes that the non-INT devices between
+just after layer 4 headers (TCP/UDP). The scheme assumes that the non-INT devices between
 the INT source and the INT sink either do not parse beyond layer-4 headers or
 can skip through the INT stack using the Length field of INT shim header.
+If TCP has any options, the INT stack may come before or after the TCP options
+but the decision must be consistent within an INT domain.
 (Note: INT over UDP can be used even when the packet is encapsulated by VXLAN,
 GENEVE, or GUE (Generic UDP Encapsulation). INT over TCP/UDP also makes it
 easier to add INT stack into outer, inner, or even both layers. In such cases
@@ -404,10 +412,18 @@ INT header exists after the TCP/UDP header. We propose three options:
 indicate the existence of INT after TCP/UDP. INT source will put the reserved
 value in the field, and INT sink will remove it. The source can store the
 original DSCP so that the sink can restore the original value. Restoring the
-original value is optional. (Note: allocating a bit, as opposed to a value
-codepoint, will allow the rest of DSCP field to be used for QoS, hence allowing
-the coexistence of DSCP-based QoS and INT. The QoS engine must be programmed to
-ignore the designated bit position.)
+original value is optional. 
+  - Allocating a bit, as opposed to a value codepoint, will allow the rest of
+    DSCP field to be used for QoS, hence allowing the coexistence of DSCP-based
+    QoS and INT. The QoS engine must be programmed to ignore the designated 
+    bit position.
+  - In brownfield scenarios, however, the network operator may not find a bit
+    available to allocate for INT but may still have a fragmented space of 32
+    unused DSCP values. The operator can allocate an INT-enabled DSCP value
+    for every QoS DSCP value, map the INT-enabled DSCP value to the same queue
+    of traffic class as the corresponding QoS DSCP value. This may double the
+    number of QoS rules but will allow the co-existence of DSCP-based QoS and
+    INT even when a single DSCP bit is not available for INT.
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
@@ -1574,7 +1590,7 @@ V1Switch(ParserImpl(),
 
 * Switch id
   - The unique ID of a switch (generally administratively assigned). SwitchIDs
-must be unique within a management domain.
+must be unique within a domain.
 * Control plane state version number
   - Whenever a control-plane state changes (e.g., IP FIB update), the switch
 control plane can also update this version number in the data plane. INT
@@ -1717,3 +1733,11 @@ assumptions in section [#sec-examples]
 * 2018-03-08
   - Added support for monitoring of two levels of ingress and egress
     port identifiers
+* 2018-03-13
+  - Defined INT domain in section [#sec-terminologies].
+  - Described a possible allocation of non-contiguous DSCP codepoints for
+    INT over TCP/UDP
+    in section [#sec-header-location-and-format----int-over-tcpudp].
+  - Relaxed the location of INT stack relative to TCP options in 
+    section [#sec-header-location-and-format----int-over-tcpudp].
+
