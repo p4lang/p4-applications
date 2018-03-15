@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
-Title Note : (working draft)
-Title Footer: 2018-02-28
+Title Note : (NOTE: This is a working draft. Consider using tagged versions for implementations.)
+Title Footer: 2018-03-13
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, VMware*
 Heading depth: 5
@@ -140,7 +140,8 @@ device for any number of reasons, including the heterogeneity of device
 architecture, feature sets, resource limits, etc. Thus, defining the exact
 meaning of each metadata is beyond the scope of this document. Instead we assume
 the users of INT will communicate the precise meanings of these metadata for
-each device model they use in their networks.
+each device model they use in their networks. For example, metadata units may
+be communicated out-of-band.
 
 Each metadata is encoded as a 4B unsigned value.
 
@@ -152,22 +153,48 @@ must be unique within an INT domain.
 
 ## Ingress Information
 
-* Ingress port id
-  - The logical port on which the INT packet was received. The semantics
-(meaning) of this value may differ for individual devices.  A device may expose
-physical and logical port identifiers separately.
+* Ingress port identifier
+  - The port on which the INT packet was received. A packet may be received
+    on an arbitrary stack of port constructs starting with a physical port.
+    For example, a packet may be received on a physical port that belongs to
+    a link aggregation port group, which in turn is part of a Layer 3 Switched
+    Virtual Interface, and at Layer 3 the packet may be received in a tunnel.
+    Although the entire port stack may be monitored in theory, this
+    specification allows for monitoring of up to two levels of ingress port
+    identifiers (See section 5.3 for details). First level of ingress port
+    identifier would typically be used to monitor the physical port on which
+    the packet was received, hence a 16-bit field (half of a 4-Byte metadata)
+    is deemed adequate. Second level of ingress port identifier occupies a
+    full 4-Byte metadata field, which may be used to monitor a logical port
+    on which the packet was received. A 32-bit space at the second level
+    allows for adequately large number of logical ports at a network element.
+    The semantics of port identifiers may differ across devices, each INT hop
+    chooses the port type it reports at each of the two levels.
+
 * Ingress timestamp
   - The device local time when the INT packet was received on the ingress
 physical or logical port.
 
 ## Egress Information
 
-* Egress port ID
-  - The ID of the output port via which the INT packet was sent out. The exact
-meaning of this value can differ for individual devices, and defining that is
-beyond the scope of this document. For example, some devices may encode the
-physical port ID, whereas the other may encode the logical port ID. Some other
-types of devices can encode both (2B each).
+* Egress port identifier
+  - The port on which the INT packet was sent out. A packet may
+    be transmitted on an arbitrary stack of port constructs ending at a
+    physical port. For example, a packet may be transmitted on a tunnel,
+    out of a Layer 3 Switched Virtual Interface, on a Link Aggregation Group,
+    out of a particular physical port belonging to the Link Aggregation Group.
+    Although the entire port stack may be monitored in theory, this
+    specification allows for monitoring of up to two levels of egress port
+    identifiers (See section 5.3 for details). First level of egress port
+    identifier would typically be used to monitor the physical port on which
+    the packet was transmitted, hence a 16-bit field (half of a 4-Byte metadata)
+    is deemed adequate. Second level of egress port identifier occupies a full
+    4-Byte metadata field, which may be used to monitor a logical port on
+    which the packet was transmitted. A 32-bit space at the second level
+    allows for adequately large number of logical ports at a network element.
+    The semantics of port identifiers may differ across devices, each INT hop
+    chooses the port type it reports at each of the two levels.
+
 * Hop latency
   - Time taken for the INT packet to be switched within the device.
 * Egress port TX Link utilization
@@ -315,8 +342,8 @@ This may be addressed in the following ways -
 * It is recommended that the MTU of links between INT sources and sinks is
 configured to be higher than the MTU of preceding link MTUs (server/VM NIC MTUs)
 by an appropriate amount. Configuring an MTU differential of
-(Instruction Count\*4\*INT Hop Count + 8), based on conservative values of
-total number of INT hops and instruction count being used, will prevent egress
+(Per-hop Metadata Length\*4\*INT Hop Count + 8), based on conservative values of
+total number of INT hops and Per-hop Metadata Length, will prevent egress
 MTU being exceeded due to INT metadata insertion at INT hops.
 
 * An INT source/transit switch may optionally aid in dynamic discovery of Path MTU
@@ -339,7 +366,8 @@ cause the packet length to exceed egress link MTU, it
 **must not insert any metadata and set the M bit** in the
 INT header, indicating that egress MTU was exceeded at an INT hop.
 
-An INT source needs to be able to insert 8 bytes of INT header plus Instruction Count \* 4
+An INT source needs to be able to insert 8 bytes of INT header plus Per-hop
+Metadata Length\*4
 bytes of its own metadata. If inserting 8 bytes of INT header itself causes
 egress link MTU to be exceeded, INT will not be initiated for such
 packets (**TBD - handling of such scenarios**). If there is enough room to
@@ -399,10 +427,10 @@ original value is optional.
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
-* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP 
-header to indicate the existence of INT after TCP/UDP. These fields should be 
-interpreted as unsigned integer values, stored in network byte order and are 
-initialized to a configured value.  This Probe marker is a variation of an early 
+* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP
+header to indicate the existence of INT after TCP/UDP. These fields should be
+interpreted as unsigned integer values, stored in network byte order and are
+initialized to a configured value.  This Probe marker is a variation of an early
 IETF draft with existing implementations[^DPP].
 [^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
@@ -419,18 +447,18 @@ INT probe marker for TCP/UDP:
 
 The decision to use DSCP, destination port field or probe marker option
 are per domain decisions that all INT capable devices should follow. The
-same applies to the reserved value of DSCP or port number, and the 
+same applies to the reserved value of DSCP or port number, and the
 configured probe marker value, which should be consistent within a domain.
 It is recommended that only one option is deployed per domain. (Note: in
 general, encoding into DSCP field will be less intrusive compared to changing
 the layer 4 port field. The latter may alter ECMP behavior and can complicate
-ACL and network debugging. If DSCP field cannot be reserved for INT, and 
+ACL and network debugging. If DSCP field cannot be reserved for INT, and
 retaining ECMP behavior is desired, probe marker option could be followed.
 With arbitrary values being inserted after TCP/UDP header in probe marker
-option, the likelihood of conflicting with user traffic in a data center is 
-low, but cannot be completely eliminated. To further reduce the chance of 
-conflict, the user who deploys probe marker option could choose to check more 
-into TCP/UDP port numbers to validate INT probe marker) 
+option, the likelihood of conflicting with user traffic in a data center is
+low, but cannot be completely eliminated. To further reduce the chance of
+conflict, the user who deploys probe marker option could choose to check more
+into TCP/UDP port numbers to validate INT probe marker)
 
 
 INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
@@ -617,11 +645,11 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | Ins Cnt |RemainingHopCnt|
+   |  Ver  |Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |    INT Metadata Stack (varying number of fixed-size values)   |
+   | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                              . . .                            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -629,11 +657,11 @@ INT Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-* INT metadata header is 8B long followed by a stack of INT metadata, each metadata
-  encoded as a 4B value. While each metadata value is always encoded as a 4B-long
-  value, the metadata stack following the INT metadata header has a varying length
-  because different packets are delivered through different paths
-  (and hence different number of hops).
+* INT metadata header is 8 bytes long followed by a stack of INT metadata.
+  Each metadata is either 4 bytes or 8 bytes in length. Each INT hop
+  adds the same length of metadata. The total length of the metadata stack
+  is variable as different packets may traverse different paths and hence
+  different number of INT hops.
 
 * The fields in the INT metadata header are interpreted the following way:
   - Ver (4b): INT metadata header version. Should be zero for this version.
@@ -680,11 +708,16 @@ The original packet must have C bit set to 0.
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT metadata stack.
   - R: Reserved bits.
-  - Instruction Count (5b): The number of instructions that are set (i.e.,
-number of 1’s) in the instruction bitmap.
-    - While the largest value of Instruction Count is 31, an INT-capable device
-may be limited in the maximum value of Instruction Count it supports, in which
-case it would cease processing an INT packet with a higher Instruction Count .
+  - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
+    to be inserted at each INT hop.
+    - While the largest value of Per-hop Metadata Length is 31, an INT-capable
+      device may be limited in the maximum number of instructions it can process
+      and/or maximum length of metadata it can insert in data packets. An INT
+      hop that cannot process all instructions **must** still insert Per-hop
+      Metadata Length \* 4 bytes, with 0xFFFFFFFF reserved value for the
+      metadata corresponding to instructions it cannot process. An INT hop that
+      cannot insert Per-hop Metadata Length \* 4 bytes, **must** skip INT
+      processing altogether and not insert any metadata in the packet.
   - Remaining Hop Count (8b): The remaining number of hops that are allowed to
     add their metadata to the packet.
     - Upon creation of an INT metadata header, the INT Source must set this
@@ -699,14 +732,18 @@ case it would cease processing an INT packet with a higher Instruction Count .
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
-  - bit1: Ingress port ID + egress port ID
+  - bit1: Level 1 Ingress Port ID + Egress Port ID
   - bit2: Hop latency
   - bit3: Queue ID + Queue occupancy
   - bit4: Ingress timestamp
   - bit5: Egress timestamp
   - bit6: Queue ID + Queue congestion status
   - bit7: Egress port tx utilization
+  - bit8: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - The remaining bits are reserved.
+  Each instruction requests 4 bytes of metadata to be inserted at each hop,
+  except if bit 8 is set, which requires 8 bytes of metadata. Per-hop metadata
+  length is set accordingly at the INT source.
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -718,11 +755,11 @@ order of bits set in the instruction bitmap.
   - If a device is unable to provide a metadata value specified in the
     instruction bitmap because its value is not available, it must add a special
     reserved value  0xFFFF_FFFF indicating “invalid”.
-  - If a device cannot add all the number of bytes (i.e., Instruction Count\*4)
-    required by the instruction bitmap (irrespective of the availability of the
-    metadata values that are asked for), it must skip processing that particular INT
-    packet entirely. This ensures that each INT Transit device adds **_either_**
-    zero bytes or Instruction Count\*4 bytes to the packet.
+  - If a device cannot add all the metadata required by the instruction bitmap
+    (irrespective of the availability of the metadata values that are asked
+    for), it must skip processing that particular INT packet entirely. This
+    ensures that each INT Transit device adds **_either_** zero bytes or
+    Per-hop Metadata Length\*4 bytes to the packet.
   - Reserved bits in the instruction bitmap are to be handled similarly. If an
     INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
     set by a INT source that is running a newer version), the transit hop must
@@ -733,14 +770,13 @@ order of bits set in the instruction bitmap.
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, Rep, C, Instruction Count, Remaining Hop Count, and Instruction
+    - Ver, Rep, C, Per-hop Metadata Length, Remaining Hop Count, and Instruction
       Bitmap.
     - INT Source must set all reserved bits to zero.
   - Intermediate devices can set the following fields:
     - C, E, Remaining Hop Count
 * In an INT packet, the length (in bytes) of the INT metadata stack must always
-be a multiple of (Instruction Count \* 4). This length can be determined by
-subtracting the total INT fixed header sizes (for INT over TCP/UDP, 16 bytes;
+be a multiple of (Per-hop Metadata Length \* 4). This length can be determined  by subtracting the total INT fixed header sizes (for INT over TCP/UDP, 16 bytes;
 for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4). For INT over
 Geneve it is 8 bytes subtracted from (length in Geneve tunnel option header \*
 4).
@@ -787,7 +823,7 @@ unless specified otherwise in each example.
   - Rep = 0 (No replication)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
-  - Instruction Count = 2 (for switch id & queue occupancy)
+  - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
 * The piggybacked metadata header happens to use the same INT metadata header
 format with the following field values. Again, note this is only for example;
 we do not propose any designs for the piggybacked metadata format other than
@@ -797,7 +833,7 @@ special option type for this kind of data (i.e., INT Source-to-sink data).
   - Rep = 0 (No replication)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
-  - Instruction Count = 1 (for queue occupancy)
+  - Per-hop Metadata Length = 1 (for queue occupancy)
 
 ## Example with INT over TCP
 
@@ -860,7 +896,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=6|
+   |  Ver  |Rep|C|E|M|     Reserved      | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -923,7 +959,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -958,7 +994,7 @@ followed by encapsulated Ethernet payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=1|RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | HopML=1 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1009,7 +1045,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=2|RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1043,7 +1079,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | InsCnt=1|RemainingHopC=5|
+   |  Ver  |Rep|C|E|M|     Reserved      | HopML=1 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1096,7 +1132,7 @@ header int_header_t {
     bit<1>  m;
     bit<7>  rsvd1;
     bit<3>  rsvd2;
-    bit<5>  ins_cnt;
+    bit<5>  hop_metadata_len;
     bit<8>  remaining_hop_cnt;
     bit<4>  instruction_mask_0003;  /* split the bits for lookup */
     bit<4>  instruction_mask_0407;
@@ -1480,8 +1516,8 @@ control Int_egress(inout headers hdr, inout metadata meta,
 {
     action int_transit(bit<32> switch_id) {
         meta.int_metadata.switch_id = switch_id;
-        meta.int_metadata.insert_byte_cnt = (bit<16>) hdr.int_header.ins_cnt << 2;
-        meta.int_metadata.int_hdr_word_len = (bit<8>) hdr.int_header.ins_cnt;
+        meta.int_metadata.insert_byte_cnt = (bit<16>) hdr.int_header.hop_metadata_len << 2;
+        meta.int_metadata.int_hdr_word_len = (bit<8>) hdr.int_header.hop_metadata_len;
     }
     table int_prep {
         key = {}
@@ -1564,10 +1600,16 @@ at the time packets were forwarded.
 
 ## Ingress Information
 
-* Ingress port id
-  - The logical port on which the INT packet was received. The semantics
-(meaning) of this value may differ for individual devices.  A device may expose
-physical and logical port identifiers separately.
+* Ingress port identifier
+  - The port on which the INT packet was received. A packet may be received
+    on an arbitrary stack of port constructs starting with a physical port.
+    For example, a packet may be received on a physical port that belongs to a
+    link aggregation port group, which in turn is part of a Layer 3 Switched
+    Virtual Interface, and at Layer 3 the packet may be received in a tunnel.
+    Although the entire port stack may be monitored in theory, this
+    specification allows for monitoring of up to two levels of ingress port
+    identifiers. The semantics of port identifiers may differ across devices,
+    each INT hop chooses the port type it reports at each of the two levels.
 * Ingress timestamp
   - The device local time when the INT packet was received on the **_ingress_**
 physical or logical port.
@@ -1589,8 +1631,16 @@ INT framework leaves those decisions to device vendors.
 
 ## Egress Information
 
-* Egress physical port id
-  - The ID of the port via which the INT packet was sent out.
+* Egress port identifier
+  - The port on which the INT packet was sent out. A packet may be transmitted
+    on an arbitrary stack of port constructs ending at a physical port.
+    For example, a packet may be transmitted on a tunnel, out of a Layer 3
+    Switched Virtual Interface, on a Link Aggregation Group, out of a
+    particular physical port belonging to the Link Aggregation Group.
+    Although the entire port stack may be monitored in theory, this
+    specification allows for monitoring of up to two levels of egress port
+    identifiers. The semantics of port identifiers may differ across devices,
+    each INT hop chooses the port type it reports at each of the two levels.
 * Egress timestamp
   - Device local time capturing when the INT packet leaves the egress port.
 * Egress port TX pkt count
@@ -1680,8 +1730,14 @@ assumptions in section [#sec-examples]
 * 2018-02-28
   - Added Probe Marker approach as another way to indicate the existence of
     INT over TCP/UDP (section [#sec-header-location-and-format----int-over-tcpudp]).
-* 2018-03-
+* 2018-03-08
+  - Added support for monitoring of two levels of ingress and egress
+    port identifiers
+* 2018-03-13
   - Defined INT domain in section [#sec-terminologies].
   - Described a possible allocation of non-contiguous DSCP codepoints for
     INT over TCP/UDP
     in section [#sec-header-location-and-format----int-over-tcpudp].
+  - Relaxed the location of INT stack relative to TCP options in 
+    section [#sec-header-location-and-format----int-over-tcpudp].
+
