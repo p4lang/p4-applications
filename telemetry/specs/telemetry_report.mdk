@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : (working draft)
-Title Footer : 2018-3-14
+Title Footer : 2018-3-22
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *Barefoot Networks, VMware, Xilinx*
 Heading depth : 5
@@ -343,7 +343,7 @@ particular deployment.
     * 0: Ethernet
     * 1: IPv4
     * 2: IPv6
-    * 3: Telemetry opaque data
+    * 3: Telemetry extensions
 
 * RepMdBits: Report Metadata Bits
   : Bitmap that indicates which optional metadata is present in the
@@ -399,7 +399,7 @@ particular deployment.
   : The device local time when the packet was first received on the ingress
     physical or logical port, in nanoseconds.
 
-## Telemetry Opaque Data Header
+## Telemetry Extensions Header
 
 `
        0                   1                   2                   3
@@ -409,7 +409,7 @@ particular deployment.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                                                               |
       |                                                               |
-      |                          Opaque data                          |
+      |                        Extensions data                        |
       |                                                               |
       |                                                               |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -420,13 +420,21 @@ particular deployment.
     Section [#telem-report-header].
 
 * Length
-  : Indicates the length of the telemetry opaque data header in multiples
+  : Indicates the length of the telemetry extensions header in multiples
     of 4 octets.
 
 * Schema ID
-  : 2-octet unsigned integer identifying the schema of the opaque data.
+  : 2-octet unsigned integer identifying the schema of the telemetry
+    extensions data. The following ranges of Schema ID values are defined:
+    * 0 - 0xEFFF : Available for private or experimental use.
+    * 0xF000 - 0xFEFF : Reserved.
+    * 0xFF00 - 0xFFFE : Reserved for specification by P4.org. This range
+      is set aside for future uses such as specification of field units
+      in INT and telemetry reports.
+    * 0xFFFF : No schema, indicates that the telemetry extensions header
+      has no content.
 
-* Opaque data
+* Extensions data
   : Variable length field. This field is interpreted as specified by the
     schema identified by the Schema ID.
 
@@ -568,8 +576,8 @@ specification.
       the report metadata bitmap and the association bits so that either one
       can expand as necessary
 
-* 2018-3-14
-  + Add telemetry opaque data header
+* 2018-3-22
+  + Add telemetry extensions header
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
 
