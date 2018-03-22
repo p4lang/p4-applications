@@ -31,4 +31,10 @@ Mailing lists
   [http://lists.p4.org/mailman/listinfo/p4-apps_lists.p4.org](http://lists.p4.org/mailman/listinfo/p4-apps_lists.p4.org)
 - To post a message to all list members, send an email to <p4-apps@lists.p4.org>
 
-
+To create a pull request
+------------------------
+1. First create a fork of this repo
+1. Modify the source file of the spec you want to change. e.g., telemetry/specs/INT.mdk.
+1. Push your changes to your fork
+1. Create a pull request from your fork against the original repo, master branch
+1. Please assign WG chairs as reviewers
