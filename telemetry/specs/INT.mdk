@@ -141,9 +141,7 @@ architecture, feature sets, resource limits, etc. Thus, defining the exact
 meaning of each metadata is beyond the scope of this document. Instead we assume
 the users of INT will communicate the precise meanings of these metadata for
 each device model they use in their networks. For example, metadata units may
-be communicated out-of-band.
-
-Each metadata is encoded as a 4B unsigned value.
+be communicated out-of-band between each INT device and a data collection system.
 
 ## Switch-level Information
 
@@ -195,8 +193,13 @@ physical or logical port.
     The semantics of port identifiers may differ across devices, each INT hop
     chooses the port type it reports at each of the two levels.
 
+* Egress timestamp
+  - The device local time when the INT packet was processed by the egress
+physical or logical port.
+
 * Hop latency
   - Time taken for the INT packet to be switched within the device.
+
 * Egress port TX Link utilization
   - Current utilization of the egress port via which the INT packet was sent
 out. Again, devices can use different mechanisms to keep track of the current
@@ -209,6 +212,7 @@ simply leaves those decisions to device vendors.
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
 INT packet observes in the device while being forwarded.
+
 * Queue congestion status
   - The fraction (in percentage or decimal fraction) of current queue occupancy
 relative to the queue-size limit. This indicates how much buffer space was used
@@ -342,9 +346,12 @@ This may be addressed in the following ways -
 * It is recommended that the MTU of links between INT sources and sinks is
 configured to be higher than the MTU of preceding link MTUs (server/VM NIC MTUs)
 by an appropriate amount. Configuring an MTU differential of
-(Per-hop Metadata Length\*4\*INT Hop Count + 8), based on conservative values of
+[Per-hop Metadata Length\*4\*INT Hop Count + 12] bytes, based on conservative values of
 total number of INT hops and Per-hop Metadata Length, will prevent egress
-MTU being exceeded due to INT metadata insertion at INT hops.
+MTU being exceeded due to INT metadata insertion at INT hops. Here the 12 bytes
+are derived from the 4 bytes of INT shim (or option) header needed for INT 
+encapsulation (over TCP/UDP, VXLAN-GPE or Geneve) plus the 8 bytes of fixed 
+INT metadata header.
 
 * An INT source/transit switch may optionally aid in dynamic discovery of Path MTU
 along flows being monitored by INT by transmitting ICMP message as per Path MTU
@@ -366,9 +373,9 @@ cause the packet length to exceed egress link MTU, it
 **must not insert any metadata and set the M bit** in the
 INT header, indicating that egress MTU was exceeded at an INT hop.
 
-An INT source needs to be able to insert 8 bytes of INT header plus Per-hop
-Metadata Length\*4
-bytes of its own metadata. If inserting 8 bytes of INT header itself causes
+An INT source needs to be able to insert 12 bytes of fixed INT shim header and
+metadata header, plus Per-hop Metadata Length\*4
+bytes of its own metadata. If inserting 12 bytes of fixed headers causes
 egress link MTU to be exceeded, INT will not be initiated for such
 packets (**TBD - handling of such scenarios**). If there is enough room to
 insert INT header, but not first-hop INT metadata at the source, the source must
@@ -388,7 +395,7 @@ the packet.
 
 INT may be transported over an L4 protocol such as TCP or UDP, or over an
 encapsulation header that includes an L4 header, such as VXLAN. In these cases,
-an INT source or transit switch may be required to update the L4 Checksum of
+an INT source, transit, or sink switch may be required to update the L4 Checksum of
 the encapsulating header.
 
 In some cases, an L4 Checksum update is not necessary. For example, when UDP is 
@@ -397,17 +404,20 @@ receiver to ignore the value of the Checksum field. For UDP over IPv6, there
 are specific use cases in which it is possible to assign a zero Checksum 
 (as defined in RFC 6936).
 
-If an L4 Checksum update is required, an INT source/transit switch may perform
+If an L4 Checksum update is required, an INT source/transit/sink switch may perform
 it in one of two ways:
 
 * Update the L4 Checksum field such that the new value is equal to the Checksum 
-of the new packet, after the INT-related updates, or
+of the new packet, after the INT-related updates (header additions/removals, 
+field updates), or
 
 * If the INT source indicates that Checksum-neutral updates are allowed by 
 setting an instruction bit corresponding to the Checksum Complement metadata, 
 then the INT source/transit switches may assign a value to the Checksum 
 Complement metadata which guarantees that the existing L4 Checksum is the 
-correct value of the packet after the INT-related updates.
+correct value of the packet after the INT-related updates. INT sink doesn't
+need to take any special action but just removing the Checksum complemenet
+metadata as part of decapsulating the entire INT header stack.
 
 The motivation for the Checksum Complement is that some hardware implementations
 process data packets in a serial order, which may impose a problem when INT
