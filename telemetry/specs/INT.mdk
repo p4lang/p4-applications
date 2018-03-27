@@ -346,12 +346,15 @@ This may be addressed in the following ways -
 * It is recommended that the MTU of links between INT sources and sinks is
 configured to be higher than the MTU of preceding link MTUs (server/VM NIC MTUs)
 by an appropriate amount. Configuring an MTU differential of
-[Per-hop Metadata Length\*4\*INT Hop Count + 12] bytes, based on conservative values of
+[Per-hop Metadata Length\*4\*INT Hop Count + Fixed INT Header Length] bytes,
+based on conservative values of
 total number of INT hops and Per-hop Metadata Length, will prevent egress
-MTU being exceeded due to INT metadata insertion at INT hops. Here the 12 bytes
-are derived from the 4 bytes of INT shim (or option) header needed for INT 
-encapsulation (over TCP/UDP, VXLAN-GPE or Geneve) plus the 8 bytes of fixed 
-INT metadata header.
+MTU being exceeded due to INT metadata insertion at INT hops. The Fixed
+INT Header Length is the sum of INT metadata header length (8B) and the
+size of encapsulation-specific shim/option header(s) as defined in section
+[#sec-header-location-and-format]. In case of INT over TCP/UDP,
+the Fixed INT Header Length is 16B (8B metadata header + 4B shim header + 4B tail
+header). This will be 12B in case of VXLAN-GPE or Geneve encapsulation.
 
 * An INT source/transit switch may optionally aid in dynamic discovery of Path MTU
 along flows being monitored by INT by transmitting ICMP message as per Path MTU
@@ -373,9 +376,9 @@ cause the packet length to exceed egress link MTU, it
 **must not insert any metadata and set the M bit** in the
 INT header, indicating that egress MTU was exceeded at an INT hop.
 
-An INT source needs to be able to insert 12 bytes of fixed INT shim header and
-metadata header, plus Per-hop Metadata Length\*4
-bytes of its own metadata. If inserting 12 bytes of fixed headers causes
+An INT source needs to be able to insert the 16 or 12 bytes of fixed INT
+headers, plus Per-hop Metadata Length\*4
+bytes of its own metadata. If inserting the fixed headers causes
 egress link MTU to be exceeded, INT will not be initiated for such
 packets (**TBD - handling of such scenarios**). If there is enough room to
 insert INT header, but not first-hop INT metadata at the source, the source must
@@ -404,20 +407,18 @@ receiver to ignore the value of the Checksum field. For UDP over IPv6, there
 are specific use cases in which it is possible to assign a zero Checksum 
 (as defined in RFC 6936).
 
-If an L4 Checksum update is required, an INT source/transit/sink switch may perform
+If an L4 Checksum update is required, an INT source/transit switch may perform
 it in one of two ways:
 
 * Update the L4 Checksum field such that the new value is equal to the Checksum 
-of the new packet, after the INT-related updates (header additions/removals, 
+of the new packet, after the INT-related updates (header additions/removals,
 field updates), or
 
 * If the INT source indicates that Checksum-neutral updates are allowed by 
 setting an instruction bit corresponding to the Checksum Complement metadata, 
 then the INT source/transit switches may assign a value to the Checksum 
 Complement metadata which guarantees that the existing L4 Checksum is the 
-correct value of the packet after the INT-related updates. INT sink doesn't
-need to take any special action but just removing the Checksum complemenet
-metadata as part of decapsulating the entire INT header stack.
+correct value of the packet after the INT-related updates.
 
 The motivation for the Checksum Complement is that some hardware implementations
 process data packets in a serial order, which may impose a problem when INT
@@ -1693,7 +1694,8 @@ INT framework leaves those decisions to device vendors.
     identifiers. The semantics of port identifiers may differ across devices,
     each INT hop chooses the port type it reports at each of the two levels.
 * Egress timestamp
-  - Device local time capturing when the INT packet leaves the egress port.
+  - The device local time when the INT packet was processed by the egress
+physical or logical port.
 * Egress port TX pkt count
   - Total # of packets forwarded so far (since device initialization or counter
 reset) through the egress physical or logical port where the INT packet was also
