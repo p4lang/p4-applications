@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
 Title Note : (NOTE: This is a working draft. Consider using tagged versions for implementations.)
-Title Footer: 2018-03-14
+Title Footer: 2018-03-26
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, VMware*
 Heading depth: 5
@@ -123,7 +123,7 @@ inserts into the INT Header.  Examples of metadata are described below.
 The INT devices within the same domain must be configured in a consistent way to
 ensure interoperability between the devices.
 Operators of an INT domain should deploy INT Sink capability at domain edges to
-prevent INT information from leaking out of the domain. 
+prevent INT information from leaking out of the domain.
 
 # What To Monitor
 
@@ -384,45 +384,95 @@ Considering all these factors, the INT specification requires that an INT
 switch **must not fragment** packets in order to append INT information to
 the packet.
 
-### Checksum Update
+## Checksum Update
 
 INT may be transported over an L4 protocol such as TCP or UDP, or over an
-encapsulation header that includes an L4 header, such as VXLAN. In these cases,
-an INT source or transit switch may be required to update the L4 Checksum of
-the encapsulating header.
+encapsulation header that includes an L4 header, such as VXLAN.
 
-In some cases, an L4 Checksum update is not necessary. For example, when UDP is 
-transported over IPv4, it is possible to assign a zero Checksum, causing the 
-receiver to ignore the value of the Checksum field. For UDP over IPv6, there
-are specific use cases in which it is possible to assign a zero Checksum 
-(as defined in RFC 6936).
+In theory, since each INT transit hop modifies the Layer 4 payload, it should
+update the Layer 4 checksum. Layer 4 checksum update at transit hops is
+necessary to protect the integrity of INT metadata between the INT source
+and INT sink. If integrity of INT metadata is to be protected by Layer 4
+checksum, each INT transit hop must perform incremental checksum calculation
+as complete checksum calculation at a transit hop will mask any corruption
+in the INT metadata inserted by previous INT hops.
 
-If an L4 Checksum update is required, an INT source/transit switch may perform
-it in one of two ways:
+Layer 4 checksum updates at INT hops may or may not be required to protect
+the integrity of the Layer 4 payload.
 
-* Update the L4 Checksum field such that the new value is equal to the Checksum 
+* In the case of encapsulation protocols, the integrity of the encapsulated
+payload is covered by the inner Layer 4 checksum. Hence, UDP-based
+encapsulation protocols such as VXLAN and Geneve allow for outer UDP
+checksum to be set to zero in accordance with RFC 768 and RFC 6936,
+bypassing Layer 4 checksum validation at the receiving tunnel endpoint.
+While TCP does not define a specific checksum value to indicate that
+checksum is not to be validated at the receiver, it is possible for
+certain implementations of TCP-based encapsulation protocols
+such as Stateles Transport Tunneling Protocol (STT) to also ignore outer
+Layer 4 checksum at the receiving tunnel endpoint based on a similar rationale
+that the integrity of the encapsulated payload is covered by the inner Layer 4
+checksum.
+* If INT is enabled on probe packets, Layer 4 checksum update is required
+if integrity of INT metadata and other information carried in probe packets
+is desired.
+* If INT is enabled on real data packets and INT source is not the original
+traffic source, all additions to the packet at the INT source and transit hops
+are removed at the INT sink, making the original Layer 4 checksum valid after
+the INT sink.
+* If INT is enabled on real data packets and INT source is also the Layer 4
+traffic source, it may compute the Layer 4 checksum on the entire Layer 4
+payload including INT headers. In this case, if INT sink is also the Layer 4
+destination, every INT transit hop must update the Layer 4 checksum.
+If the INT sink is not the Layer 4 destination, transit hops may not update
+the checksum (unless INT metadata integrity is to be protected), the
+INT sink must update the Layer 4 checksum upon removing INT headers and
+metadata, before forwarding the data packet to the destination.
+
+This specification defines a bit in the INT header that is set at the INT
+source to dictate whether or not subsequent INT hops must update the
+Layer 4 checksum.
+
+If an INT transit/sink switch receives UDP packets with checksum equal to zero,
+it must honor the intention at the UDP source and maintain zero UDP checksum
+in the packet as per RFC 768 and RFC 6936. If an INT transit/sink switch
+receives TCP packets with "Checksum Update" bit equal to 0 in the INT header,
+or UDP packets with non-zero checksum and "Checksum Update" bit equal to 0
+in the INT header, it must not update the Layer 4 checksum upon making INT
+updates to the packet.
+
+If an INT transit/sink switch receives UDP packets with non-zero checksum
+and "Checksum Update" bit set, or TCP packets with "Checksum Update" bit set,
+it must update Layer 4 checksum using incremental checksum calculation.
+
+An INT source/transit switch may update the Layer 4 checksum in one of two ways:
+
+* Update the L4 Checksum field such that the new value is equal to the Checksum
 of the new packet, after the INT-related updates, or
 
-* If the INT source indicates that Checksum-neutral updates are allowed by 
-setting an instruction bit corresponding to the Checksum Complement metadata, 
-then the INT source/transit switches may assign a value to the Checksum 
-Complement metadata which guarantees that the existing L4 Checksum is the 
+* If the INT source indicates that Checksum-neutral updates are allowed by
+setting an instruction bit corresponding to the Checksum Complement metadata,
+then the INT source/transit switches may assign a value to the Checksum
+Complement metadata which guarantees that the existing L4 Checksum is the
 correct value of the packet after the INT-related updates.
 
 The motivation for the Checksum Complement is that some hardware implementations
 process data packets in a serial order, which may impose a problem when INT
-fields and metadata that reside after the L4 Checksum field are inserted or 
+fields and metadata that reside after the L4 Checksum field are inserted or
 modified. Therefore, the Checksum Complement metadata, if present, is the last
-metadata field in the stack. 
+metadata field in the stack.
 
-Note that when the Checksum Complement metadata is present source/transit 
+Note that when the Checksum Complement metadata is present source/transit
 switches may choose to update the L4 Checksum field instead of using the
-Checksum Complement metadata. In this case the Checksum Complement metadata will 
-be assigned the reserved value 0xFFFFFFFF. A host that verifies the L4 Checksum 
-will be unaffected by whether some or all of the nodes chose not to use the 
-Checksum Complement, since the value of the L4 Checksum should fit the Checksum 
-of the payload in either of the cases.
+Checksum Complement metadata. In this case the Checksum Complement metadata
+will be assigned the reserved value 0xFFFFFFFF. A host that verifies the
+L4 Checksum will be unaffected by whether some or all of the nodes chose
+not to use the Checksum Complement, since the value of the L4 Checksum
+should fit the Checksum of the payload in either of the cases.
 
+An INT sink switch cannot use the Checksum Complement metadata to perform
+checksum neutral updates. An INT sink switch must update the Layer 4 checksum
+using incremental checksum calculation if the "Checksum Update" flag is set
+in the INT header.
 
 ## Header Format
 
@@ -452,10 +502,10 @@ INT header exists after the TCP/UDP header. We propose three options:
 indicate the existence of INT after TCP/UDP. INT source will put the reserved
 value in the field, and INT sink will remove it. The source can store the
 original DSCP so that the sink can restore the original value. Restoring the
-original value is optional. 
+original value is optional.
   - Allocating a bit, as opposed to a value codepoint, will allow the rest of
     DSCP field to be used for QoS, hence allowing the coexistence of DSCP-based
-    QoS and INT. The QoS engine must be programmed to ignore the designated 
+    QoS and INT. The QoS engine must be programmed to ignore the designated
     bit position.
   - In brownfield scenarios, however, the network operator may not find a bit
     available to allocate for INT but may still have a fragmented space of 32
@@ -685,7 +735,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
+   |  Ver  |Rep|D|E|M|C|    Reserve      | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -722,13 +772,13 @@ physical port.
 to each L3 ECMP next-hop valid for the destination address and send a single
 copy per ECMP next-hop.
     - 3: Port- and Next-hop-level replication requested.
-  - C (1b): Copy.
+  - D (1b): Duplicate.
     - If replication is indeed requested for data packets, the INT Sink must be
 able to distinguish the original packet from replicas so that it can forward
-only original packets up up the protocol stack, and drop all the replicas. The C
-bit must be set to 1 on each copy, whenever INT transit hop replicates a packet.
+only original packets up up the protocol stack, and drop all the replicas. The
+Duplicate bit must be set to 1 on each copy, whenever INT transit hop replicates a packet.
 The original packet must have C bit set to 0.
-    - C bit must always be set to 0 by INT source
+    - D bit must always be set to 0 by INT source
   - E (1b): Max Hop Count exceeded.
     - This flag must be set if a device cannot prepend its own metadata due to
       the Remaining Hop Count reaching the value 0.
@@ -747,6 +797,16 @@ The original packet must have C bit set to 0.
       it may be possible for the monitoring system to derive which
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT metadata stack.
+  - C (1b): Checksum Update
+    - This bit is set at the INT source to indicate whether or not subsequent
+      INT hops (transit hops and sink) must update the Layer 4 checksum.
+      If this bit is zero, INT transit and sink hops must not update the
+      Layer 4 checksum. If this bit is one, INT transit and sink hops must
+      perform an incremental checksum calculation and either
+      (i) Update the Layer 4 checksum or
+      (ii) Populate checksum complement metadata such that the original
+      Layer 4 checksum is still valid, if the checksum complement instruction
+      bit is set at the INT source.
   - R: Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
     to be inserted at each INT hop.
@@ -811,11 +871,11 @@ order of bits set in the instruction bitmap.
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, Rep, C, Per-hop Metadata Length, Remaining Hop Count, and Instruction
-      Bitmap.
+    - Ver, Rep, D, C, M, Per-hop Metadata Length, Remaining Hop Count,
+      and Instruction Bitmap.
     - INT Source must set all reserved bits to zero.
   - Intermediate devices can set the following fields:
-    - C, E, Remaining Hop Count
+    - D, E, M, Remaining Hop Count
 * In an INT packet, the length (in bytes) of the INT metadata stack must always
 be a multiple of (Per-hop Metadata Length \* 4). This length can be determined  by subtracting the total INT fixed header sizes (for INT over TCP/UDP, 16 bytes;
 for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4). For INT over
@@ -862,8 +922,10 @@ destination INT Header is 2.
 unless specified otherwise in each example.
   - Ver = 0
   - Rep = 0 (No replication)
-  - C = 0
+  - D = 0
   - E = 0 (Max Hop Count not exceeded)
+  - M = 0 (MTU not exceeded)
+  - C = 0 (Layer 4 checksum not to be updated)
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
 * The piggybacked metadata header happens to use the same INT metadata header
 format with the following field values. Again, note this is only for example;
@@ -872,8 +934,10 @@ that this is out of the scope of this document and that we should reserve a
 special option type for this kind of data (i.e., INT Source-to-sink data).
   - Ver = 0
   - Rep = 0 (No replication)
-  - C = 0
+  - D = 0
   - E = 0 (Max Hop Count not exceeded)
+  - M = 0 (MTU not exceeded)
+  - C = 0 (Layer 4 checksum not to be updated)
   - Per-hop Metadata Length = 1 (for queue occupancy)
 
 ## Example with INT over TCP
@@ -937,7 +1001,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | HopML=2 |RemainingHopC=6|
+   |  Ver  |Rep|D|E|M|C|    Reserved     | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1000,7 +1064,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | HopML=2 |RemainingHopC=5|
+   |  Ver  |Rep|D|E|M|C|    Reserved     | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1035,7 +1099,7 @@ followed by encapsulated Ethernet payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | HopML=1 |RemainingHopC=5|
+   |  Ver  |Rep|D|E|M|C|    Reserved     | HopML=1 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1086,7 +1150,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | HopML=2 |RemainingHopC=5|
+   |  Ver  |Rep|D|E|M|C|    Reserved     | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1120,7 +1184,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | HopML=1 |RemainingHopC=5|
+   |  Ver  |Rep|D|E|M|C|    Reserved     | HopML=1 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1168,10 +1232,11 @@ header intl4_tail_t {
 header int_header_t {
     bit<4>  ver;
     bit<2>  rep;
-    bit<1>  c;
+    bit<1>  d;
     bit<1>  e;
     bit<1>  m;
-    bit<7>  rsvd1;
+    bit<1>  c;
+    bit<6>  rsvd1;
     bit<3>  rsvd2;
     bit<5>  hop_metadata_len;
     bit<8>  remaining_hop_cnt;
@@ -1721,10 +1786,10 @@ This value is used primarily to determine how much space is left in the queue.
 ## Miscellaneous
 
 * Checksum Complement
-  - This field enables a Checksum-neutral update when INT is encapsulated over 
+  - This field enables a Checksum-neutral update when INT is encapsulated over
 an L4 protocol that uses a Checksum field, such as TCP or UDP.
-  
-  
+
+
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
@@ -1787,7 +1852,10 @@ assumptions in section [#sec-examples]
   - Described a possible allocation of non-contiguous DSCP codepoints for
     INT over TCP/UDP
     in section [#sec-header-location-and-format----int-over-tcpudp].
-  - Relaxed the location of INT stack relative to TCP options in 
+  - Relaxed the location of INT stack relative to TCP options in
     section [#sec-header-location-and-format----int-over-tcpudp].
 * 2018-03-14
   - Added the Checksum Complement metadata.
+* 2018-03-26
+  - Added Checksum Update Flag and elaborated on checksum update
+    behavior at each hop.
