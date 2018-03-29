@@ -135,7 +135,7 @@ As the INT specification evolves and the INT technology becomes more popular, we
 expect to add more metadata to this INT specification.
 
 Note the exact meaning of the following metadata (e.g., the unit of timestamp
-values, the precise definition of hop latency or congestion status) can vary by
+values, the precise definition of hop latency or queue occupancy) can vary by
 device for any number of reasons, including the heterogeneity of device
 architecture, feature sets, resource limits, etc. Thus, defining the exact
 meaning of each metadata is beyond the scope of this document. Instead we assume
@@ -212,12 +212,6 @@ simply leaves those decisions to device vendors.
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
 INT packet observes in the device while being forwarded.
-
-* Queue congestion status
-  - The fraction (in percentage or decimal fraction) of current queue occupancy
-relative to the queue-size limit. This indicates how much buffer space was used
-relative to the maximum buffer space (instantaneously or statically) available
-to the queue.
 
 # Processing INT Headers
 
@@ -788,9 +782,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit3: Queue ID + Queue occupancy
   - bit4: Ingress timestamp
   - bit5: Egress timestamp
-  - bit6: Queue ID + Queue congestion status
+  - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port tx utilization
-  - bit8: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
@@ -1724,9 +1717,6 @@ respective unit {packets, bytes, cells}.
   - The average length (in bytes, cells, or packets) of the queue via which the
 INT packet was served.  The calculation mechanism of this value is device
 specific.
-* Congestion status
-  - The ratio of the current queue length to the configured maximum queue limit.
-This value is used primarily to determine how much space is left in the queue.
 * Queue drop count
   - Total # of packets dropped from the queue
 
