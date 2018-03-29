@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT)
 Title Note : (NOTE: This is a working draft. Consider using tagged versions for implementations.)
-Title Footer: 2018-03-14
+Title Footer: 2018-03-28
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, VMware*
 Heading depth: 5
@@ -123,7 +123,7 @@ inserts into the INT Header.  Examples of metadata are described below.
 The INT devices within the same domain must be configured in a consistent way to
 ensure interoperability between the devices.
 Operators of an INT domain should deploy INT Sink capability at domain edges to
-prevent INT information from leaking out of the domain. 
+prevent INT information from leaking out of the domain.
 
 # What To Monitor
 
@@ -359,12 +359,12 @@ header). This will be 12B in case of VXLAN-GPE or Geneve encapsulation.
 * An INT source/transit switch may optionally aid in dynamic discovery of Path MTU
 along flows being monitored by INT by transmitting ICMP message as per Path MTU
 Discovery mechanisms of the corresponding IP protocol
-(RFC 1191 for IPv4, RFC 1981 for IPv6). An INT source or transit switch may report
-a conservative MTU in the ICMP message, accounting for cumulative metadata insertion at
-all INT hops and assuming egress MTU at downstream hops is the same as its own
-egress link MTU. This
-will help in the path MTU discovery source converging to a path MTU estimate
-faster, although this would be a conservative path MTU estimate.
+(RFC 1191 for IPv4, RFC 1981 for IPv6). An INT source or transit switch may
+report a conservative MTU in the ICMP message, accounting for cumulative
+metadata insertion at all INT hops and assuming egress MTU at downstream hops
+is the same as its own egress link MTU. This will help in the path MTU
+discovery source converging to a path MTU estimate faster,
+although this would be a conservative path MTU estimate.
 Alternatively, each INT hop may report an MTU only accounting for the metadata
 it inserts. This would enable the path MTU discovery source converge to a
 precise path MTU, at the cost of receiving more ICMP messages, one from each
@@ -397,43 +397,61 @@ the packet.
 ### Checksum Update
 
 INT may be transported over an L4 protocol such as TCP or UDP, or over an
-encapsulation header that includes an L4 header, such as VXLAN. In these cases,
-an INT source, transit, or sink switch may be required to update the L4 Checksum of
-the encapsulating header.
+encapsulation header that includes an L4 header, such as VXLAN. The checksum
+field in the TCP or UDP L4 header, computed over the L4 payload needs
+to be updated as INT switches modify the L4 payload via insertion of
+INT headers and metadata. However, there are certain exceptions.
+For example, when UDP is transported over IPv4, it is possible to assign a
+zero Checksum, causing the receiver to ignore the value of the Checksum field
+(as defined in RFC 768). For UDP over IPv6, there are specific use cases in
+which it is possible to assign a zero Checksum (as defined in RFC 6936).
 
-In some cases, an L4 Checksum update is not necessary. For example, when UDP is 
-transported over IPv4, it is possible to assign a zero Checksum, causing the 
-receiver to ignore the value of the Checksum field. For UDP over IPv6, there
-are specific use cases in which it is possible to assign a zero Checksum 
-(as defined in RFC 6936).
+INT source, transit and sink devices must comply with IETF standards
+for Layer 4 transport protocols with respect to whether or not Layer 4
+checksum is to be updated upon modification of L4 payload.
+For example, if an INT source/transit/sink hop receives
+UDP traffic with zero L4 checksum, it must not update the L4 checksum
+in conformance with the behavior defined in relevant IETF standards
+such as RFC 768 and RFC 6936.
 
-If an L4 Checksum update is required, an INT source/transit switch may perform
-it in one of two ways:
+An INT source/transit switch may update the checksum in one of two ways:
 
-* Update the L4 Checksum field such that the new value is equal to the Checksum 
+* Update the L4 Checksum field such that the new value is equal to the Checksum
 of the new packet, after the INT-related updates (header additions/removals,
 field updates), or
 
-* If the INT source indicates that Checksum-neutral updates are allowed by 
-setting an instruction bit corresponding to the Checksum Complement metadata, 
-then the INT source/transit switches may assign a value to the Checksum 
-Complement metadata which guarantees that the existing L4 Checksum is the 
+* If the INT source indicates that Checksum-neutral updates are allowed by
+setting an instruction bit corresponding to the Checksum Complement metadata,
+then the INT source/transit switches may assign a value to the Checksum
+Complement metadata which guarantees that the existing L4 Checksum is the
 correct value of the packet after the INT-related updates.
 
 The motivation for the Checksum Complement is that some hardware implementations
 process data packets in a serial order, which may impose a problem when INT
-fields and metadata that reside after the L4 Checksum field are inserted or 
+fields and metadata that reside after the L4 Checksum field are inserted or
 modified. Therefore, the Checksum Complement metadata, if present, is the last
-metadata field in the stack. 
+metadata field in the stack.
 
-Note that when the Checksum Complement metadata is present source/transit 
+Note that when the Checksum Complement metadata is present source/transit
 switches may choose to update the L4 Checksum field instead of using the
-Checksum Complement metadata. In this case the Checksum Complement metadata will 
-be assigned the reserved value 0xFFFFFFFF. A host that verifies the L4 Checksum 
-will be unaffected by whether some or all of the nodes chose not to use the 
-Checksum Complement, since the value of the L4 Checksum should fit the Checksum 
-of the payload in either of the cases.
+Checksum Complement metadata. In this case the Checksum Complement metadata
+will be assigned the reserved value 0xFFFFFFFF. A host that verifies the
+L4 Checksum will be unaffected by whether some or all of the nodes chose
+not to use the Checksum Complement, since the value of the L4 Checksum
+should fit the Checksum of the payload in either of the cases.
 
+INT sink cannot perform a Checksum-neutral update using Checksum Complement
+metadata as it removes all INT headers from the packet. Thus, an INT sink
+when performing a checksum update has to do so by updating the L4 Checksum
+field.
+
+Regardless of whether checksum update is performed via modifying the L4
+Checksum field or via use of Checksum Complement metadata, performing the
+update based on an incremental checksum calculation (as is typically done)
+will ensure that any potential corruption is detected at the point of
+checksum validation. If full checksum computation is performed at an INT
+switch, it is recommended that this be done in conjunction with checksum
+validation so as to not mask out corruption at preceding hops.
 
 ## Header Format
 
@@ -463,10 +481,10 @@ INT header exists after the TCP/UDP header. We propose three options:
 indicate the existence of INT after TCP/UDP. INT source will put the reserved
 value in the field, and INT sink will remove it. The source can store the
 original DSCP so that the sink can restore the original value. Restoring the
-original value is optional. 
+original value is optional.
   - Allocating a bit, as opposed to a value codepoint, will allow the rest of
     DSCP field to be used for QoS, hence allowing the coexistence of DSCP-based
-    QoS and INT. The QoS engine must be programmed to ignore the designated 
+    QoS and INT. The QoS engine must be programmed to ignore the designated
     bit position.
   - In brownfield scenarios, however, the network operator may not find a bit
     available to allocate for INT but may still have a fragmented space of 32
@@ -1733,10 +1751,10 @@ This value is used primarily to determine how much space is left in the queue.
 ## Miscellaneous
 
 * Checksum Complement
-  - This field enables a Checksum-neutral update when INT is encapsulated over 
+  - This field enables a Checksum-neutral update when INT is encapsulated over
 an L4 protocol that uses a Checksum field, such as TCP or UDP.
-  
-  
+
+
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
@@ -1799,7 +1817,9 @@ assumptions in section [#sec-examples]
   - Described a possible allocation of non-contiguous DSCP codepoints for
     INT over TCP/UDP
     in section [#sec-header-location-and-format----int-over-tcpudp].
-  - Relaxed the location of INT stack relative to TCP options in 
+  - Relaxed the location of INT stack relative to TCP options in
     section [#sec-header-location-and-format----int-over-tcpudp].
 * 2018-03-14
   - Added the Checksum Complement metadata.
+* 2018-03-28
+  - Defined checksum update behavior more precisely
