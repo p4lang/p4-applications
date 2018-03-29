@@ -1,4 +1,4 @@
-Title         : In-band Network Telemetry (INT)
+Titl         : In-band Network Telemetry (INT)
 Title Note : (NOTE: This is a working draft. Consider using tagged versions for implementations.)
 Title Footer: 2018-03-14
 Author : The P4.org Applications Working Group
@@ -787,7 +787,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
-  except if bit 8 is set, which requires 8 bytes of metadata. Per-hop metadata
+  except if bit 6 is set, which requires 8 bytes of metadata. Per-hop metadata
   length is set accordingly at the INT source.
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
