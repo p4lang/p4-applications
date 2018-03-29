@@ -235,12 +235,7 @@ hence failed to add INT metadata) by checking the difference between the number
 of INT metadata instances in the INT Header (i.e., # of INT-compliant hops) and
 the decrement of the IP TTL values (i.e., # of physical IP hops).
 
-The data format of Destination type INT Headers is not defined in this version,
-but is expected to be defined in future versions of this specification.
-
-More INT Header types may be defined in future versions, for example to deliver
-piggybacked hop-by-hop metadata, from the original INT Sink back to the original
-INT Source for purposes of closed loop control.
+The data format of Destination type INT Headers is not defined in this version.
 
 # Header Format and Location
 
