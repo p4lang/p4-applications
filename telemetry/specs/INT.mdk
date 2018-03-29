@@ -1793,3 +1793,5 @@ assumptions in section [#sec-examples]
     section [#sec-header-location-and-format----int-over-tcpudp].
 * 2018-03-14
   - Added the Checksum Complement metadata.
+* 2018-03-29
+  - Removed queue congestion status from the list of metadata.
