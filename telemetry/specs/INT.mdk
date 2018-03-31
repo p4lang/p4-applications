@@ -57,6 +57,7 @@ normal data packets or in special probe packets.  Similarly, INT traffic sinks
 retrieve (and optionally report) the collected results of these instructions,
 allowing the traffic sinks to monitor the exact data plane state that the
 packets “observed” while being forwarded.
+
 Some examples of traffic sink behavior are described below:
 
 * OAM – the traffic sink might simply collect the encoded network state, then
@@ -85,15 +86,16 @@ trajectory sampling
 * Advanced congestion control
   - RCP, XCP, TIMELY
 * Advanced routing
-  - Utilization-aware routing (e.g., CONGA)
+  - Utilization-aware routing (For example, HULA[^HULA])
 * Network data-plane verification
 
 A number of use case descriptions and evaluations are described in the Millions
 of Little Minions paper [^Minions].
 
+[^HULA]: HULA: Scalable Load Balancing Using Programmable Data Planes, ACM SOSR 2016
 [^Minions]: Millions of Little Minions: Using Packets for Low Latency Network Programming and Visibility, ACM SIGCOMM 2014.
 
-# Terminologies
+# Terminology
 
 * **INT Header**: Any packet header that carries INT information. There are two
 types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
@@ -101,8 +103,9 @@ types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
 
 * **INT Packet**: Any packet containing an INT Header.
 
-* **INT Instruction**: Embedded packet instructions indicating which INT Metadata
-to collect (defined below). The collected data is written into an INT Header.
+* **INT Instruction**: Embedded packet instructions indicating which
+INT Metadata to collect (defined below). The collected data is written into
+an INT Header.
 
 * **INT Source**: A trusted entity that creates and inserts INT Headers into the
 packets it sends. The INT Headers contain, at minimum, INT Instructions
@@ -117,13 +120,14 @@ this does not preclude having nested or hierarchical INT domains.)
 INT Packet by following the INT Instructions in the INT Header.
 
 * **INT Metadata**: Information that an INT Source or an INT Transit Hop device
-inserts into the INT Header.  Examples of metadata are described below.
+inserts into the INT Header. Examples of metadata are described in section
+[#sec-what-to-monitor].
 
-* **INT Domain**: A set of inter-connected INT devices under the same administration.
-The INT devices within the same domain must be configured in a consistent way to
-ensure interoperability between the devices.
+* **INT Domain**: A set of inter-connected INT devices under the same
+administration. The INT devices within the same domain must be configured in
+a consistent way to ensure interoperability between the devices.
 Operators of an INT domain should deploy INT Sink capability at domain edges to
-prevent INT information from leaking out of the domain. 
+prevent INT information from leaking out of the domain.
 
 # What To Monitor
 
@@ -131,8 +135,8 @@ In theory, one may be able to define and collect **any** switch-internal
 information using the INT approach. In practice, however, it seems useful to
 define a small baseline set of metadata that can be made available on a wide
 variety of devices:  the metadata listed in this section comprises such a set.
-As the INT specification evolves and the INT technology becomes more popular, we
-expect to add more metadata to this INT specification.
+As the INT specification evolves, we expect to add more metadata to this
+INT specification.
 
 Note the exact meaning of the following metadata (e.g., the unit of timestamp
 values, the precise definition of hop latency or queue occupancy) can vary by
@@ -141,7 +145,8 @@ architecture, feature sets, resource limits, etc. Thus, defining the exact
 meaning of each metadata is beyond the scope of this document. Instead we assume
 the users of INT will communicate the precise meanings of these metadata for
 each device model they use in their networks. For example, metadata units may
-be communicated out-of-band between each INT device and a data collection system.
+be communicated out-of-band between each INT device and a data collection
+system.
 
 ## Switch-level Information
 
@@ -165,13 +170,13 @@ must be unique within an INT domain.
     is deemed adequate. Second level of ingress port identifier occupies a
     full 4-Byte metadata field, which may be used to monitor a logical port
     on which the packet was received. A 32-bit space at the second level
-    allows for adequately large number of logical ports at a network element.
-    The semantics of port identifiers may differ across devices, each INT hop
-    chooses the port type it reports at each of the two levels.
+    allows for an adequately large number of logical ports at each network
+    element. The semantics of port identifiers may differ across devices,
+    each INT hop chooses the port type it reports at each of the two levels.
 
 * Ingress timestamp
   - The device local time when the INT packet was received on the ingress
-physical or logical port.
+    physical or logical port.
 
 ## Egress Information
 
@@ -189,9 +194,9 @@ physical or logical port.
     is deemed adequate. Second level of egress port identifier occupies a full
     4-Byte metadata field, which may be used to monitor a logical port on
     which the packet was transmitted. A 32-bit space at the second level
-    allows for adequately large number of logical ports at a network element.
-    The semantics of port identifiers may differ across devices, each INT hop
-    chooses the port type it reports at each of the two levels.
+    allows for an adequately large number of logical ports at each network
+    element. The semantics of port identifiers may differ across devices,
+    each INT hop chooses the port type it reports at each of the two levels.
 
 * Egress timestamp
   - The device local time when the INT packet was processed by the egress
@@ -207,8 +212,6 @@ rate, such as bin bucketing or moving average. While the latter is clearly
 superior to the former, the INT framework does not stipulate the mechanics and
 simply leaves those decisions to device vendors.
 
-## Buffer Information
-
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
 INT packet observes in the device while being forwarded.
@@ -217,23 +220,23 @@ INT packet observes in the device while being forwarded.
 
 ## INT Header Types
 There are two types of INT Headers, *hop-by-hop* and *destination*.  A given INT
-packet may have either or both types of INT Headers. When both INT Header types
+packet may have one or both types of INT Headers. When both INT Header types
 are present, the hop-by-hop type must precede the destination type header.
 
 * Hop-by-Hop type (**INT Header type 1**)
   - Intermediate devices (INT Transit Hops) must process this type of INT
-Header.
-* Destination type (**INT Header type 2**)
+    Header.
+* Destination type
   - Destination headers must only be consumed by the INT Sink; intermediate
-devices must ignore Destination headers.
+    devices must ignore Destination headers.
   - Destination headers can be used to enable communication between the INT
-Source and the INT Sink. For example:
-    - INT Source can add a sequence number to detect lost INT packets.
-    - INT Source can add the original IP TTL value of an INT packet. This way,
-an INT Sink can detect network devices on the path that do not support INT (and
-hence failed to add INT metadata) by checking the difference between the number
-of INT metadata instances in the INT Header (i.e., # of INT-compliant hops) and
-the decrement of the IP TTL values (i.e., # of physical IP hops).
+    Source and INT Sink. For example:
+      - INT Source can add a sequence number to detect lost INT packets.
+      - INT Source can add the original values of IP TTL and INT Remaining
+        Hop Count, thus enabling the INT sink to detect network devices
+        on the path that do not support INT by comparing the IP TTL
+        decrement against INT Remaining Hop Count decrement (assuming each
+        network device is an L3 hop)
 
 The data format of Destination type INT Headers is not defined in this version.
 
@@ -241,76 +244,73 @@ The data format of Destination type INT Headers is not defined in this version.
 
 This section specifies the format and location of INT Headers.
 
+## On-the-fly Header Creation
+
+In the INT model, each device in the packet forwarding path creates additional
+space in the INT Header on-demand to add its own INT metadata. To avoid
+exhausting header space in the case of a forwarding loop or any other anomalies,
+it is strongly recommended to limit the number of total INT metadata fields
+added by devices by setting the Remaining Hop Count field in INT header
+appropriately.
+
 ## INT over any encapsulation
 
 The specific location (i.e. encapsulation header) for INT Headers are
 intentionally NOT specified -- an INT Header can be inserted as an option or
 payload of any encapsulation type. The only requirements are that encapsulation
 header provides sufficient space to carry the INT information and that both the
-INT Sources and Sinks can agree on the location of the INT Headers.  The
+INT Sources and Sinks agree on the location of the INT Headers.  The
 following choices are all potential encapsulations using common protocol stacks,
-although the INT user may choose a different encapsulation format if better
+although a deployment may choose a different encapsulation format if better
 suited to their needs and environment.
 
-* INT over VXLAN (as a VXLAN payload, per GPE extension)
-* INT over Geneve (as a Geneve option)
-* INT over NSH (as a NSH payload)
+* INT over VXLAN (as VXLAN payload, per GPE extension)
+* INT over Geneve (as Geneve option)
+* INT over NSH (as NSH payload)
 * INT over TCP (as payload)
 * INT over UDP (as payload)
 
-For each encapsulation format, we need to reserve a next-header type identifier
-(e.g., a VXLAN-GPE Next Protocol value, a Geneve Option Class value, or a
-TCP/UDP port number) to indicate the presence of an INT Header.
+We describe three encapsulation formats in this specification, covering
+different deployment scenarios, with and without network virtualization:
 
-As illustrative examples, we describe three encapsulation formats, both suitable
-for use in virtualized data centers:
-
-1. *INT over TCP/UDP* - This example introduces a shim header after TCP/UDP
-header and carry INT Headers between the shim header and TCP/UDP payload. This
-approach doesn’t rely on any tunneling/virtualization mechanism and is
+1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+header, INT Headers are carried between the shim header and TCP/UDP payload.
+This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-2. *INT over VXLAN* - Our examples use the VXLAN generic protocol extensions
-(draft-ietf-nvo3-vxlan-gpe) to carry INT Headers between VXLAN header and
-encapsulated VXLAN payload.
+2. *INT over VXLAN* - VXLAN generic protocol extensions
+(draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
+VXLAN header and encapsulated VXLAN payload.
 3. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
 
-## On-the-fly Header Creation
-
-In the  INT model, each device in the packet forwarding path creates additional
-space in the INT Header on-demand to add its own INT metadata. To avoid
-exhausting header space in the case of a forwarding loop or any other anomalies,
-it is strongly recommended to limit the number of total INT metadata fields
-added by devices.
-
 ### MTU Settings
 
-As with any modification that potentially changes the packet size, this
-on-the-fly allocation may “grow” the packet size, potentially causing it to
-exceed the MTU on an INT switch egress link.
+As each hop creates additional space in the INT header to add its metadata,
+the packet size increases. This can potentially cause egress link MTU to be
+exceeded at an INT switch.
 
 This may be addressed in the following ways -
 
 * It is recommended that the MTU of links between INT sources and sinks is
-configured to be higher than the MTU of preceding link MTUs (server/VM NIC MTUs)
+configured to be higher than the MTU of preceding links (server/VM NIC MTUs)
 by an appropriate amount. Configuring an MTU differential of
 [Per-hop Metadata Length\*4\*INT Hop Count + Fixed INT Header Length] bytes,
-based on conservative values of
-total number of INT hops and Per-hop Metadata Length, will prevent egress
-MTU being exceeded due to INT metadata insertion at INT hops. The Fixed
-INT Header Length is the sum of INT metadata header length (8B) and the
-size of encapsulation-specific shim/option header(s) as defined in section
-[#sec-header-format]. In case of INT over TCP/UDP,
-the Fixed INT Header Length is 16B (8B metadata header + 4B shim header + 4B tail
-header). This will be 12B in case of VXLAN-GPE or Geneve encapsulation.
+based on conservative values of total number of INT hops and Per-hop
+Metadata Length, will prevent egress MTU being exceeded due to INT metadata
+insertion at INT hops. The Fixed INT Header Length is the sum of INT metadata
+header length (8B) and the size of encapsulation-specific shim/option header(s)
+as defined in section [#sec-header-format]. In case of INT over TCP/UDP,
+the Fixed INT Header Length is 16B (8B metadata header + 4B shim header
++ 4B tail header). In case of VXLAN-GPE and Geneve encapsulation, the Fixed
+INT Header Length is 12B.
 
-* An INT source/transit switch may optionally aid in dynamic discovery of Path MTU
-along flows being monitored by INT by transmitting ICMP message as per Path MTU
-Discovery mechanisms of the corresponding IP protocol
-(RFC 1191 for IPv4, RFC 1981 for IPv6). An INT source or transit switch may report
-a conservative MTU in the ICMP message, accounting for cumulative metadata insertion at
-all INT hops and assuming egress MTU at downstream hops is the same as its own
-egress link MTU. This
+* An INT source/transit switch may optionally participate in dynamic discovery
+of Path MTU along flows being monitored by INT by transmitting ICMP message to
+the traffic source as per Path MTU Discovery mechanisms of the corresponding
+IP protocol (RFC 1191 for IPv4, RFC 1981 for IPv6). An INT source or transit
+switch may report a conservative MTU in the ICMP message, accounting for
+cumulative metadata insertion at all INT hops and assuming egress MTU at
+downstream hops is the same as its own egress link MTU. This
 will help in the path MTU discovery source converging to a path MTU estimate
 faster, although this would be a conservative path MTU estimate.
 Alternatively, each INT hop may report an MTU only accounting for the metadata
@@ -321,7 +321,7 @@ INT hop.
 Regardless of whether or not an INT transit switch participates in Path MTU
 discovery, if it cannot insert all requested metadata because doing so will
 cause the packet length to exceed egress link MTU, it
-**must not insert any metadata and set the M bit** in the
+must not insert any metadata and set the M bit in the
 INT header, indicating that egress MTU was exceeded at an INT hop.
 
 An INT source needs to be able to insert the 16 or 12 bytes of fixed INT
@@ -339,82 +339,99 @@ fragmented at intermediate hops. Also, fragmenting packets at INT transit hops,
 with or without copying preceding INT metadata into fragments imposes
 extra complexity of correlating fragments in the INT monitoring engine.
 Considering all these factors, the INT specification requires that an INT
-switch **must not fragment** packets in order to append INT information to
+switch must not fragment packets in order to append INT information to
 the packet.
 
 ### Checksum Update
 
 INT may be transported over an L4 protocol such as TCP or UDP, or over an
-encapsulation header that includes an L4 header, such as VXLAN. In these cases,
-an INT source, transit, or sink switch may be required to update the L4 Checksum of
-the encapsulating header.
+encapsulation header that includes an L4 header, such as VXLAN. The checksum
+field in the TCP or UDP L4 header, computed over the L4 payload needs
+to be updated as INT switches modify the L4 payload via insertion of
+INT headers and metadata. However, there are certain exceptions.
+For example, when UDP is transported over IPv4, it is possible to assign a
+zero Checksum, causing the receiver to ignore the value of the Checksum field
+(as defined in RFC 768). For UDP over IPv6, there are specific use cases in
+which it is possible to assign a zero Checksum (as defined in RFC 6936).
 
-In some cases, an L4 Checksum update is not necessary. For example, when UDP is 
-transported over IPv4, it is possible to assign a zero Checksum, causing the 
-receiver to ignore the value of the Checksum field. For UDP over IPv6, there
-are specific use cases in which it is possible to assign a zero Checksum 
-(as defined in RFC 6936).
+INT source, transit and sink devices must comply with IETF standards
+for Layer 4 transport protocols with respect to whether or not Layer 4
+checksum is to be updated upon modification of L4 payload.
+For example, if an INT source/transit/sink hop receives
+UDP traffic with zero L4 checksum, it must not update the L4 checksum
+in conformance with the behavior defined in relevant IETF standards
+such as RFC 768 and RFC 6936.
 
-If an L4 Checksum update is required, an INT source/transit switch may perform
-it in one of two ways:
+An INT source/transit switch may update the checksum in one of two ways:
 
-* Update the L4 Checksum field such that the new value is equal to the Checksum 
+* Update the L4 Checksum field such that the new value is equal to the Checksum
 of the new packet, after the INT-related updates (header additions/removals,
 field updates), or
 
-* If the INT source indicates that Checksum-neutral updates are allowed by 
-setting an instruction bit corresponding to the Checksum Complement metadata, 
-then the INT source/transit switches may assign a value to the Checksum 
-Complement metadata which guarantees that the existing L4 Checksum is the 
+* If the INT source indicates that Checksum-neutral updates are allowed by
+setting an instruction bit corresponding to the Checksum Complement metadata,
+then the INT source/transit switches may assign a value to the Checksum
+Complement metadata which guarantees that the existing L4 Checksum is the
 correct value of the packet after the INT-related updates.
 
 The motivation for the Checksum Complement is that some hardware implementations
 process data packets in a serial order, which may impose a problem when INT
-fields and metadata that reside after the L4 Checksum field are inserted or 
+fields and metadata that reside after the L4 Checksum field are inserted or
 modified. Therefore, the Checksum Complement metadata, if present, is the last
-metadata field in the stack. 
+metadata field in the stack.
 
-Note that when the Checksum Complement metadata is present source/transit 
+Note that when the Checksum Complement metadata is present source/transit
 switches may choose to update the L4 Checksum field instead of using the
-Checksum Complement metadata. In this case the Checksum Complement metadata will 
-be assigned the reserved value 0xFFFFFFFF. A host that verifies the L4 Checksum 
-will be unaffected by whether some or all of the nodes chose not to use the 
-Checksum Complement, since the value of the L4 Checksum should fit the Checksum 
-of the payload in either of the cases.
+Checksum Complement metadata. In this case the Checksum Complement metadata
+will be assigned the reserved value 0xFFFFFFFF. A host that verifies the
+L4 Checksum will be unaffected by whether some or all of the nodes chose
+not to use the Checksum Complement, since the value of the L4 Checksum
+should fit the Checksum of the payload in either of the cases.
 
+INT sink cannot perform a Checksum-neutral update using Checksum Complement
+metadata as it removes all INT headers from the packet. Thus, an INT sink
+when performing a checksum update has to do so by updating the L4 Checksum
+field.
+
+Regardless of whether checksum update is performed via modifying the L4
+Checksum field or via use of Checksum Complement metadata, performing the
+update based on an incremental checksum calculation (as is typically done)
+will ensure that any potential corruption is detected at the point of
+checksum validation. If full checksum computation is performed at an INT
+switch, it is recommended that this be done in conjunction with checksum
+validation so as to not mask out corruption at preceding hops.
 
 ## Header Format
 
-This subsection proposes the INT Header format. Where necessary, we use examples
-based on the INT-over-TCP/UDP, INT-over-VXLAN or INT-over-GENEVE encapsulation
-formats.
+This subsection proposes the INT Header format.
 
 ### Header Location and Format -- INT over TCP/UDP
 
-In case the packet is not encapsulated by any virtualization header, INT over
-VXLAN or INT over GENEVE is not helpful. Instead, one can put the INT metadata
-just after layer 4 headers (TCP/UDP). The scheme assumes that the non-INT devices between
-the INT source and the INT sink either do not parse beyond layer-4 headers or
-can skip through the INT stack using the Length field of INT shim header.
-If TCP has any options, the INT stack may come before or after the TCP options
-but the decision must be consistent within an INT domain.
+In case the traffic being monitored is not encapsulated by any virtualization
+header, INT over VXLAN or INT over GENEVE is not helpful.
+Instead, one can put the INT metadata just after layer 4 headers (TCP/UDP).
+The scheme assumes that the non-INT devices between the INT source and the
+INT sink either do not parse beyond layer-4 headers or can skip through the
+INT stack using the Length field of INT shim header. If TCP has any options,
+the INT stack may come before or after the TCP options but the decision must
+be consistent within an INT domain.
 (Note: INT over UDP can be used even when the packet is encapsulated by VXLAN,
 GENEVE, or GUE (Generic UDP Encapsulation). INT over TCP/UDP also makes it
 easier to add INT stack into outer, inner, or even both layers. In such cases
 both INT header stacks carry information for respective layers and need not be
 considered interfering with each other.)
 
-A field in the lower layers of Ethernet, IP, or TCP/UDP should indicate if the
+A field in Ethernet, IP, or TCP/UDP should indicate if the
 INT header exists after the TCP/UDP header. We propose three options:
 
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit will be reserved to
 indicate the existence of INT after TCP/UDP. INT source will put the reserved
 value in the field, and INT sink will remove it. The source can store the
 original DSCP so that the sink can restore the original value. Restoring the
-original value is optional. 
+original value is optional.
   - Allocating a bit, as opposed to a value codepoint, will allow the rest of
     DSCP field to be used for QoS, hence allowing the coexistence of DSCP-based
-    QoS and INT. The QoS engine must be programmed to ignore the designated 
+    QoS and INT. The QoS engine must be programmed to ignore the designated
     bit position.
   - In brownfield scenarios, however, the network operator may not find a bit
     available to allocate for INT but may still have a fragmented space of 32
@@ -426,11 +443,10 @@ original value is optional.
 * TCP/UDP destination Port field: A port number in layer 4 will be reserved to
 indicate the existence of INT after TCP/UDP. INT source changes the destination
 Port, and sink must restore the original port number.
-* New Probe Marker fields: arbitrary 64-bit values are inserted after IP TCP/UDP
-header to indicate the existence of INT after TCP/UDP. These fields should be
-interpreted as unsigned integer values, stored in network byte order and are
-initialized to a configured value.  This Probe marker is a variation of an early
-IETF draft with existing implementations[^DPP].
+* Probe Marker fields: A specific 64-bit value is inserted after IP TCP/UDP
+header to indicate the existence of INT after TCP/UDP. These fields must be
+interpreted as unsigned integer values in network byte order. This Probe
+marker is a variation of an early IETF draft with existing implementation[^DPP].
 [^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
 
 INT probe marker for TCP/UDP:
@@ -448,22 +464,16 @@ The decision to use DSCP, destination port field or probe marker option
 are per domain decisions that all INT capable devices should follow. The
 same applies to the reserved value of DSCP or port number, and the
 configured probe marker value, which should be consistent within a domain.
-It is recommended that only one option is deployed per domain. (Note: in
-general, encoding into DSCP field will be less intrusive compared to changing
-the layer 4 port field. The latter may alter ECMP behavior and can complicate
-ACL and network debugging. If DSCP field cannot be reserved for INT, and
-retaining ECMP behavior is desired, probe marker option could be followed.
-With arbitrary values being inserted after TCP/UDP header in probe marker
-option, the likelihood of conflicting with user traffic in a data center is
+It is recommended that only one option is deployed per domain.
+
+In general, encoding into DSCP field will be less intrusive compared to
+changing the layer 4 port field. The latter may alter ECMP behavior and can
+complicate ACL and network debugging. If DSCP field cannot be reserved for INT, and retaining ECMP behavior is desired, probe marker option could be followed.
+With arbitrary values being inserted after TCP/UDP header as probe markers,
+the likelihood of conflicting with user traffic in a data center is
 low, but cannot be completely eliminated. To further reduce the chance of
-conflict, the user who deploys probe marker option could choose to check more
-into TCP/UDP port numbers to validate INT probe marker)
-
-
-INT over TCP/UDP adds INT metadata after TCP/UDP headers as if the payload is
-changed. However, the sink device will remove INT headers before passing the
-packet to the traffic destination. Therefore, updating the TCP/UDP checksum (and
-UDP.length in case of UDP) is optional and a per domain decision.
+conflict, a deployment could choose to also examine TCP/UDP port numbers
+to validate INT probe marker.
 
 We introduce INT shim header and INT tail header for TCP/UDP, and their formats
 are as follows. The INT metadata header and INT metadata stack will be
@@ -503,9 +513,6 @@ to know how to parse the rest of the packet after the INT headers.
 * Reserved/DSCP: In case the IP DSCP is used to indicate INT existence, this
 field stores the original DSCP value.
 
-Proto and Destination Port fields are needed in the tail header regardless of
-which of DSCP or Destination Port was used to indicate the existence of INT.
-
 ### Header Location and Format -- INT over VXLAN GPE
 
 VXLAN is a common tunneling protocol for network virtualization and is supported
@@ -530,7 +537,7 @@ it allows for carrying more network state information along an entire path.
 
 The VXLAN header as defined in RFC 7348 does not specify the protocol being
 encapsulated and assumes that the payload following the VXLAN header is an
-Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe-00.txt proposes
+Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe-05.txt proposes
 changes to the VXLAN header to allow for multi-protocol encapsulation. We use
 this VXLAN generic protocol extension draft and propose a new
 “Next-protocol” type for INT.
@@ -556,7 +563,11 @@ Next Protocol Values:
 * 0x02: IPv6
 * 0x03: Ethernet
 * 0x04: Network Service Header (NSH)
-* 0x05: In-band Network Telemetry (INT) Header (the value is subject to change)
+* 0x05: MPLS
+* 0x06: GBP
+* 0x07: vBNG
+* 0x08: In-band Network Telemetry Header (This value has not been reserved by
+VXLAN GPE specification yet, and is hence subject to change)
 
 When there is one INT Header in the VXLAN GPE stack, the VXLAN GPE header for
 the INT Header will have a next-protocol value other than INT Header indicating
@@ -589,9 +600,8 @@ header in 4-byte words.
 
 ### Header Location and Format -- INT over Geneve
 
-Geneve is a generic and extensible tunneling framework, allowing for current and
-future network virtualization implementations to carry metadata encoded in TLV
-format as “Option headers” in the tunnel header.
+Geneve is a generic and extensible tunneling framework, allowing for INT
+metadata to be carried in TLV format as “Option headers” in the tunnel header.
 
 Geneve Header:
 `
@@ -623,16 +633,15 @@ Geneve Option Format:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-* We need to reserve a unique Option Class value for INT.
-* We need to reserve two Type values associated with the Option Class for INT --
-one for the hop-by-hop header type and the other for the destination header type
-(See Section [#sec-int-header-types]).
-* The variable length option data following the Geneve Option Header carries the
-actual INT metadata header and metadata.
-* Note the Length field of the Geneve Option header is 5-bits long, which limits
-a single Geneve option instance to no more than 124 bytes long (31 * 4). If 124
-bytes is insufficient one could collect different, non-overlapping sets of INT
-metadata info across multiple packets.
+* Specific values of Option Class and Type have not been reserved for INT yet.
+Deployments using INT over Geneve must use configurable values for Option
+Class and Type to be able to migrate to different values as and when specific
+values are defined for INT.
+* The variable length option data following the Geneve Option Header carries
+the actual INT metadata header and metadata.
+* Note the Length field of the Geneve Option header is 5-bits long, which
+limits a single Geneve option instance to no more than 124 bytes long (31 * 4).
+Remaining Hop Count has to be set accordingly at the INT source.
 
 ### INT Hop-by-Hop Metadata Header Format
 
@@ -663,7 +672,7 @@ INT Metadata Header and Metadata Stack:
   different number of INT hops.
 
 * The fields in the INT metadata header are interpreted the following way:
-  - Ver (4b): INT metadata header version. Should be zero for this version.
+  - Ver (4b): INT metadata header version. Should be 1 for this version.
   - Rep (2b): Replication requested. Support for this request is optional. If
 this value is non-zero, the device may replicate the INT packet. This is useful
 to explore all the valid physical forwarding paths when multi-path forwarding
@@ -682,19 +691,19 @@ to each L3 ECMP next-hop valid for the destination address and send a single
 copy per ECMP next-hop.
     - 3: Port- and Next-hop-level replication requested.
   - C (1b): Copy.
-    - If replication is indeed requested for data packets, the INT Sink must be
+    - If replication is requested for data packets, the INT Sink must be
 able to distinguish the original packet from replicas so that it can forward
-only original packets up up the protocol stack, and drop all the replicas. The C
+only original packets up the protocol stack, and drop all the replicas. The C
 bit must be set to 1 on each copy, whenever INT transit hop replicates a packet.
 The original packet must have C bit set to 0.
     - C bit must always be set to 0 by INT source
   - E (1b): Max Hop Count exceeded.
     - This flag must be set if a device cannot prepend its own metadata due to
-      the Remaining Hop Count reaching the value 0.
+      the Remaining Hop Count reaching zero.
   - M (1b): MTU exceeded
     - This flag must be set if a device cannot add all of the requested metadata
       because doing so will cause the packet length to exceed egress link MTU.
-      In this case, the device must not add any metadata to the packet, but set
+      In this case, the device must not add any metadata to the packet, and set
       the M bit in the INT header. Note that it is possible for egress MTU
       limitation to prevent INT metadata insertion at multiple hops along a
       path. The M bit simply serves as an indication that INT metadata was not inserted
@@ -773,50 +782,53 @@ order of bits set in the instruction bitmap.
       Bitmap.
     - INT Source must set all reserved bits to zero.
   - Intermediate devices can set the following fields:
-    - C, E, Remaining Hop Count
-* In an INT packet, the length (in bytes) of the INT metadata stack must always
-be a multiple of (Per-hop Metadata Length \* 4). This length can be determined  by subtracting the total INT fixed header sizes (for INT over TCP/UDP, 16 bytes;
-for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4). For INT over
-Geneve it is 8 bytes subtracted from (length in Geneve tunnel option header \*
-4).
+    - C, E, M, Remaining Hop Count
+* The length (in bytes) of the INT metadata stack must always
+be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
+by subtracting the total INT fixed header sizes (for INT over TCP/UDP,
+16 bytes; for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4).
+For INT over Geneve it is 8 bytes subtracted from (length in Geneve tunnel
+option header \* 4).
 
 ## Examples
 
-This section shows example INT Headers. The assumptions made for this example are
-as follows.
+This section shows example INT Headers. The assumptions made for this
+example are as follows.
 `
                  ==> packet P travels from Host1 to Host2 ==>
 Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
 `
 
 Two hosts (Host1 and Host2) communicate through a network path composed of three
-network devices -- Switch1, 2, and 3. The example in this section shows INT Headers
-attached to data packet P forwarded by Switch3 and received by Host2; the INT
-Source of this data packet is Host1, and the INT Sink is Host2. The INT metadata
-attached to this packet are the switch ID (sw id) and queue occupancy (q len) from
-every switch on the forwarding path from Host1 to Host2.
+network devices -- Switch1, 2, and 3.
+
+For INT over TCP, Switch 1 is the INT source and Switch 3 is the INT sink.
+We show the headers attached to data packet P received at INT Sink, i.e.
+Switch 3.
+
+For INT over VXLAN and INT over Geneve, Host 1 is the INT source and
+Host 2 is the INT sink. We show the headers attached to data packet received
+by Host 2.
 
 The following are the detailed assumptions made for this example.
-
-* As an INT Source, Host1 wants to collect switch id and queue occupancy from
-each device on the path. It uses the INT Hop-by-Hop Metadata Header to do so.
 * There are three devices (hops) on the path, and all the devices can expose
 both metadata (switch id and queue occupancy).
 * The maximum number of hops (network diameter) is 8.
-* The INT metadata header uses the following field values in the metadata header,
-unless specified otherwise in each example.
+* The INT metadata header uses the following field values in the metadata
+header, unless specified otherwise in each example.
   - Ver = 0
   - Rep = 0 (No replication)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
+  - M = 0 (MTU not exceeded at any switch)
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
 
 ## Example with INT over TCP
 
 We consider a scenario where host1 sends a TCP packet to host2. The ToR switch
-of host1 (hop1) adds INT over TCP. Then an aggregate switch adds hop2
-information and finally ToR switch of host2 (hop3) receives the packet and plays
-the role of INT sink.
+of host1 (Switch1) adds INT over TCP. Then an aggregate switch adds hop2
+information and finally ToR switch of host2 (Switch3) receives the packet
+and plays the role of INT sink.
 
 Below is the packet received by INT sink starting from the IPv4 header. We use
 the value of 0x17 for IPv4.DSCP to indicate the existence of INT headers.
@@ -1592,10 +1604,10 @@ specific.
 ## Miscellaneous
 
 * Checksum Complement
-  - This field enables a Checksum-neutral update when INT is encapsulated over 
+  - This field enables a Checksum-neutral update when INT is encapsulated over
 an L4 protocol that uses a Checksum field, such as TCP or UDP.
-  
-  
+
+
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
@@ -1658,7 +1670,7 @@ assumptions in section [#sec-examples]
   - Described a possible allocation of non-contiguous DSCP codepoints for
     INT over TCP/UDP
     in section [#sec-header-location-and-format----int-over-tcpudp].
-  - Relaxed the location of INT stack relative to TCP options in 
+  - Relaxed the location of INT stack relative to TCP options in
     section [#sec-header-location-and-format----int-over-tcpudp].
 * 2018-03-14
   - Added the Checksum Complement metadata.
@@ -1670,3 +1682,6 @@ assumptions in section [#sec-examples]
   - The expectation is that any of these may be reintroduced in future
     versions of INT. They could benefit from a better understanding of use
     cases and some preliminary implementation experience.
+* 2018-03-31
+  - Defined checksum update behavior more precisely
+  - Miscellaneous editorial changes in preparation for v1.0
