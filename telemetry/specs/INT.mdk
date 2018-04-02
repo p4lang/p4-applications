@@ -1814,7 +1814,7 @@ PSA_SWITCH(ip, ep) main;
 
 # Appendix: An extensive (but not exhaustive) set of Metadata {@h1:"A"}
 
-## Switch-level Information
+## Switch-level
 
 * Switch id
   - The unique ID of a switch (generally administratively assigned). SwitchIDs
@@ -1826,7 +1826,7 @@ packets
 may use these version numbers to determine which control-plane state was active
 at the time packets were forwarded.
 
-## Ingress Information
+## Ingress
 
 * Ingress port identifier
   - The port on which the INT packet was received. A packet may be received
@@ -1857,7 +1857,7 @@ packet was received. The exact mechanism (bin bucketing, moving average, etc.)
 is device specific and while the latter is clearly superior to the former, the
 INT framework leaves those decisions to device vendors.
 
-## Egress Information
+## Egress
 
 * Egress port identifier
   - The port on which the INT packet was sent out. A packet may be transmitted
@@ -1968,7 +1968,7 @@ assumptions in section [#sec-examples]
   - Added support for monitoring of two levels of ingress and egress
     port identifiers
 * 2018-03-13
-  - Defined INT domain in section [#sec-terminologies].
+  - Defined INT domain in section [#sec-terminology].
   - Described a possible allocation of non-contiguous DSCP codepoints for
     INT over TCP/UDP
     in section [#sec-header-location-and-format----int-over-tcpudp].
