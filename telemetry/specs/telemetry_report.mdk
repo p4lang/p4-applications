@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
-Title Note : (working draft)
-Title Footer : 2018-2-14
+Title Note : Version 1.0
+Title Footer : 2018-04-03
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *Barefoot Networks, VMware, Xilinx*
 Heading depth : 5
@@ -67,7 +67,7 @@ This specification defines packet formats for telemetry reports from data
 plane network devices (e.g. switches) to a distributed telemetry monitoring
 system. The packet formats use headers that describe the contents of
 telemetry reports, along with existing (non-telemetry specific) packet
-headers that can be used to categorize flows. 
+headers that can be used to categorize flows.
 
 ## Scope
 
@@ -81,7 +81,7 @@ telemetry metadata in data packets according to specifications such as INT
 [^INT] and IOAM [^IOAM]. This specification is also applicable when each network
 device directly generates telemetry reports (including transit network
 devices in the middle of the network), without affecting data packet
-formats between successive network devices. 
+formats between successive network devices.
 
 Telemetry report encapsulation formats are defined that allow for the
 inclusion of additional telemetry metadata, beyond the (optional) telemetry
@@ -118,7 +118,7 @@ reporting network device through the data network, and to the destination
 monitoring system.
 
 The following sections will cover the details on the report generation,
-report format and encapsulation. 
+report format and encapsulation.
 
 ## Telemetry Report Associations
 
@@ -350,9 +350,9 @@ particular deployment.
     metadata.
     * bit 0 (MSB): Ingress port id (16 bits) + Egress port id (16 bits)
     * bit 1: Hop latency
-    * bit 2: Queue id (8 bits) + Queue occupancy (24 bits)
-    * bit 3: Egress Timestamp (32 bits)
-    * bit 4: Queue id (8 bits) + Drop reason (8 bits) + Padding (16 bits)
+    * bit 2: Queue ID + Queue occupancy
+    * bit 3: Egress Timestamp
+    * bit 4: Queue ID + Drop reason
     * bit 5: Egress port tx utilization
 
     This specification defines the following metadata:
@@ -465,10 +465,10 @@ metadata.
 
 Figure [#fig-int-over-l4] shows the remaining packet format when the
 original packet is a simple flat packet and there is embedded INT over
-TCP/UDP/ICMP telemetry metadata.
+TCP/UDP telemetry metadata.
 
 ~ Figure { #fig-int-over-l4; caption: "Remaining Packet Format - \
-           Flat Packet with INT over TCP/UDP/ICMP" }
+           Flat Packet with INT over TCP/UDP" }
 ![int-over-l4]
 ~
 [int-over-l4]: images/telemetry_report_int_over_l4.jpg { width: 4.5in }
@@ -486,7 +486,7 @@ TCP/UDP/ICMP telemetry metadata.
 ~
 [ioam-vxlan]: images/telemetry_report_ioam_vxlan.jpg { width: 3.5in }
 
-Even when using INT over TCP/UDP/ICMP, the original packet may be an
+Even when using INT over TCP/UDP, the original packet may be an
 encapsulated packet such as a VXLAN packet. When processing a telemetry
 report for an encapsulated packet, the distributed telemetry monitoring
 system may desire to categorize flows based on inner headers. In this case,
@@ -499,7 +499,7 @@ dropped.
 
 Figure [#fig-int-over-l4-vxlan] shows the remaining packet format when the
 original packet is a VXLAN packet and there is embedded INT over
-TCP/UDP/ICMP telemetry metadata.
+TCP/UDP telemetry metadata.
 
 Figure [#fig-ioam-vxlan] shows the remaining packet format when the
 original packet is a VXLAN packet and there is embedded IOAM Trace
@@ -535,6 +535,9 @@ specification.
       order to achieve proper alignment, and to place reserved bits between
       the report metadata bitmap and the association bits so that either one
       can expand as necessary
+
+* 2018-04-03
+  - Editorial changes for v1.0
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
 
