@@ -763,12 +763,12 @@ The original packet must have C bit set to 0.
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
-  - bit1: Level 1 Ingress Port ID + Egress Port ID
+  - bit1: Level 1 Ingress Port ID (16 bits) + Egress Port ID (16 bits)
   - bit2: Hop latency
-  - bit3: Queue ID + Queue occupancy
+  - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
   - bit4: Ingress timestamp
   - bit5: Egress timestamp
-  - bit6: Level 2 Ingress Port ID + Level 2 Egress Port ID (4 bytes each)
+  - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit15: Checksum Complement
   - The remaining bits are reserved.

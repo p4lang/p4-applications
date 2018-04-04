@@ -350,9 +350,9 @@ particular deployment.
     metadata.
     * bit 0 (MSB): Ingress port id (16 bits) + Egress port id (16 bits)
     * bit 1: Hop latency
-    * bit 2: Queue ID + Queue occupancy
+    * bit 2: Queue ID (8 bits) + Queue occupancy (24 bits)
     * bit 3: Egress Timestamp
-    * bit 4: Queue ID + Drop reason
+    * bit 4: Queue ID (8 bits) + Drop reason (8 bits) + Padding (16 bits)
     * bit 5: Egress port tx utilization
 
     This specification defines the following metadata:
