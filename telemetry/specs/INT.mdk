@@ -1972,12 +1972,12 @@ specification and implementation of this spec.
 * 2015-09-28
   - Initial release
 * 2016-06-19
-  - Updated section [#sec-header-location-and-format----int-over-vxlan-gpe], the
+  - Updated section [#sec-int-over-vxlan-gpe], the
 Length field definition of VXLAN GPE shim header, to be consistent with the
 example in section [#sec-examples].
 * 2017-10-17
   - Introduced INT over TCP/UDP (section
-[#sec-header-location-and-format----int-over-tcpudp] and new example)
+[#sec-int-over-tcpudp] and new example)
   - Removed BOS (Bottom-Of-Stack) bit at each 4B metadata, from the header
 definition and examples
   - Updated the INT instruction bitmap and the meaning of a few instructions
@@ -2000,7 +2000,7 @@ assumptions in section [#sec-examples]
   - Replaced Max Hop Count and Total Hop Count with Remaining Hop Count
 * 2018-02-28
   - Added Probe Marker approach as another way to indicate the existence of
-    INT over TCP/UDP (section [#sec-header-location-and-format----int-over-tcpudp]).
+    INT over TCP/UDP (section [#sec-int-over-tcpudp]).
 * 2018-03-08
   - Added support for monitoring of two levels of ingress and egress
     port identifiers
@@ -2008,9 +2008,9 @@ assumptions in section [#sec-examples]
   - Defined INT domain in section [#sec-terminology].
   - Described a possible allocation of non-contiguous DSCP codepoints for
     INT over TCP/UDP
-    in section [#sec-header-location-and-format----int-over-tcpudp].
+    in section [#sec-int-over-tcpudp].
   - Relaxed the location of INT stack relative to TCP options in
-    section [#sec-header-location-and-format----int-over-tcpudp].
+    section [#sec-int-over-tcpudp].
 * 2018-03-14
   - Added the Checksum Complement metadata.
 * 2018-03-29
