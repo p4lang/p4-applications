@@ -853,7 +853,7 @@ The following are the detailed assumptions made for this example.
   - Remaining hop count starts at 8, decremented by 1 at each hop
     that inserts INT metadata
 
-### Example with INT over TCP
+## Example with INT over TCP
 
 We consider a scenario where host1 sends a TCP packet to host2. The ToR switch
 of host1 (Switch1) acts as the INT source. It adds INT headers and its own
@@ -940,7 +940,7 @@ INT Tail Header, followed by TCP Payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-### Example with INT over VXLAN GPE
+## Example with INT over VXLAN GPE
 
 We now consider a scenario where Host1 and Host2 use VXLAN encapsulation.
 Host1 acts as VXLAN tunnel endpoint and INT source, inserts VXLAN and INT
@@ -997,7 +997,7 @@ INT Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-### Example with INT over Geneve
+## Example with INT over Geneve
 
 Finally, we consider a scenario where Host1 and Host2 use Geneve encapsulation.
 Host1 acts as Geneve tunnel endpoint and INT source, inserts Geneve and INT
