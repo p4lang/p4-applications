@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 1.0
-Title Footer: 2018-04-03
+Title Footer: 2018-04-10
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, VMware*
 Heading depth: 5
@@ -270,11 +270,8 @@ MTUs) by an appropriate amount. Configuring an MTU differential of
 based on conservative values of total number of INT hops and Per-hop
 Metadata Length, will prevent egress MTU being exceeded due to INT metadata
 insertion at INT hops. The Fixed INT Header Length is the sum of INT metadata
-header length (8B) and the size of encapsulation-specific shim/option header(s)
-as defined in section [#sec-header-location]. In case of INT over TCP/UDP,
-the Fixed INT Header Length is 16B (8B metadata header + 4B shim header + 4B
-tail header). In case of VXLAN-GPE and Geneve encapsulation, the Fixed
-INT Header Length is 12B.
+header length (8B) and the size of encapsulation-specific shim/option header
+(4B) as defined in section [#sec-header-location].
 
 * An INT source/transit switch may optionally participate in dynamic discovery
 of Path MTU for flows being monitored by INT by transmitting ICMP message to
@@ -298,7 +295,7 @@ cause the packet length to exceed egress link MTU, it
 must not insert any metadata and set the M bit in the
 INT header, indicating that egress MTU was exceeded at an INT hop.
 
-An INT source needs to be able to insert the 16 or 12 bytes of fixed INT
+An INT source needs to be able to insert the 12 bytes of fixed INT
 headers, plus Per-hop Metadata Length\*4
 bytes of its own metadata. If inserting the fixed headers causes
 egress link MTU to be exceeded, INT cannot not be initiated for such
@@ -419,11 +416,12 @@ INT sink either do not parse beyond layer-4 headers or can skip through the
 INT stack using the Length field in the INT shim header. If TCP has any options,
 the INT stack may come before or after the TCP options but the decision must
 be consistent within an INT domain.
-(Note: INT over UDP can be used even when the packet is encapsulated by VXLAN,
+
+Note that INT over UDP can be used even when the packet is encapsulated by VXLAN,
 Geneve, or GUE (Generic UDP Encapsulation). INT over TCP/UDP also makes it
 easier to add INT stack into outer, inner, or even both layers. In such cases
 both INT header stacks carry information for respective layers and need not be
-considered interfering with each other.)
+considered interfering with each other.
 
 A field in Ethernet, IP, or TCP/UDP should indicate if the
 INT header exists after the TCP/UDP header. We propose three options.
@@ -454,11 +452,10 @@ original value. Restoring the original value is optional.
     into the INT domain and there is no INT header present, it must ensure that
     the DSCP/Traffic class value is not the same as any of the values used
     to indicate INT.
-* TCP/UDP destination Port field: A port number in layer 4 can be used to
-indicate the existence of INT after TCP/UDP. The INT source changes the
-destination Port, and the INT sink must restore the original port number.
-* Probe Marker fields: A specific 64-bit value can be inserted after the TCP/UDP
-header to indicate the existence of INT after TCP/UDP. These fields must be
+* Probe Marker fields: If DSCP field or values cannot be reserved for INT,
+probe marker option could be used. A specific 64-bit value can be inserted
+after the TCP/UDP header to indicate the existence of INT after TCP/UDP.
+These fields must be
 interpreted as unsigned integer values in network byte order. This approach is
 a variation of an early IETF draft with existing implementation[^DPP].
 [^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
@@ -488,23 +485,18 @@ mixed environment, for example it would be incorrect to mark a packet for INT
 using both DSCP and probe marker, as INT devices that only understand
 DSCP marking and do not recognize probe markers may incorrectly interpret the
 first four bytes of the probe marker as INT shim header.
+It is strongly recommended that only one option be used within an INT domain.
 
-It is recommended that only one option be used within an INT domain.
-
-In general, encoding into DSCP field will be less intrusive compared to
-changing the layer 4 port field. The latter may alter ECMP behavior and can
-complicate ACL and network debugging. If DSCP field cannot be reserved for INT, and retaining ECMP behavior is desired, probe marker option could be followed.
-
-We introduce an INT shim header and INT tail header for TCP/UDP. The INT
+We introduce an INT shim header for TCP/UDP. The INT
 metadata header and INT metadata stack will be encapsulated between
-the shim and tail headers.
+the shim header and the TCP/UDP payload.
 
 INT shim header for TCP/UDP:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Type     |    Reserved   |     Length    |    Reserved   |
+   |      Type     |    Reserved   |     Length    |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -512,27 +504,14 @@ INT shim header for TCP/UDP:
 Two Type values are used: one for the hop-by-hop header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
 * Length: This is the total length of INT metadata header, INT stack and the
-shim and tail headers in 4-byte words. A non-INT device may read this field
+shim header in 4-byte words. A non-INT device may read this field
 and skip over INT headers.
 
-INT tail header for TCP/UDP:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Proto     |      Destination Port        |     DSCP      |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
-
-* Proto: A copy of IPv4.proto or IPv6.nextHeader.
-* Destination Port: The original destination port of TCP/UDP protocol. In case
-a specific destination port is used to indicate INT, this field is
-used by INT sink to restore the original value. Besides, having the proto and
-destination port fields in the tail header would help transit and sink devices
-to know how to parse the rest of the packet after the INT headers.
-* DSCP: If IP DSCP/Traffic-class is used to indicate INT, this
-field stores the original DSCP/Traffic-class value. Otherwise, this field
+* DSCP: If IP DSCP is used to indicate INT, this field optionally
+stores the original DSCP value. Otherwise, this field
 is reserved.
+
+All the other bits in the shim header are reserved for future use.
 
 ### INT over VXLAN GPE
 
@@ -821,8 +800,8 @@ header.
     - C, E, M, Remaining Hop Count
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
-by subtracting the total INT fixed header sizes (for INT over TCP/UDP,
-16 bytes; for INT over VXLAN-GPE, 12 bytes) from (shim header length \* 4).
+by subtracting the total INT fixed header sizes (12 bytes)
+from (shim header length \* 4).
 For INT over Geneve it is 8 bytes subtracted from (length in Geneve tunnel
 option header \* 4).
 
@@ -906,11 +885,11 @@ INT Shim Header for TCP/UDP, INT type is hop-by-hop:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |     Type=1    |   Reserved    |  Length = 8   |   Reserved    |
+   |     Type=1    |   Reserved    |  Length = 8   |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-INT Metadata Header and Metadata Stack:
+INT Metadata Header and Metadata Stack, followed by TCP payload:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -927,16 +906,7 @@ INT Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop1                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
-
-INT Tail Header, followed by TCP Payload:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |    Proto = 6  |           Port = 22           | Orignal DSCP=0|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                          TCP Payload                          |
+   |                          TCP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1080,14 +1050,8 @@ header intl4_shim_t {
     bit<8>  int_type;
     bit<8>  rsvd1;
     bit<8>  len;
-    bit<8>  rsvd2;
-}
-
-/* INT tail header for TCP/UDP */
-header intl4_tail_t {
-    bit<8>  next_proto;
-    bit<16> dest_port;
-    bit<8>  dscp;
+    bit<6>  dscp;
+    bit<2>  rsvd2;
 }
 
 /* INT headers */
@@ -2030,3 +1994,7 @@ assumptions in section [#sec-examples]
     against PSA architecture instead of v1model.
 * 2018-04-03
   - Some more editorial changes for v1.0
+* 2018-04-10
+  - Removed the option to modify L4 destination port to indicate INT over
+    TCP/UDP.
+  - Removed INT Tail header from INT over TCP/UDP encapsulation.
