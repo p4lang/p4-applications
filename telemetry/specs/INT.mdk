@@ -1209,7 +1209,8 @@ error {
  * For checksum related details, check the notes in the PSA example.
  */
 
-/* We process INT at egress where all switch metadata become available.
+/* This reference code processes INT Transit at egress where all
+ * switch metadata become available.
  * Ingress doesn't need to parse or deparse INT.
  */
 
