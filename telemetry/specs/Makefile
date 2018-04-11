@@ -5,7 +5,7 @@ REPORT=telemetry_report
 all: ${INT}.pdf ${REPORT}.pdf
 
 ${INT}.pdf: ${INT}.mdk
-	madoko --pdf -vv --odir=build $<
+	madoko --pdf -vv --png --odir=build $<
 	cp build/${INT}.pdf ../../docs
 
 ${INT}.html: ${INT}.mdk

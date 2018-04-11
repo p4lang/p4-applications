@@ -4,34 +4,137 @@ Title Footer: 2018-04-10
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, VMware*
 Heading depth: 5
-
-
-pre, code {
-  language: p4;
-}
-Colorizer: p4
-.token.keyword    {
-    font-weight: bold;
-    font-family: monospace;
-   font-size: 10pt;
-}
-
-tbd {
-    replace: "~ Begin TbdBlock&nl;\
-                   TBD: &source;&nl;\
-                   ~ End TbdBlock&nl;";
-    color: red;
-}
-
-Pdf Latex: pdflatex
-Document Class: [10pt]article
-Package: [top=1in, bottom=1.25in, left=1.25in, right=1.25in]geometry
+Pdf Latex: xelatex
+Document Class: [11pt]article
+Package: [top=1in, bottom=1.25in, left=1in, right=1in]{geometry}
 Package: fancyhdr
-
 
 Tex Header:
   \setlength{\headheight}{30pt}
   \renewcommand{\footrulewidth}{0.5pt}
+
+@if html {
+body.madoko {
+  font-family: utopia-std, serif;
+}
+title,titlenote,titlefooter,authors,h1,h2,h3,h4,h5 {
+  font-family: helvetica, sans-serif;
+  font-weight: bold;
+}
+pre, code {
+  language: p4;
+  font-family: monospace;
+  font-size: 10pt;
+}
+}
+
+@if tex {
+body.madoko {
+  font-family: UtopiaStd-Regular;
+}
+title,titlenote,titlefooter,authors {
+  font-family: sans-serif;
+  font-weight: bold;
+}
+pre, code {
+  language: p4;
+  font-family: LuxiMono;
+  font-size: 75%;
+}
+}
+
+Colorizer: p4
+.token.keyword    {
+    font-weight: bold;
+}
+
+@if html {
+p4example {
+  replace: "~ Begin P4ExampleBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4ExampleBlock";
+  padding:6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  border: solid;
+  background-color: #ffffdd;
+  border-width: 0.5pt;
+}
+}
+
+@if tex {
+p4example {
+  replace: "~ Begin P4ExampleBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4ExampleBlock";
+  breakable: true;
+  padding: 6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  border: solid;
+  background-color: #ffffdd;
+  border-width: 0.5pt;
+}
+}
+
+
+@if html {
+p4pseudo {
+  replace: "~ Begin P4PseudoBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4PseudoBlock";
+  padding: 6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  border: solid;
+  background-color: #e9fce9;
+  border-width: 0.5pt;
+}
+}
+
+@if tex {
+p4pseudo {
+  replace: "~ Begin P4PseudoBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4PseudoBlock";
+  breakable : true;
+  padding: 6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  background-color: #e9fce9;
+  border: solid;
+  border-width: 0.5pt;
+}
+}
+
+@if html {
+p4grammar {
+  replace: "~ Begin P4GrammarBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4GrammarBlock";
+  border: solid;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  padding: 6pt;
+  background-color: #e6ffff;
+  border-width: 0.5pt;
+}
+}
+
+@if tex {
+p4grammar {
+  replace: "~ Begin P4GrammarBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4GrammarBlock";
+  breakable: true;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  padding: 6pt;
+  background-color: #e6ffff;
+  border: solid;
+  border-width: 0.5pt;
+}
+}
 
 [TITLE]
 []{tex-cmd: "\newpage"}
@@ -424,7 +527,7 @@ both INT header stacks carry information for respective layers and need not be
 considered interfering with each other.
 
 A field in Ethernet, IP, or TCP/UDP should indicate if the
-INT header exists after the TCP/UDP header. We propose three options.
+INT header exists after the TCP/UDP header. We propose two options.
 
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
@@ -1999,3 +2102,4 @@ assumptions in section [#sec-examples]
   - Removed the option to modify L4 destination port to indicate INT over
     TCP/UDP.
   - Removed INT Tail header from INT over TCP/UDP encapsulation.
+  - Added DSCP to the INT over TCP/UDP shim header.
