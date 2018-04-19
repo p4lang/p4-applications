@@ -2061,6 +2061,7 @@ p4_16.
   - Improved the header presentation of the examples and clarified the
 assumptions in section [#sec-examples]
   - Formatted the spec as a Madoko file
+  - *Tag v0.5 spec*
 * 2018-02-13
   - Elaborated on interactions between INT and MTU settings. Defined switch
     behavior when inserting INT metadata in a packet would result in egress
