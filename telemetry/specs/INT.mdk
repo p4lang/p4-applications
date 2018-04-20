@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 1.0
-Title Footer: 2018-04-10
+Title Footer: 2018-04-19
 Author : The P4.org Applications Working Group
 Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
@@ -184,13 +184,11 @@ The INT architectural model is intended to be generic and enables a
 number of interesting high level applications, such as:
 
 * Network troubleshooting
-  - L1 traceroute, micro-burst detection, packet history (a.k.a. postcards),
-trajectory sampling
+  - Traceroute, micro-burst detection, packet history (a.k.a. postcards)
 * Advanced congestion control
-  - RCP, XCP, TIMELY
 * Advanced routing
   - Utilization-aware routing (For example, HULA[^HULA], CLOVE[^CLOVE])
-* Network data-plane verification
+* Network data plane verification
 
 A number of use case descriptions and evaluations are described in the Millions
 of Little Minions paper [^Minions].
@@ -207,13 +205,12 @@ types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
 
 * **INT Packet**: A packet containing an INT Header.
 
-* **INT Instruction**: Embedded packet instructions indicating which
-INT Metadata to collect (defined below). The collected data is written into
-the INT Header.
+* **INT Instruction**: Instructions embedded in INT header, indicating which
+INT Metadata (defined below) to collect at each INT switch. The collected data
+is written into the INT Header.
 
 * **INT Source**: A trusted entity that creates and inserts INT Headers into the
-packets it sends. The INT Headers contain, at minimum, INT Instructions
-indicating what to collect.
+packets it sends.
 
 * **INT Sink**: A trusted entity that extracts the INT Headers and collects the
 path state contained in the INT Headers. The INT Sink is responsible for
@@ -269,8 +266,8 @@ must be unique within an INT domain.
     Virtual Interface, and at Layer 3 the packet may be received in a tunnel.
     Although the entire port stack may be monitored in theory, this
     specification allows for monitoring of up to two levels of ingress port
-    identifiers (See section 5.3 for details). First level of ingress port
-    identifier would typically be used to monitor the physical port on which
+    identifiers. First level of ingress port identifier would typically be
+    used to monitor the physical port on which
     the packet was received, hence a 16-bit field (half of a 4-Byte metadata)
     is deemed adequate. Second level of ingress port identifier occupies a
     full 4-Byte metadata field, which may be used to monitor a logical port
@@ -293,8 +290,8 @@ must be unique within an INT domain.
     out of a particular physical port belonging to the Link Aggregation Group.
     Although the entire port stack may be monitored in theory, this
     specification allows for monitoring of up to two levels of egress port
-    identifiers (See section 5.3 for details). First level of egress port
-    identifier would typically be used to monitor the physical port on which
+    identifiers. First level of egress port identifier would typically be used
+    to monitor the physical port on which
     the packet was transmitted, hence a 16-bit field (half of a 4-Byte metadata)
     is deemed adequate. Second level of egress port identifier occupies a full
     4-Byte metadata field, which may be used to monitor a logical port on
@@ -349,7 +346,7 @@ are present, the hop-by-hop type must precede the destination type header.
   - The data format of Destination type INT Headers is not defined in this
     version.
 
-## On-the-fly Header Creation
+## Per-Hop Header Creation
 
 In the INT model, each device in the packet forwarding path creates additional
 space in the INT Header on-demand to add its own INT metadata. To avoid
@@ -398,13 +395,13 @@ cause the packet length to exceed egress link MTU, it
 must not insert any metadata and set the M bit in the
 INT header, indicating that egress MTU was exceeded at an INT hop.
 
-An INT source needs to be able to insert the 12 bytes of fixed INT
-headers, plus Per-hop Metadata Length\*4
-bytes of its own metadata. If inserting the fixed headers causes
-egress link MTU to be exceeded, INT cannot not be initiated for such
-packets. If there is enough room to insert INT header, but not first-hop
-INT metadata at the source, the source must initiate INT and set the M bit
-at the first hop itself.
+An INT source inserts 12 bytes of fixed INT headers, and may also insert
+Per-hop Metadata Length\*4 bytes of its own metadata. If inserting the
+fixed headers causes egress link MTU to be exceeded, INT cannot not be
+initiated for such packets. If an INT source is programmed to insert
+its own INT metadata, and there is enough room in a packet to insert fixed INT
+headers, but no additional room for its INT metadata, the source must
+initiate INT and set the M bit in the INT header.
 
 In theory, an INT transit switch can perform IPv4 fragmentation to overcome
 egress MTU limitation when inserting its metadata. However, IPv4 fragmentation
@@ -432,6 +429,7 @@ if better suited to their needs and environment.
 * INT over NSH (as NSH payload)
 * INT over TCP (as payload)
 * INT over UDP (as payload)
+* INT over GRE (as a shim between GRE header and encapsulated payload)
 
 ## Checksum Update
 
@@ -491,8 +489,8 @@ checksum field or via use of Checksum Complement metadata, performing the
 update based on an incremental checksum calculation (as is typically done)
 will ensure that any potential corruption is detected at the point of
 checksum validation. If full checksum computation is performed at an INT
-switch, it is recommended that it be preceded by checksum
-validation so as to not mask out any corruption at preceding hops.
+switch, it should be preceded by checksum validation so as to not mask out any
+corruption at preceding hops.
 
 ## Header Location
 
@@ -500,7 +498,7 @@ We describe three encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
 1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
-header. INT Headers are carried between the shim header and TCP/UDP payload.
+header. INT Headers are carried between this shim header and TCP/UDP payload.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
 2. *INT over VXLAN* - VXLAN generic protocol extensions
@@ -532,9 +530,9 @@ INT header exists after the TCP/UDP header. We propose two options.
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
 INT header into a packet, it sets the reserved value in the field or sets the
-bit. INT source can put the reserved value in the field. The source can write
-the original DSCP value in the INT headers so that the sink can restore the
-original value. Restoring the original value is optional.
+bit. The INT source may write the original DSCP value in the INT headers so
+that the INT sink can restore the original value. Restoring the original value
+is optional.
   - Allocating a bit, as opposed to a value codepoint, will allow the rest of
     DSCP field to be used for QoS, hence allowing the coexistence of DSCP-based
     QoS and INT. If the traffic being monitored is subjected to QoS services
@@ -627,7 +625,7 @@ VXLAN Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|R|R|I|R|R|R|                   Reserved                    |
+   |R|R|Ver|I|P|B|O|                     Reserved                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -639,7 +637,7 @@ VXLAN header and the encapsulated payload.
 
 The VXLAN header as defined in RFC 7348 does not specify the protocol being
 encapsulated and assumes that the payload following the VXLAN header is an
-Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe-05.txt proposes
+Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe proposes
 changes to the VXLAN header to allow for multi-protocol encapsulation. We use
 this VXLAN generic protocol extension draft and propose a new
 “Next-protocol” type for INT.
@@ -674,10 +672,11 @@ VXLAN GPE specification yet, and is hence subject to change)
 When there is one INT Header in the VXLAN GPE stack, the VXLAN GPE header for
 the INT Header will have a next-protocol value other than INT Header indicating
 the payload following the INT Header - typically Ethernet. If there are multiple
-INT Headers in the VXLAN GPE stack, then all VXLAN GPE shim headers for the
-INT Headers other than the last one will carry 0x08 for their next-protocol
-values, and the VXLAN GPE header for the last INT Header will carry a
-next-protocol value of the original VXLAN payload (e.g., Ethernet).
+INT Headers in the VXLAN GPE stack (for example if both hop-by-hop and
+destination type INT headers are being carried), then all VXLAN GPE shim
+headers for the INT Headers other than the last one will carry 0x08 for
+their next-protocol values, and the VXLAN GPE header for the last INT Header
+will carry next-protocol value of the original VXLAN payload (e.g., Ethernet).
 
 To embed a variable-length data (i.e., INT metadata) in the VXLAN GPE stack, we
 introduce the INT shim header. This header follows each VXLAN GPE header for
@@ -730,6 +729,7 @@ Geneve Option for INT:
 `
 
 Note:
+
 * We do not need to reserve any special values for fields in the base
 Geneve header for INT.
 * Users may or may not use INT with Geneve along with VNI (network
@@ -741,9 +741,11 @@ Class and Type to be able to migrate to different values as and when specific
 values are defined for INT.
 * The variable length option data following the Geneve Option Header carries
 the actual INT metadata header and metadata.
-* Note the Length field of the Geneve Option header is 5-bits long, which
+* The Length field of the Geneve Option header is 5-bits long, which
 limits a single Geneve option instance to no more than 124 bytes long (31 * 4).
-Remaining Hop Count has to be set accordingly at the INT source.
+Remaining Hop Count in hop-by-hop INT header has to be set accordingly at the
+INT source to ensure that the Geneve option does not overflow. The entire
+hop-by-hop INT header must fit in a single Geneve option.
 
 ## INT Hop-by-Hop Metadata Header Format
 
@@ -788,9 +790,9 @@ data packets.
 forwarded through a logical port that is a port-channel (LAG), then replicate
 the packet on each physical port in the port-channel and send a single copy per
 physical port.
-    - 2: Next-hop-level (L3-level) replication requested. Replicate the packet
-to each L3 ECMP next-hop valid for the destination address and send a single
-copy per ECMP next-hop.
+    - 2: Next-hop-level (L3-level) replication requested. Forward the packet
+to each L3 ECMP next-hop valid for the destination address, with INT headers
+replicated in each forwarded copy.
     - 3: Port-level and Next-hop-level replication requested.
   - C (1b): Copy.
     - If replication is requested for data packets, the INT Sink must be
@@ -919,9 +921,13 @@ communicating over a network path composed of three network devices
 Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
 `
 
-The following are the detailed assumptions made for this example.
+Detailed assumptions made for this example are as follows
 
 * INT source requests each INT hop to insert switch ID and queue occupancy
+(For the sake of illustration we only consider switch ID and queue occupancy
+being inserted at each hop. Queue IDs are typically defined per port, hence
+in a real use-case queue occupancy is likely to be collected along with egress
+port ID)
 * There are three devices (hops) on the path, and all the devices expose
   both metadata (switch ID and queue occupancy).
 * The maximum number of hops (network diameter) is 8.
@@ -969,7 +975,7 @@ TCP Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |          Source Port          |     Destination Port = 1234   |
+   |          Source Port          |     Destination Port          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                        Sequence Number                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1031,7 +1037,7 @@ VXLAN GPE Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|R|R|1|1|R|R|           Reserved            | NextProto=0x5 |
+   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x8 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2034,6 +2040,7 @@ specification and implementation of this spec.
 * Jeongkeun Lee
 * Tal Mizrahi
 * Masoud Moshref
+* Michael Orr
 * Heidi OU
 * Mickey Spiegel
 * Bapi Vinnakota
@@ -2107,3 +2114,5 @@ assumptions in section [#sec-examples]
     TCP/UDP.
   - Removed INT Tail header from INT over TCP/UDP encapsulation.
   - Added DSCP to the INT over TCP/UDP shim header.
+* 2018-04-19
+  - Some more editorial changes for v1.0
