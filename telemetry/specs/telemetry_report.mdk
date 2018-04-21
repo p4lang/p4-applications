@@ -1,37 +1,142 @@
 Title : Telemetry Report Format Specification
 Title Note : Version 1.0
-Title Footer : 2018-04-03
+Title Footer : 2018-04-20
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *Barefoot Networks, VMware, Xilinx*
 Heading depth : 5
 
-pre, code {
-  language: p4;
-}
-Colorizer: p4
-.token.keyword    {
-    font-weight: bold;
-    font-family: monospace;
-   font-size: 10pt;
-}
-
-tbd {
-    replace: "~ Begin TbdBlock&nl;\
-                   TBD: &source;&nl;\
-                   ~ End TbdBlock&nl;";
-    color: red;
-}
-
-Pdf Latex: pdflatex
-Document Class: [10pt]article
-Package: [top=1in, bottom=1.25in, left=1.25in, right=1.25in]geometry
+Pdf Latex: xelatex
+Document Class: [11pt]article
+Package: [top=1in, bottom=1.25in, left=1in, right=1in]{geometry}
 Package: fancyhdr
-BibTeX: False
-
 
 Tex Header:
   \setlength{\headheight}{30pt}
   \renewcommand{\footrulewidth}{0.5pt}
+
+@if html {
+body.madoko {
+  font-family: utopia-std, serif;
+}
+title,titlenote,titlefooter,authors,h1,h2,h3,h4,h5 {
+  font-family: helvetica, sans-serif;
+  font-weight: bold;
+}
+pre, code {
+  language: p4;
+  font-family: monospace;
+  font-size: 10pt;
+}
+}
+
+@if tex {
+body.madoko {
+  font-family: UtopiaStd-Regular;
+}
+title,titlenote,titlefooter,authors {
+  font-family: sans-serif;
+  font-weight: bold;
+}
+pre, code {
+  language: p4;
+  font-family: LuxiMono;
+  font-size: 75%;
+}
+}
+
+Colorizer: p4
+.token.keyword    {
+    font-weight: bold;
+}
+
+@if html {
+p4example {
+  replace: "~ Begin P4ExampleBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4ExampleBlock";
+  padding:6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  border: solid;
+  background-color: #ffffdd;
+  border-width: 0.5pt;
+}
+}
+
+@if tex {
+p4example {
+  replace: "~ Begin P4ExampleBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4ExampleBlock";
+  breakable: true;
+  padding: 6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  border: solid;
+  background-color: #ffffdd;
+  border-width: 0.5pt;
+}
+}
+
+
+@if html {
+p4pseudo {
+  replace: "~ Begin P4PseudoBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4PseudoBlock";
+  padding: 6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  border: solid;
+  background-color: #e9fce9;
+  border-width: 0.5pt;
+}
+}
+
+@if tex {
+p4pseudo {
+  replace: "~ Begin P4PseudoBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4PseudoBlock";
+  breakable : true;
+  padding: 6pt;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  background-color: #e9fce9;
+  border: solid;
+  border-width: 0.5pt;
+}
+}
+
+@if html {
+p4grammar {
+  replace: "~ Begin P4GrammarBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4GrammarBlock";
+  border: solid;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  padding: 6pt;
+  background-color: #e6ffff;
+  border-width: 0.5pt;
+}
+}
+
+@if tex {
+p4grammar {
+  replace: "~ Begin P4GrammarBlock&nl;\
+                 ````&nl;&source;&nl;````&nl;\
+                 ~ End P4GrammarBlock";
+  breakable: true;
+  margin-top: 6pt;
+  margin-bottom: 6pt;
+  padding: 6pt;
+  background-color: #e6ffff;
+  border: solid;
+  border-width: 0.5pt;
+}
+}
+
 
 [TITLE]
 []{tex-cmd: "\newpage"}
@@ -519,7 +624,8 @@ specification.
 
 * 2017-11-10
   - Initial release
-
+* 2017-11-10
+  - **Tag v0.5 spec**
 * 2018-2-14
   + Promote *Switch id* to fixed portion of the Telemetry Report Header
     - The Switch id is always present.
@@ -535,9 +641,10 @@ specification.
       order to achieve proper alignment, and to place reserved bits between
       the report metadata bitmap and the association bits so that either one
       can expand as necessary
-
 * 2018-04-03
   - Editorial changes for v1.0
+* 2018-04-20
+  - **Tag v1.0 spec**
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
 
