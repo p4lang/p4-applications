@@ -1465,7 +1465,7 @@ parser EgressParserImpl(packet_in packet,
     state parse_tcp {
         packet.extract(hdr.tcp);
         transition select(hdr.ipv4.dscp) {
-	    /* &&& is a concatenation operator in p4_16 */
+	    /* &&& is a mask operator in p4_16 */
             DSCP_INT &&& DSCP_INT: parse_intl4_shim;
             default: accept;
         }
