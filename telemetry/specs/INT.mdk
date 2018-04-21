@@ -1,8 +1,8 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 1.0
-Title Footer: 2018-04-19
-Author : The P4.org Applications Working Group
-Affiliation : Contributions from *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
+Title Footer: 2018-04-20
+Author : The P4.org Applications Working Group. Contributions from
+Affiliation : *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
 Pdf Latex: xelatex
 Document Class: [11pt]article
@@ -1163,7 +1163,9 @@ header intl4_shim_t {
     bit<2>  rsvd2;
 }
 
-/* INT headers */
+/* INT header */
+/* 16 instruction bits are defined in four 4b fields to allow concurrent
+   lookups of the bits without listing 2^16 combinations */
 header int_header_t {
     bit<4>  ver;
     bit<2>  rep;
@@ -1174,7 +1176,7 @@ header int_header_t {
     bit<3>  rsvd2;
     bit<5>  hop_metadata_len;
     bit<8>  remaining_hop_cnt;
-    bit<4>  instruction_mask_0003;  /* split the bits for lookup */
+    bit<4>  instruction_mask_0003;
     bit<4>  instruction_mask_0407;
     bit<4>  instruction_mask_0811;
     bit<4>  instruction_mask_1215;
@@ -1282,6 +1284,7 @@ struct headers {
 struct empty_metadata_t {
 }
 
+/* port id and timestamp types are defined in PSA */
 struct bridged_ingress_input_metadata_t {
     PortId_t    ingress_port;
     Timestamp_t ingress_timestamp;
@@ -1424,7 +1427,7 @@ control IngressDeparserImpl(packet_out packet,
 }
 
 /* indicate INT at LSB of DSCP */
-const bit<6> DSCP_INT = 0x1;
+const bit<6> DSCP_INT = 0x17;
 
 parser EgressParserImpl(packet_in packet,
                         out headers hdr,
@@ -1462,6 +1465,7 @@ parser EgressParserImpl(packet_in packet,
     state parse_tcp {
         packet.extract(hdr.tcp);
         transition select(hdr.ipv4.dscp) {
+	    /* &&& is a mask operator in p4_16 */
             DSCP_INT &&& DSCP_INT: parse_intl4_shim;
             default: accept;
         }
@@ -1925,6 +1929,9 @@ PSA_SWITCH(ip, ep) main;
 
 # Appendix: An extensive (but not exhaustive) set of Metadata {@h1:"A"}
 
+Here we list a set of examplary metadata that future versions of the spec may
+support as well as those are supported in the current spec.
+
 ## Switch-level
 
 * Switch id
@@ -2068,7 +2075,7 @@ p4_16.
   - Improved the header presentation of the examples and clarified the
 assumptions in section [#sec-examples]
   - Formatted the spec as a Madoko file
-  - *Tag v0.5 spec*
+  - **Tag v0.5 spec**
 * 2018-02-13
   - Elaborated on interactions between INT and MTU settings. Defined switch
     behavior when inserting INT metadata in a packet would result in egress
@@ -2114,5 +2121,6 @@ assumptions in section [#sec-examples]
     TCP/UDP.
   - Removed INT Tail header from INT over TCP/UDP encapsulation.
   - Added DSCP to the INT over TCP/UDP shim header.
-* 2018-04-19
+* 2018-04-20
   - Some more editorial changes for v1.0
+  - **Tag v1.0 spec**
