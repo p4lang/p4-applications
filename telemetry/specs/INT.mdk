@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
-Title Footer: 2018-04-20
+Title Footer: 2018-05-08
 Author : The P4.org Applications Working Group. Contributions from
 Affiliation : *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
@@ -1487,7 +1487,7 @@ parser EgressParserImpl(packet_in packet,
         packet.extract(hdr.intl4_shim);
         ck.subtract({
                 hdr.intl4_shim.int_type, hdr.intl4_shim.rsvd1,
-                hdr.intl4_shim.len, hdr.intl4_shim.rsvd2
+                hdr.intl4_shim.len, hdr.intl4_shim.dscp, hdr.intl4_shim.rsvd2
             });
         transition parse_int_header;
     }
@@ -1550,7 +1550,7 @@ control EgressDeparserImpl(packet_out packet,
         if (hdr.intl4_shim.isValid()) {
             ck.add({
                     hdr.intl4_shim.int_type, hdr.intl4_shim.rsvd1,
-                    hdr.intl4_shim.len, hdr.intl4_shim.rsvd2
+                    hdr.intl4_shim.len, hdr.intl4_shim.dscp, hdr.intl4_shim.rsvd2
                 });
         }
 
@@ -2124,3 +2124,5 @@ assumptions in section [#sec-examples]
 * 2018-04-20
   - Some more editorial changes for v1.0
   - **Tag v1.0 spec**
+* 2018-05-08
+  - Fixed checksum subtract/add calls in the reference code
