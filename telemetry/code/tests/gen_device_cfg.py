@@ -2,7 +2,7 @@
 import os
 from p4.tmp import p4config_pb2
 
-build_dir = '../p4c-out/bmv2'
+build_dir = '../p4src/p4c-out/bmv2'
 device_bin = 'switch.bin'
 out_json = 'switch.json'
 
