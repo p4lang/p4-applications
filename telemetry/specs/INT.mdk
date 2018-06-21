@@ -757,7 +757,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
+   |  Ver  |Rep|C|E|M|D|    Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -821,6 +821,11 @@ The original packet must have C bit set to 0.
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
+  - D (1b): Domain Specific Flag
+    - This flag is a INT domain specific flag to allow for the Sink nodes in the 
+      domain to process the metadata stack in a domain specific way.This flag must 
+      be set if a device, source node or transit node, wants to indicate to the sink
+      a domain specific handling of the metadata.
   - R: Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
     to be inserted at each INT hop.
@@ -854,11 +859,14 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit5: Egress timestamp
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
+  - bit14: Domain Specfic Metadata
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
-  except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
-  metadata length is set accordingly at the INT source.
+  except if bit 6 and bit 14 is set. If bit 6 is set, the instruction requires 
+  8 bytes of metadata. If bit 14 is set, the instruction requires a domain specific
+  metadata of n bytes, n being a multiple of 4 bytes. Per-hop metadata length is 
+  set accordingly at the INT source.
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -898,17 +906,35 @@ header.
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, Rep, C, M, Per-hop Metadata Length, Remaining Hop Count,
+    - Ver, Rep, C, M, D, Per-hop Metadata Length, Remaining Hop Count,
       and Instruction Bitmap.
     - INT Source must set all reserved bits to zero.
   - Intermediate devices can set the following fields:
-    - C, E, M, Remaining Hop Count
+    - C, E, M, D, Remaining Hop Count
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
 from (shim header length \* 4).
 For INT over Geneve it is 8 bytes subtracted from (length in Geneve tunnel
 option header \* 4).
+
+INT Metadata Header and Metadata Stack /w Domain Specific Metadata:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Ver  |Rep|C|E|M|D|    Reserved     | Hop ML  |RemainingHopCnt|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      Instruction Bitmap       |            Reserved           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |            Domain Specific ID                 |   DS Flags    |     
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                              . . .                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Last INT metadata                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 # Examples
 
@@ -937,6 +963,7 @@ port ID)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
+  - D = 0
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
   - Remaining hop count starts at 8, decremented by 1 at each hop
     that inserts INT metadata
@@ -1003,7 +1030,7 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=1 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1058,7 +1085,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=1 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1115,7 +1142,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=1 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1172,7 +1199,8 @@ header int_header_t {
     bit<1>  c;
     bit<1>  e;
     bit<1>  m;
-    bit<7>  rsvd1;
+    bit<1>  d;
+    bit<6>  rsvd1;
     bit<3>  rsvd2;
     bit<5>  hop_metadata_len;
     bit<8>  remaining_hop_cnt;
