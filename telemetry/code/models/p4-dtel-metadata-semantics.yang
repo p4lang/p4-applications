@@ -1,0 +1,326 @@
+module p4-dtel-metadata-semantics {
+
+  yang-version "1";
+
+  // namespace value needs to be updated
+  namespace "urn:p4:yang:p4-dtel-metadata-semantics";
+
+  prefix "dtel-md";
+
+  // import from openconfig or redefine locally?
+  import openconfig-inet-types { prefix oc-inet; }
+
+  // meta
+  organization
+    "P4.org Applications Working Group";
+
+  contact
+    "p4 apps working group p4-apps@lists.p4.org";
+
+  description
+    "Data model for nodes that support p4.org's dataplane telemetry
+     specifications, primarily to report metadata semantics to
+     telemetry monitoring systems.";
+
+  revision "2018-06-20" {
+    description "Initial version";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 1.0, 2018-04-20;
+       Telemetry Report Format Specification 1.0, 2018-04-20";
+  }
+
+  // identity statements
+
+  identity METADATA_UNITS {
+    description
+      "Base identity for specifying units used to encode specific
+       metadata";
+  }
+
+  identity METADATA_TIME_UNITS {
+    base METADATA_UNITS;
+    description
+      "Base identity for specifying units of time";
+  }
+
+  identity METADATA_NANOSECONDS {
+    base METADATA_TIME_UNITS;
+    description
+      "Encoding time in units of nanoseconds";
+  }
+
+  identity METADATA_FRACTIONAL_SECONDS {
+    base METADATA_TIME_UNITS;
+    description
+      "Encoding time in units of 2^(-32) seconds";
+  }
+
+  identity METADATA_MICROSECONDS {
+    base METADATA_TIME_UNITS;
+    description
+      "Encoding time in units of microseconds";
+  }
+
+  identity METADATA_SIZE_UNITS {
+    base METADATA_UNITS;
+    description
+      "Base identity for specifying units of size, e.g. queue size";
+  }
+
+  identity METADATA_BYTES {
+    base METADATA_SIZE_UNITS;
+    description
+      "Encoding size in units of bytes";
+  }
+
+  identity METADATA_CELLS {
+    base METADATA_SIZE_UNITS;
+    description
+      "Encoding size in units of cells";
+  }
+
+  identity METADATA_PACKETS {
+    base METADATA_SIZE_UNITS;
+    description
+      "Encoding size in units of packets";
+  }
+
+  identity METADATA_UTILIZATION_UNITS {
+    base METADATA_UNITS;
+    description
+      "Base identity for specifying units of utilization";
+  }
+
+  identity METADATA_PERCENT {
+    base METADATA_UTILIZATION_UNITS;
+    description
+      "Encoding utilization in units of percent";
+  }
+
+  // typedef statements
+
+  typedef queue-md-timing {
+    type enumeration {
+      enum ENQUEUE_TIME {
+        description
+          "Retrieval of metadata at packet enqueue time";
+      }
+      enum DEQUEUE_TIME {
+        description
+          "Retrieval of metadata at packet dequeue time";
+      }
+    }
+    description
+      "Specifies the timing of retrieval of queue related metadata";
+  }
+
+  typedef int-last-hop-md-report-position {
+    type enumeration {
+      enum EMBEDDED_INT {
+        description
+          "Last hop metadata is included with embedded INT metadata";
+      }
+      enum SAME_TELEMETRY_REPORT {
+        description
+          "Last hop metadata is included in the Telemetry Report
+           header, in the same telemetry report as the embedded INT
+           metadata from previous hops";
+      }
+      enum SEPARATE_TELEMETRY_REPORT {
+        description
+          "Last hop metadata is included in the Telemetry Report
+           header, in a separate telemetry report from the embedded
+           INT metadata from previous hops";
+      }
+    }
+    description
+      "Specifies whether last hop metadata is included in the same
+       telemetry report as the embedded INT metadata from previous
+       hops, and whether the last hop metadata is included in
+       embedded INT metadata or in the Telemetry Report header";
+  }
+
+  // grouping statemenets
+
+  grouping dtel-md-semantics-time-units {
+    description
+      "Units of time used for specific instances of INT metadata and
+       telemetry report metadata";
+
+    leaf time-units {
+      type identityref {
+        base METADATA_TIME_UNITS;
+      }
+      description
+        "Units of time";
+    }
+  }
+
+  grouping dtel-md-semantics-size-units {
+    description
+      "Units of size used for specific instances of INT metadata and
+       telemetry report metadata";
+
+    leaf size-units {
+      type identityref {
+        base METADATA_SIZE_UNITS;
+      }
+      description
+        "Units of size";
+    }
+
+    leaf cell-size {
+      when "../size-units = 'METADATA_CELLS'" {
+        description
+          "Cell size is valid only when the size is in units of
+           cells";
+      }
+      type uint16;
+      description
+        "The size in bytes of one cell";
+    }
+  }
+
+  grouping dtel-md-semantics-utilization-units {
+    description
+      "Units of utilization used for specific instances of INT
+       metadata and telemetry report metadata";
+
+    leaf utilization-units {
+      type identityref {
+        base METADATA_UTILIZATION_UNITS;
+      }
+      description
+        "Units of utilization";
+    }
+  }
+
+  grouping dtel-md-semantics-identifiers {
+    description
+      "Identifiers used in dataplane telemetry metadata";
+
+    leaf switch-id {
+      type uint32;
+      config false;
+      description
+        "The switch_id value that this node inserts in INT metadata
+         and telemetry report metadata";
+    }
+
+  // TBD: Add anything related to port IDs?
+
+  }
+
+  grouping dtel-md-semantics-details {
+    description
+      "Detailed semantics of dataplane telemetry metadata";
+
+    container hop-latency {
+      config false;
+      description
+        "Detailed semantics of hop latency in INT metadata and
+         telemetry report metadata";
+
+      uses dtel-md-semantics-time-units;
+    }
+
+    container queue-occupancy {
+      config false;
+      description
+        "Detailed semantics of queue occupancy in INT metadata and
+         telemetry report metadata";
+
+      uses dtel-md-semantics-size-units;
+
+      leaf packet-timing {
+        type queue-md-timing;
+        description
+          "Whether this queue occupancy was measured when the packet
+           was enqueued, or when the packet was dequeued";
+      }
+    }
+
+    container ingress-timestamp {
+      config false;
+      description
+        "Detailed semantics of ingress timestamp in INT metadata and
+         telemetry report metadata";
+
+      uses dtel-md-semantics-time-units;
+    }
+
+    container egress-timestamp {
+      config false;
+      description
+        "Detailed semantics of egress timestamp in INT metadata and
+         telemetry report metadata";
+
+      uses dtel-md-semantics-time-units;
+    }
+
+    container egress-port-tx-utilization {
+      config false;
+      description
+        "Detailed semantics of egress port tx utilization INT metadata
+         and telemetry report metadata";
+
+      uses dtel-md-semantics-utilization-units;
+    }
+
+    container drop-reason {
+      config false;
+      description
+        "Detailed semantics of drop reason in telemetry report
+         metadata";
+
+      leaf drop-reason-reference {
+        type oc-inet:url;
+        description
+          "A reference to a URL where the drop reasons are defined";
+      }
+    }
+  }
+
+  grouping dtel-md-semantics-report-properties {
+    description
+      "Properties of telemetry reports generated by this node";
+
+    leaf int-last-hop-md-report {
+      type int-last-hop-md-report-position;
+      config false;
+      description
+        "Specifies whether last hop metadata is included in the same
+         telemetry report as the embedded INT metadata from previous
+         hops, and whether the last hop metadata is included in
+         embedded INT metadata or in the Telemetry Report header";
+    }
+  }
+
+  grouping dtel-md-semantics-top {
+    description
+      "Top level grouping for dataplane telemetry metadata semantics";
+
+    container identifiers {
+      description
+        "Identifiers used in dataplane telemetry metadata";
+      uses dtel-md-semantics-identifiers;
+    }
+
+    container md-semantics {
+      description
+        "Semantics of dataplane telemetry metadata";
+      uses dtel-md-semantics-details;
+    }
+
+    container report-properties {
+      description
+        "Properties of telemetry reports generated by this node";
+      uses dtel-md-semantics-report-properties;
+    }
+  }
+
+  // data definition statements
+  uses dtel-md-semantics-top;
+
+}
