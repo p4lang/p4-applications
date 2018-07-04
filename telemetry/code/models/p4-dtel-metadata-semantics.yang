@@ -22,7 +22,7 @@ module p4-dtel-metadata-semantics {
      specifications, primarily to report metadata semantics to
      telemetry monitoring systems.";
 
-  revision "2018-06-20" {
+  revision "2018-07-03" {
     description "Initial version";
     reference
       "In-band Network Telemetry (INT) Dataplane Specification,
@@ -96,6 +96,18 @@ module p4-dtel-metadata-semantics {
     base METADATA_UTILIZATION_UNITS;
     description
       "Encoding utilization in units of percent";
+  }
+
+  identity METADATA_TENTHS_OF_PERCENT {
+    base METADATA_UTILIZATION_UNITS;
+    description
+      "Encoding utilization in units of tenths of percent";
+  }
+
+  identity METADATA_HUNDREDTHS_OF_PERCENT {
+    base METADATA_UTILIZATION_UNITS;
+    description
+      "Encoding utilization in units of hundredths of percent";
   }
 
   // typedef statements
