@@ -284,6 +284,10 @@ module p4-dtel-metadata-semantics {
        and telemetry report metadata";
 
     uses dtel-md-semantics-utilization-units;
+
+    // TBD: Need to specify something about computation
+    // Moving average?
+    // Time frame?
   }
 
   grouping dtel-md-drop-reason {
