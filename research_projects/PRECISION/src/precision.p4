@@ -2,7 +2,7 @@
 /*
   Reference Implementation of the PRECISION heavy-hitter detection algorithm. Please skip to the egress pipeline.
 
-  Released under GNU GPLv3 license. You may obtain a copy of GPLv3 at https://www.gnu.org/licenses/gpl-3.0.html
+  Released under Apache 2.0 license. You may obtain a copy of Apache 2.0 at https://www.apache.org/licenses/LICENSE-2.0
 */
 
 #define FLOW_TABLE_SIZE_EACH 1024
