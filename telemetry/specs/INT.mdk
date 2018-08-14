@@ -1426,8 +1426,9 @@ control IngressDeparserImpl(packet_out packet,
     }
 }
 
-/* indicate INT at LSB of DSCP */
+/* indicate INT by DSCP value */
 const bit<6> DSCP_INT = 0x17;
+const bit<6> DSCP_MASK = 0x3F;
 
 parser EgressParserImpl(packet_in packet,
                         out headers hdr,
@@ -1466,7 +1467,7 @@ parser EgressParserImpl(packet_in packet,
         packet.extract(hdr.tcp);
         transition select(hdr.ipv4.dscp) {
 	    /* &&& is a mask operator in p4_16 */
-            DSCP_INT &&& DSCP_INT: parse_intl4_shim;
+            DSCP_INT &&& DSCP_MASK: parse_intl4_shim;
             default: accept;
         }
     }
@@ -2126,3 +2127,5 @@ assumptions in section [#sec-examples]
   - **Tag v1.0 spec**
 * 2018-05-08
   - Fixed checksum subtract/add calls in the reference code
+* 2018-08-14
+  - Fixed INT DSCP mask in the reference code
