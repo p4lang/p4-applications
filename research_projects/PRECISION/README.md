@@ -25,7 +25,7 @@ It's in the Source MAC Address of ethernet header. You may also pull the latest 
 
 For the untracked flows, the estimated flow size is always zero. (See paper for more detail.)
 
-## Citations
+## Contact & Citations
 
 If you use PRECISION in your research, please cite:
 
@@ -35,3 +35,12 @@ If you use PRECISION in your research, please cite:
 		journal = {arXiv preprint arXiv:1808.03412},
 		year = {2018}
 	}
+
+
+Authors of PRECISION algorithm:
+- Ran Ben Basat, Technion
+- Xiaoqi Chen, Princeton
+- Gil Einziger, Nokia Bell Labs
+- Ori Rottenstreich, Technion
+
+For technical questions regarding the P4 implementation, please contact Xiaoqi Chen at `xiaoqic at cs dot princeton dot edu`.
