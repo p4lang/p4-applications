@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
-Title Footer: 2018-05-08
+Title Footer: 2018-08-17
 Author : The P4.org Applications Working Group. Contributions from
 Affiliation : *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
@@ -1475,7 +1475,7 @@ parser EgressParserImpl(packet_in packet,
     state parse_udp {
         packet.extract(hdr.udp);
         transition select(hdr.ipv4.dscp) {
-            DSCP_INT &&& DSCP_INT: parse_intl4_shim;
+            DSCP_INT &&& DSCP_MASK: parse_intl4_shim;
             default: accept;
         }
     }
@@ -2127,5 +2127,5 @@ assumptions in section [#sec-examples]
   - **Tag v1.0 spec**
 * 2018-05-08
   - Fixed checksum subtract/add calls in the reference code
-* 2018-08-14
+* 2018-08-17
   - Fixed INT DSCP mask in the reference code
