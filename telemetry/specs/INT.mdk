@@ -2,7 +2,7 @@ Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
 Title Footer: 2018-05-08
 Author : The P4.org Applications Working Group. Contributions from
-Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
+Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems Inc., Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
 Pdf Latex: xelatex
 Document Class: [11pt]article
