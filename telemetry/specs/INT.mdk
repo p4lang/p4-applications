@@ -858,7 +858,6 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit5: Egress timestamp
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
-  - bit14: Domain Specfic Metadata
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
@@ -988,13 +987,12 @@ The original packet must have C bit set to 0.
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
   - R (9b): Reserved bits.
-  - Hop ML (5b): Per-hop Metadata Length, the length of metadata, including the 
-    Domain Specific Metadata in 4-Byte words to be inserted at each INT hop.
-    - While the largest value of Per-hop Baseline Metadata Length is 31, the largest
-      value of Per-hop Domain Specific Metadata is variable and not specified.
-      An INT-capable device may be limited in the maximum number of instructions 
-      it can process and/or maximum length of metadata it can insert in data packets. 
-      An INT hop that cannot process all instructions must still insert Per-hop
+  - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
+    to be inserted at each INT hop.
+    - While the largest value of Per-hop Metadata Length is 31, an INT-capable
+      device may be limited in the maximum number of instructions it can process
+      and/or maximum length of metadata it can insert in data packets. An INT
+      hop that cannot process all instructions must still insert Per-hop
       Metadata Length \* 4 bytes, with all-ones reserved value (4 or 8 bytes
       of 0xFF depending on the length of metadata) for the metadata
       corresponding to instructions it cannot process. An INT hop that
