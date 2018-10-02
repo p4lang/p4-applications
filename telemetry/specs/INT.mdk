@@ -861,10 +861,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
-  except if bit 6 and bit 14 is set. If bit 6 is set, the instruction requires 
-  8 bytes of metadata. If bit 14 is set, the instruction requires a domain specific
-  metadata of n bytes, n being a multiple of 4 bytes. Per-hop metadata length is 
-  set accordingly at the INT source.
+  except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
+  metadata length is set accordingly at the INT source.
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -1107,7 +1105,6 @@ port ID)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
-  - D = 0
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
   - Remaining hop count starts at 8, decremented by 1 at each hop
     that inserts INT metadata
