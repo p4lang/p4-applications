@@ -761,7 +761,7 @@ INT Metadata Header and Metadata Stack (Version = 1):
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 1|Rep|C|E|M|      Reserved     |  Hop ML |RemainingHopCnt|
+   |Ver = 1|Rep|C|E|M|     Reserved      |  Hop ML |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1092,7 +1092,7 @@ Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
 Detailed assumptions made for this example are as follows
 
 * INT source requests each INT hop to insert switch ID and queue occupancy
-(For the sake of illustration we only consider switch ID and queue 
+(For the sake of illustration we only consider switch ID and queue occupancy
 being inserted at each hop. Queue IDs are typically defined per port, hence
 in a real use-case queue occupancy is likely to be collected along with egress
 port ID)
