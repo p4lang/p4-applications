@@ -757,7 +757,7 @@ INT Metadata Header and Metadata Stack (Version = 1):
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 1|Rep|C|E|M|      Reserved     |  Hop ML |RemainingHopCnt|
+   |Ver = 1|Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1124,7 +1124,7 @@ port ID)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
-  - D = 0
+  - S = 0
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
   - Remaining hop count starts at 8, decremented by 1 at each hop
     that inserts INT metadata
@@ -1360,7 +1360,7 @@ header int_header_t {
     bit<1>  c;
     bit<1>  e;
     bit<1>  m;
-    bit<1>  d;
+    bit<1>  s;
     bit<6>  rsvd1;
     bit<3>  rsvd2;
     bit<5>  hop_metadata_len;
