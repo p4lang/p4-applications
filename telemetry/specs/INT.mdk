@@ -319,8 +319,9 @@ simply leaves those decisions to device vendors.
 INT packet observes in the device while being forwarded.
 
 * Buffer occupancy
-  - The build-up of traffic in the shared buffer (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded.
+  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
+INT packet observes in the device while being forwarded. Use case is when buffer is
+shared between multiple queues.
 
 # INT Headers
 
@@ -939,7 +940,7 @@ INT Metadata Header and Metadata Stack (Version = 2):
   different number of INT hops.
 
 * The fields in the INT metadata header are interpreted the following way:
-  - Ver (4b): INT metadata header version. Should be 1 for this version.
+  - Ver (4b): INT metadata header version. Should be 2 for this version.
   - Rep (2b): Replication requested. Support for this request is optional. If
 this value is non-zero, the device may replicate the INT packet. This is useful
 to explore all the valid physical forwarding paths when multi-path forwarding
