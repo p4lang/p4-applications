@@ -494,18 +494,116 @@ corruption at preceding hops.
 
 ## Header Location
 
-We describe three encapsulation formats in this specification, covering
+We describe four encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+1. "INT over IPv6" - INT Headers are carried in the IPv6 packets as Hop-by-Hop option
+or Destination option.
+2. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-2. *INT over VXLAN* - VXLAN generic protocol extensions
+3. *INT over VXLAN* - VXLAN generic protocol extensions
 (draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
 the VXLAN header and the encapsulated VXLAN payload.
-3. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
+4. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
+
+### INT over IPv6
+
+In case the traffic being monitored is not encapsulated by any virtualization
+header, INT over VXLAN or INT over Geneve is not helpful. Instead, 
+the INT metadata can be carried as Hop-by-Hop option or Destination
+option data. 
+
+IPv6 Hop-by-Hop and Destination Option format for carrying INT Header and 
+Metadata:
+
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|    Nxt HDR    |  HDR Ext Len  |  Option Type  |  Opt Data Len |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |	  |	
+|         Reserved (MBZ)        |  Variable Opt Data (INT Data) |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+.                Variable Opt Data (INT Data)                   .  T
+.                                                               .  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|  Variable Opt Data (INT Data) |         Padding               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+ 
+
+Nxt Hdr: 8-bit selector. Identifies the type of header immediately following the 
+Hop-by-Hop or Desitnation Options header. Uses the same values as the IPv4 Protocol
+Field [IANA-PN]
+
+HDR Ext Len: 8-bit unsigned integer. Length of the Hop-by-Hop or Desitnation
+Options header in 8-octet units, not including the first 8 octets.
+
+Option Type: 8-bit identifier of the type of option.
+
+  001xxxxxx 8-bit identifier of the type of option. xxxxxx=TBD_IANA_INT_HOP_BY_HOP_OPTION_IPV6.
+  001xxxxxx 8-bit identifier of the type of option. xxxxxx=TBD_IANA_INT_DESTINATION_OPTION_IPV6.
+
+Opt Data Len: 8-bit unsigned integer. Length of the Reserved and Option Data field of this 
+option, in octets.
+
+Reserved (MBZ): 16 bit field, must be filled with zeroes.
+Variable Opt Data: INT Header and Metadata, multiple of four octets in length.
+
+Padding: 16-bit pad. Needed to ensure that the variable length of the complete 
+Hop-by-Hop or Destination Options Header is an integer multiple of 8 octets long.
+
+
+The format of the IPv6 packet with Hop-by-Hop option is shown below:
+ 
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version| Traffic Class |            Flow Label                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Payload Length            |Nxt HDR = HbyH |   Hop Limit   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Source IPv6 Address                     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Destination IPv6 Address                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|  Nxt HDR = UL | HbyH Data Len |  Option Type  |  Opt Data Len |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |	
+|         Reserved (MBZ)        |  Variable Opt Data (INT Data) |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+.                           INT Data                            .  T
+.                                                               .  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|            INT Data           |         Padding               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+ 
+|               Payload + Padding (L4/ESP/….)                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+The format of the IPv6 packet with Destination option is shown below:
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version| Traffic Class |            Flow Label                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Payload Length            |Nxt HDR = Dest |   Hop Limit   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Source IPv6 Address                     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Destination IPv6 Address                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|  Nxt HDR = UL | Dest Data Len |  Option Type  |  Opt Data Len |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |	
+|         Reserved (MBZ)        |  Variable Opt Data (INT Data) |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+.                           INT Data                            .  T
+.                                                               .  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|            INT Data           |         Padding               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+ 
+|               Payload + Padding (L4/ESP/….)                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
 
 ### INT over TCP/UDP
 
