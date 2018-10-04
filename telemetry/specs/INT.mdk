@@ -531,10 +531,10 @@ Metadata:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+ 
 
 Nxt Hdr: 8-bit selector. Identifies the type of header immediately following the 
-Hop-by-Hop or Desitnation Options header. Uses the same values as the IPv4 Protocol
+Hop-by-Hop or Destination Options header. Uses the same values as the IPv4 Protocol
 Field [IANA-PN]
 
-HDR Ext Len: 8-bit unsigned integer. Length of the Hop-by-Hop or Desitnation
+HDR Ext Len: 8-bit unsigned integer. Length of the Hop-by-Hop or Destination
 Options header in 8-octet units, not including the first 8 octets.
 
 Option Type: 8-bit identifier of the type of option.
