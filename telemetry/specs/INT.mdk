@@ -320,8 +320,8 @@ INT packet observes in the device while being forwarded.
 
 * Buffer occupancy
   - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded. Use case is when buffer is
-shared between multiple queue.
+INT packet observes in the device while being forwarded. Use case is when the buffer 
+is shared between multiple queue.
 
 # INT Headers
 
