@@ -1621,7 +1621,7 @@ control EgressDeparserImpl(packet_out packet,
             ck.add({hdr.int_egress_port_tx_util.egress_port_tx_util});
         }
 
- 	if (hdr.int_b_occupancy.isValid()) {
+        if (hdr.int_b_occupancy.isValid()) {
             ck.add({
                     hdr.int_b_occupancy.b_occupancy
                 });
