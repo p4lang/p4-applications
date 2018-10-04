@@ -1672,7 +1672,7 @@ control EgressDeparserImpl(packet_out packet,
         packet.emit(hdr.int_egress_tstamp);
         packet.emit(hdr.int_level2_port_ids);
         packet.emit(hdr.int_egress_port_tx_util);
-	packet.emit(hdr.int_b_occupancy);
+        packet.emit(hdr.int_b_occupancy);
     }
 }
 
