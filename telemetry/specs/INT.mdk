@@ -757,9 +757,9 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
+   |  Ver  |Rep|C|E|M|S|    Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Instruction Bitmap       |            Reserved           |
+   |      Instruction Bitmap       |        Sink Indication        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -821,7 +821,11 @@ The original packet must have C bit set to 0.
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
-  - R: Reserved bits.
+  - S (1b): Sink Indication Present
+    - When set, this flag indicates that the Sink Indication field has been set
+      by the source and should be updated by transit switches.
+  - R: Reserved bits. Must be set to zero upon transmission and ignored upon
+      reception.
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
     to be inserted at each INT hop.
     - While the largest value of Per-hop Metadata Length is 31, an INT-capable
@@ -844,6 +848,24 @@ The original packet must have C bit set to 0.
     - When a packet is received with the Remaining Hop Count equal to 0, the
       device must ignore the INT instruction, pushing no new metadata onto
       the stack, and the device must set the E bit.
+  - Sink Indication (16b): This field is used by the source and transit switches
+      as an indication to the sink switch.
+    - While INT allows network state to be collected on a per packet basis,
+      for many packets the network state may not differ significantly from the
+      state collected in previous packets belonging to the same flow. The sink
+      may choose to report only a subset of packets, or it may choose to
+      aggregate the collected network state.
+    - The Sink Indication allows the source and transit switches to notify the
+      sink switch about the collected network state in a concise manner. This
+      lets the sink switch look at only one field when deciding how to process
+      the telemetry information from the packet, without having to scrape over
+      each field added at each hop, just to decide whether and how to process
+      the collected network state.
+    - The Sink Indication is initially set by the source switch, and is updated
+      by each transit switch, taking into account the received value as well as
+      the local state added by that transit switch.
+    - When the S bit is set to zero, the Sink Indication must be set to zero at
+      the source and ignored at transit and sink switches.
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
@@ -937,6 +959,7 @@ port ID)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
+  - S = 0 (Sink Indication is not used)
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
   - Remaining hop count starts at 8, decremented by 1 at each hop
     that inserts INT metadata
@@ -1003,7 +1026,7 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=1 | 0 |0|0|0|0|    Reserved     | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1058,7 +1081,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=1 | 0 |0|0|0|0|    Reserved     | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1115,7 +1138,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=1 | 0 |0|0|0|0|    Reserved     | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1172,7 +1195,8 @@ header int_header_t {
     bit<1>  c;
     bit<1>  e;
     bit<1>  m;
-    bit<7>  rsvd1;
+    bit<1>  s;
+    bit<6>  rsvd1;
     bit<3>  rsvd2;
     bit<5>  hop_metadata_len;
     bit<8>  remaining_hop_cnt;
@@ -1180,7 +1204,7 @@ header int_header_t {
     bit<4>  instruction_mask_0407;
     bit<4>  instruction_mask_0811;
     bit<4>  instruction_mask_1215;
-    bit<16> rsvd3;
+    bit<16> sink_indication;
 }
 
 /* INT meta-value headers - different header for each value type */
@@ -1497,14 +1521,14 @@ parser EgressParserImpl(packet_in packet,
         ck.subtract({
             hdr.int_header.ver, hdr.int_header.rep,
             hdr.int_header.c, hdr.int_header.e,
-            hdr.int_header.m, hdr.int_header.rsvd1,
+            hdr.int_header.m, hdr.int_header.s, hdr.int_header.rsvd1,
             hdr.int_header.rsvd2, hdr.int_header.hop_metadata_len,
             hdr.int_header.remaining_hop_cnt,
             hdr.int_header.instruction_mask_0003,
             hdr.int_header.instruction_mask_0407,
             hdr.int_header.instruction_mask_0811,
             hdr.int_header.instruction_mask_1215,
-            hdr.int_header.rsvd3
+            hdr.int_header.sink_indication
         });
         meta.fwd_metadata.checksum_state = ck.get_state();
         transition accept;
@@ -1559,14 +1583,14 @@ control EgressDeparserImpl(packet_out packet,
             ck.add({
                     hdr.int_header.ver, hdr.int_header.rep,
                     hdr.int_header.c, hdr.int_header.e,
-                    hdr.int_header.m, hdr.int_header.rsvd1,
+                    hdr.int_header.m, hdr.int_header.s, hdr.int_header.rsvd1,
                     hdr.int_header.rsvd2, hdr.int_header.hop_metadata_len,
                     hdr.int_header.remaining_hop_cnt,
                     hdr.int_header.instruction_mask_0003,
                     hdr.int_header.instruction_mask_0407,
                     hdr.int_header.instruction_mask_0811,
                     hdr.int_header.instruction_mask_1215,
-                    hdr.int_header.rsvd3
+                    hdr.int_header.sink_indication
                 });
         }
 
