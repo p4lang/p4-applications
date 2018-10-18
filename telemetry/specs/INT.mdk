@@ -859,7 +859,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit5: Egress timestamp
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
-  - bit8: Buffer Occupancy (32 bits)
+  - bit8: Buffer ID (8 bits) + Buffer Occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
@@ -2037,12 +2037,14 @@ INT packet was served.  The calculation mechanism of this value is device
 specific.
 * Queue drop count
   - Total # of packets dropped from the queue
-  
-* Buffer occupancy
-  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded. Use case is when buffer is
+
+
+The buffer occupancy INT packet observes in the device while being forwarded. Use case is when buffer is
 shared between multiple queue.
-* Instantaneous buffer occupance
+
+* Buffer id
+  - The id of the buffer the device used to serve the INT packet.
+* Instantaneous buffer occupancy
   - The instantaneous value (in bytes, or cells) of the buffer occupancy the INT
 packet has observed in the device while being forwarded.  The units used need
 not be consistent across an INT domain, but care must be taken to ensure that
