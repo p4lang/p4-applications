@@ -921,9 +921,9 @@ INT Metadata Header and Metadata Stack (Version = 2):
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Ver = 2|Rep|C|E|M|S|    Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Instruction Bitmap       |            Reserved           |
+   |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |       Domain Specific         |          DS Flags             |     
+   |            DS Flags           |            Reserved           |     
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
