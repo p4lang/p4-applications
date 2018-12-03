@@ -316,12 +316,16 @@ simply leaves those decisions to device vendors.
 
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded.
+INT packet observes in the device while being forwarded. The format of this 4-octet 
+metadata field is switch implementation specific and the YANG model shall describe 
+the format and units of this metadata field in the metadata stack.
 
 * Buffer occupancy
   - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
 INT packet observes in the device while being forwarded. Use case is when the buffer 
-is shared between multiple queue.
+is shared between multiple queue. The format of this 4-octet metadata field is switch 
+implementation specific and the YANG model shall describe the format and units of this metadata
+field in the metadata stack.
 
 # INT Headers
 
