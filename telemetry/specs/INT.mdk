@@ -317,15 +317,20 @@ simply leaves those decisions to device vendors.
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
 INT packet observes in the device while being forwarded. The format of this 4-octet 
-metadata field is switch implementation specific and the YANG model shall describe 
-the format and units of this metadata field in the metadata stack.
+metadata field is switch implementation specific and the metadata semantics YANG 
+model shall describe the format and units of this metadata field in the 
+metadata stack.
 
 * Buffer occupancy
   - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
 INT packet observes in the device while being forwarded. Use case is when the buffer 
-is shared between multiple queue. The format of this 4-octet metadata field is switch 
-implementation specific and the YANG model shall describe the format and units of this metadata
-field in the metadata stack.
+is shared between multiple queues. The format of this 4-octet metadata field is switch 
+implementation specific and the metadata semantics YANG model shall describe the format 
+and units of this metadata field in the metadata stack.
+
+Details of the metadata semantics YANG model can be accessed at the link below:
+
+https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
 
 # INT Headers
 
@@ -869,6 +874,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
   except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
   metadata length is set accordingly at the INT source.
+  
+  
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -2043,7 +2050,8 @@ specific.
   - Total # of packets dropped from the queue
 
 
-The buffer occupancy INT packet observes in the device while being forwarded. Use case is when buffer is
+The metadata below are introduced to capture the buffer occupancy INT packet 
+observes in the device while being forwarded. Use case is when buffer is
 shared between multiple queue.
 
 * Buffer id
@@ -2055,7 +2063,7 @@ not be consistent across an INT domain, but care must be taken to ensure that
 there is a known, consistent mapping of {device, buffer} values to their
 respective unit {bytes, cells}.
 * Average buffer occupancy
-  - The average value (in bytes or cells) of the buffer occupancy 
+  - The average value (in bytes or cells) of the buffer occupancy that
 the INT packet was observed. The calculation mechanism of this value is device
 specific.
 
