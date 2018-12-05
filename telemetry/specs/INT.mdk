@@ -919,11 +919,11 @@ INT Metadata Header and Metadata Stack (Version = 2):
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 2|Rep|C|E|M|S|    Reserved     | Hop ML  |RemainingHopCnt|
+   |Ver = 2|Rep|C|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |            DS Flags           |            Reserved           |     
+   |            DS Flags           |            DS Field           |     
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -985,12 +985,7 @@ The original packet must have C bit set to 0.
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
-  - S (1b): Sink Node Specific Flag
-    - This flag is a INT Sink node specific flag to allow for the Sink nodes in the 
-      domain to process the metadata stack in a domain specific way.This flag must 
-      be set if a device, source node or transit node, wants to indicate to the sink
-      a domain specific handling of the metadata.
-  - R (9b): Reserved bits.
+  - R (10b): Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata, including the 
     Domain Specific Metadata in 4-Byte words to be inserted at each INT hop.
     - While the largest value of Per-hop Baseline Metadata Length is 31, the largest
@@ -1035,8 +1030,9 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   reserved value for Domain Specific Metadata length as calculated by subtracting
   the Baseline Metadata Length from Hop_ML.
   If the Domain Specific ID matches the node's Domain ID then additional processing 
-  of the Domain Specific Flags is required and Domain Specific Metadata is appended
-  to the Baseline Metadata before Checksum Complement is inserted.
+  of the Domain Specific Flags and Domain Specific Field is required and 
+  Domain Specific Metadata is appended to the Baseline Metadata before 
+  Checksum Complement is inserted.
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
   except if bit 6 and bit 14 is set. If bit 6 is set, the instruction requires 
   8 bytes of metadata. If bit 14 is set, the instruction requires a domain specific
@@ -1083,11 +1079,9 @@ header.
   - The INT Source must set the following fields:
     - Ver, Rep, C, M, Per-hop Metadata Length, Remaining Hop Count,
       and Instruction Bitmap.
-    - S bit may set by the source node if the INT metadata added by the source node meets 
-      domain specific criteria for domain specific handling by the sink node.
     - INT Source must set all reserved bits to zero.
   - Intermediate devices can set the following fields:
-    - C, E, M, S, Remaining Hop Count
+    - C, E, M, Remaining Hop Count
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
