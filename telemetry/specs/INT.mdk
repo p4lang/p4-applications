@@ -242,13 +242,14 @@ As the INT specification evolves, we expect to add more metadata to this
 INT specification.
 
 The exact meaning of the following metadata (e.g., the unit of timestamp
-values, the precise definition of hop latency or queue occupancy) can vary from
-one device to another for any number of reasons, including the heterogeneity of
-device architecture, feature sets, resource limits, etc. Thus, defining the
-exact meaning of each metadata is beyond the scope of this document. Instead
-we assume that the semantics of metadata for each device model used in a
-deployment is communicated with the entities interpreting/analyzing the
-reported data in an out-of-band fashion.
+values, the precise definition of hop latency, queue occupancy or buffer 
+occupancy) can vary from one device to another for any number of reasons, 
+including the heterogeneity of device architecture, feature sets, 
+resource limits, etc. Thus, defining the exact meaning of each metadata 
+is beyond the scope of this document. Instead we assume that the semantics 
+of metadata for each device model used in a deployment is communicated 
+with the entities interpreting/analyzing the reported data in an out-of-band 
+fashion.
 
 ## Switch-level Information
 
@@ -766,7 +767,7 @@ hop-by-hop INT header must fit in a single Geneve option.
 In this section, we define the format for INT hop-by-hop metadata headers,
 and the metadata itself.
 
-INT Metadata Header and Metadata Stack (Version = 1):
+INT Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -868,9 +869,16 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit5: Egress timestamp
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
-  - bit8: Buffer ID (8 bits) + Buffer Occupancy (24 bits)
+  - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
+  Semantics of Queue occupancy and Buffer occupancy is the default semantics of
+  those two metadata. Additional semantics as needed for different implementation
+  can be defined in the metadata semantics YANG model. 
+  
+  Details of the metadata semantics YANG model can be accessed at the link below:
+  https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
+  
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
   except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
   metadata length is set accordingly at the INT source.
@@ -1237,7 +1245,8 @@ header int_egress_port_tx_util_t {
 }
 
 header int_b_occupancy_t {
-    bit<32> q_occupancy;
+    bit<8>  b_id;
+    bit<24> b_occupancy;
 }
 
 /* standard ethernet/ip/tcp headers */
@@ -1634,6 +1643,7 @@ control EgressDeparserImpl(packet_out packet,
 
         if (hdr.int_b_occupancy.isValid()) {
             ck.add({
+	            hdr.int_b_occupancy.b_id,
                     hdr.int_b_occupancy.b_occupancy
                 });
         }
