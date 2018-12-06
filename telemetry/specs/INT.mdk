@@ -872,6 +872,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
+  
   Semantics of Queue occupancy and Buffer occupancy is the default semantics of
   those two metadata. Additional semantics as needed for different implementation
   can be defined in the metadata semantics YANG model. 
