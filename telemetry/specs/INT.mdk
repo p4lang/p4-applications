@@ -1118,7 +1118,6 @@ port ID)
   - C = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
-  - S = 0
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
   - Remaining hop count starts at 8, decremented by 1 at each hop
     that inserts INT metadata
@@ -1354,8 +1353,7 @@ header int_header_t {
     bit<1>  c;
     bit<1>  e;
     bit<1>  m;
-    bit<1>  s;
-    bit<6>  rsvd1;
+    bit<7>  rsvd1;
     bit<3>  rsvd2;
     bit<5>  hop_metadata_len;
     bit<8>  remaining_hop_cnt;
