@@ -1064,7 +1064,7 @@ header.
     used for a 4B metadata in a subsequent minor version while still being
     backward compatible with this specification. However, an instruction bit
     marked reserved in this specification may be used for a 8B metadata only
-    in the next major version, breaking backward compatibility and requring all
+    in the next major version, breaking backward compatibility and requiring all
     INT switches to be upgraded to the new major version. For example
     a version 1.0 INT switch cannot operate alongside version 2.0 INT switches
     if a new 8B metadata is introduced in version 2.0, as the version 1.0
