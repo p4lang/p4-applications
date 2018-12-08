@@ -2,7 +2,7 @@ Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
 Title Footer: 2018-08-17
 Author : The P4.org Applications Working Group. Contributions from
-Affiliation : *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
+Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
 Pdf Latex: xelatex
 Document Class: [11pt]article
@@ -242,13 +242,14 @@ As the INT specification evolves, we expect to add more metadata to this
 INT specification.
 
 The exact meaning of the following metadata (e.g., the unit of timestamp
-values, the precise definition of hop latency or queue occupancy) can vary from
-one device to another for any number of reasons, including the heterogeneity of
-device architecture, feature sets, resource limits, etc. Thus, defining the
-exact meaning of each metadata is beyond the scope of this document. Instead
-we assume that the semantics of metadata for each device model used in a
-deployment is communicated with the entities interpreting/analyzing the
-reported data in an out-of-band fashion.
+values, the precise definition of hop latency, queue occupancy or buffer 
+occupancy) can vary from one device to another for any number of reasons, 
+including the heterogeneity of device architecture, feature sets, 
+resource limits, etc. Thus, defining the exact meaning of each metadata 
+is beyond the scope of this document. Instead we assume that the semantics 
+of metadata for each device model used in a deployment is communicated 
+with the entities interpreting/analyzing the reported data in an out-of-band 
+fashion.
 
 ## Switch-level Information
 
@@ -316,7 +317,21 @@ simply leaves those decisions to device vendors.
 
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded.
+INT packet observes in the device while being forwarded. The format of this 4-octet 
+metadata field is switch implementation specific and the metadata semantics YANG 
+model shall describe the format and units of this metadata field in the 
+metadata stack.
+
+* Buffer occupancy
+  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
+INT packet observes in the device while being forwarded. Use case is when the buffer 
+is shared between multiple queues. The format of this 4-octet metadata field is switch 
+implementation specific and the metadata semantics YANG model shall describe the format 
+and units of this metadata field in the metadata stack.
+
+Details of the metadata semantics YANG model can be accessed at the link below:
+
+https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
 
 # INT Headers
 
@@ -755,9 +770,9 @@ and the metadata itself.
 INT Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5     6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |  Ver  |Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
+   |Ver = 1|Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -821,7 +836,7 @@ The original packet must have C bit set to 0.
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
-  - R: Reserved bits.
+  - R (10b): Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
     to be inserted at each INT hop.
     - While the largest value of Per-hop Metadata Length is 31, an INT-capable
@@ -854,11 +869,22 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit5: Egress timestamp
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
+  - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
+  
+  Semantics of Queue occupancy and Buffer occupancy is the default semantics of
+  those two metadata. Additional semantics as needed for different implementation
+  can be defined in the metadata semantics YANG model. 
+  
+  Details of the metadata semantics YANG model can be accessed at the link below:
+  https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
+  
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
   except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
   metadata length is set accordingly at the INT source.
+  
+  
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -1219,6 +1245,11 @@ header int_egress_port_tx_util_t {
     bit<32> egress_port_tx_util;
 }
 
+header int_b_occupancy_t {
+    bit<8>  b_id;
+    bit<24> b_occupancy;
+}
+
 /* standard ethernet/ip/tcp headers */
 header ethernet_t {
     bit<48> dstAddr;
@@ -1279,6 +1310,7 @@ struct headers {
     int_egress_tstamp_t         int_egress_tstamp;
     int_level2_port_ids_t       int_level2_port_ids;
     int_egress_port_tx_util_t   int_egress_port_tx_util;
+    int_b_occupancy_t		int_b_occupancy;
 }
 
 struct empty_metadata_t {
@@ -1611,6 +1643,12 @@ control EgressDeparserImpl(packet_out packet,
             ck.add({hdr.int_egress_port_tx_util.egress_port_tx_util});
         }
 
+        if (hdr.int_b_occupancy.isValid()) {
+            ck.add({
+	            hdr.int_b_occupancy.b_id,
+                    hdr.int_b_occupancy.b_occupancy
+                });
+        }
         if (hdr.tcp.isValid()) {
             ck.add({
                 hdr.tcp.srcPort,
@@ -1657,6 +1695,7 @@ control EgressDeparserImpl(packet_out packet,
         packet.emit(hdr.int_egress_tstamp);
         packet.emit(hdr.int_level2_port_ids);
         packet.emit(hdr.int_egress_port_tx_util);
+        packet.emit(hdr.int_b_occupancy);
     }
 }
 
@@ -2021,6 +2060,24 @@ INT packet was served.  The calculation mechanism of this value is device
 specific.
 * Queue drop count
   - Total # of packets dropped from the queue
+
+
+The metadata below are introduced to capture the buffer occupancy INT packet 
+observes in the device while being forwarded. Use case is when buffer is
+shared between multiple queue.
+
+* Buffer id
+  - The id of the buffer the device used to serve the INT packet.
+* Instantaneous buffer occupancy
+  - The instantaneous value (in bytes, or cells) of the buffer occupancy the INT
+packet has observed in the device while being forwarded.  The units used need
+not be consistent across an INT domain, but care must be taken to ensure that
+there is a known, consistent mapping of {device, buffer} values to their
+respective unit {bytes, cells}.
+* Average buffer occupancy
+  - The average value (in bytes or cells) of the buffer occupancy that
+the INT packet was observed. The calculation mechanism of this value is device
+specific.
 
 ## Miscellaneous
 
