@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
-Title Footer: 2018-08-17
+Title Footer: 2019-01-18
 Author : The P4.org Applications Working Group. Contributions from
 Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
@@ -702,7 +702,7 @@ INT shim header for VXLAN GPE encapsulation:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Type     |    Reserved   |     Length    | Next-Protocol |
+   |      Type     |G|  Reserved   |     Length    | Next-Protocol |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |   Variable Option Data (INT Metadata Headers and Metadata)    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -711,6 +711,26 @@ INT shim header for VXLAN GPE encapsulation:
 * Type: This field indicates the type of INT Header following the shim header.
 Two Type values are used: one for the hop-by-hop header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
+* G: Indicates whether the original packet (before insertion of INT headers
+and metadata) used a VXLAN or VXLAN GPE encapsulation.
+  - 0: Original packet used VXLAN encapsulation.
+  - 1: Original packet used VXLAN GPE encapsulation.
+  - This may be used as a hint that helps the INT sink (when it is not the VTEP)
+    determine whether to progress the packet using a VXLAN GPE encapsulation,
+    or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
+    GPE) encapsulation.
+  - Note that this bit is only set by v1.1 implementations. In mixed
+    environments with both v1.0 and v1.1 nodes, the INT sink should ignore the
+    value of this bit and rely on local configuration to determine whether to
+    convert the VXLAN GPE encapsulation back to a VXLAN encapsulation.
+    Typically in such a mixed or v1.0 environment, INT would only be inserted
+    into one type of encapsulation but not the other, e.g. VXLAN but not
+    VXLAN GPE since the INT sink always converts VXLAN GPE packets with INT
+    back to the VXLAN encapsulation.
+  - In an all v1.1 environment, both packets received with VXLAN encapsulation
+    and VXLAN GPE encapsulation could have INT inserted, with the INT sink
+    relying on the value of this bit to determine whether to carry out the
+    conversion from VXLAN GPE back to VXLAN.
 * Length: This is the total length of the variable INT option data and the shim
 header in 4-byte words.
 
@@ -1056,7 +1076,7 @@ header and populate the INT metadata. Host2 acts as INT sink and VXLAN
 tunnel endpoint, removes INT and VXLAN headers.
 
 The packet headers received at Host 2 are as follows, starting with the VXLAN
-header (encapsulating ethernet, IP and UDP headers are not shown here):
+GPE header (encapsulating ethernet, IP and UDP headers are not shown here):
 
 VXLAN GPE Header:
 `
@@ -1070,12 +1090,12 @@ VXLAN GPE Header:
 `
 
 
-INT Shim Header for VXLAN-GPE, hop-by-hop INT type:
+INT Shim Header for VXLAN GPE, hop-by-hop INT type:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |     Type=1    |   Reserved    |  Length=9     | NextProto=0x3 |
+   |     Type=1    |1|  Reserved   |  Length=9     | NextProto=0x3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -2186,3 +2206,7 @@ assumptions in section [#sec-examples]
   - Fixed checksum subtract/add calls in the reference code
 * 2018-08-17
   - Fixed INT DSCP mask in the reference code
+* 2018-12-07
+  - Added instruction bit for buffer occupancy
+* 2019-01-18
+  - Added GPE bit to INT shim header for VXLAN GPE encapsulation
