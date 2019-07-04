@@ -150,13 +150,22 @@ p4grammar {
 
 Inband Network Telemetry (“INT”) is a framework designed to allow the
 collection and reporting of network state, by the data plane, without requiring
-intervention or work by the control plane.  In the INT architectural model,
-packets contain header fields that are interpreted as “telemetry
-instructions” by network devices.  These instructions tell an INT-capable
-device what state to collect and write into the packet as it traverses the
-network.  INT traffic sources  (applications, end-host networking stacks,
+intervention or work by the control plane in collecting and deliverying
+the state from the data plane. In the INT architectural model,
+packets may contain header fields that are interpreted as “telemetry
+instructions” by network devices.
+INT traffic sources  (applications, end-host networking stacks,
 hypervisors, NICs, send-side ToRs, etc.) can embed the instructions either in
-normal data packets or in special probe packets.  Similarly, INT traffic sinks
+normal data packets, cloned copies of the data packets or in special probe packets.
+Alternatively, the instructions may be
+programmed in the network data plane to match on particular network flows
+and to execute the instructions on the matched flows.
+
+These instructions tell an INT-capable device what state to collect.
+The network state information may be directly exported by the data plane
+to the telemetry monitoring system, or can be
+written into the packet as it traverses the
+network. When the information is embedded in the packets, INT traffic sinks
 retrieve (and optionally report) the collected results of these instructions,
 allowing the traffic sinks to monitor the exact data plane state that the
 packets “observed” while being forwarded.
@@ -199,26 +208,43 @@ of Little Minions paper [^Minions].
 
 # Terminology
 
+* **Monitoring System **: A system that collects telemetry data sent from
+different network devices. The monitoring system components may be physically
+distributed but logically centrallized.
+
 * **INT Header**: A packet header that carries INT information. There are two
 types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
 [#sec-int-header-types]).
 
 * **INT Packet**: A packet containing an INT Header.
 
-* **INT Instruction**: Instructions embedded in INT header, indicating which
-INT Metadata (defined below) to collect at each INT switch. The collected data
-is written into the INT Header.
+* **INT Instruction**: Instructions indicating which
+INT Metadata (defined below) to collect at each INT switch. The instructions
+are either configured at each INT-capable device's Flow Watchlist
+or written into the INT Header.
+
+* **Flow Watchlist**: A dataplane table that matches on packet headers
+and insert or apply INT instructions on each matched flow. A flow is a set of
+packets having the same values on the selected header fields.
 
 * **INT Source**: A trusted entity that creates and inserts INT Headers into the
-packets it sends.
+packets it sends. A Flow Watchlist is configured to select the flows to insert
+INT Headers.
 
 * **INT Sink**: A trusted entity that extracts the INT Headers and collects the
 path state contained in the INT Headers. The INT Sink is responsible for
 removing INT Headers so as to make INT transparent to upper layers. (Note that
-this does not preclude having nested or hierarchical INT domains.)
+this does not preclude having nested or hierarchical INT domains.) The INT Sink
+can decide to send the collected information to the monitoring system.
 
-* **INT Transit Hop**: A networking device that adds its own INT Metadata to an
-INT Packet by following the INT Instructions in the INT Header.
+* **INT Transit Hop**: A networking device that collects metadata from the data plane
+by following the INT Instructions. Based on the instruction, the data may be
+directly exported to the telemetry monitoring system
+or embedded into the INT Header of the packet.
+
+Note that one physical device
+may play multiple roles -- INT Source, Transit, Sink -- at the same time
+for the same or different flows.
 
 * **INT Metadata**: Information that an INT Source or an INT Transit Hop device
 inserts into the INT Header. Examples of metadata are described in section
@@ -231,6 +257,73 @@ an INT domain. The INT devices within the same domain must be configured in
 a consistent way to ensure interoperability between the devices.
 Operators of an INT domain should deploy INT Sink capability at domain edges to
 prevent INT information from leaking out of the domain.
+
+# INT Modes of Operation
+Since INT was first introduced at P4.org in 2015, a number of variations of INT
+have been evolved and discussed in IETF and industry communities.
+Also the term 'INT' has been used to broadly indicate data plane
+telemetry in general, not limited to the original classic INT where both instructions
+and metadata are embedeed in the data packets. Hence we define different modes of
+INT operations based on the following criteria:
+
+* whether INT is applied to real data packets vs synthetic (clone or probe) packets
+* the degree of packet modifications, i.e., what to embed in the packet
+
+## INT Applied to Real Data Packets
+
+In this category, the original data packets are monitored and may be modified
+to carry INT instructions and metadata.
+There are three variations based on the level of packet modifications.
+
+* **INT-XD** (eXport Data): network devices directly export metadata from
+their dataplane to the monitoring system based on the INT instructions configured
+at their Flow Watchlists. No packet Modification is needed. This mode was also
+known as "Postcard" mode.
+
+* **INT-MX** (eMbed instruct(X)ions): INT Source devices embed INT instructions in
+the packet header, each following Source/Transit device directly sends the metadata
+to the monitoring system by following the instructions embedded in the packets.
+INT Sink devices strip the instruction header before forwarding the packet to the
+receiver.
+Packet modification is limited to the instruction header, the packet size doesn't
+grow as the packet traverses more Transit devices.
+This mode is inspired by IOAM's "Immediate Export" [^IOAM].
+
+* **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
+written into the packets. This is the classic INT where 1) INT Source embeds
+instructions, 2) INT Source & Transit embed metadata, and 3) INT Sink strips
+the instructions and aggregated metadata out of the packet and
+(selectivly) send the data to the monitoring system.
+Packet is modified the most in this mode while it minimizes the overhead
+at the monitoring system to collate reports from multiple devices.
+
+## INT Applied to Synthetic Traffic
+
+In this category, INT Source devices generate synthetic traffic either by
+clonning the original data packets or by generating special probe packets.
+INT is applied to the synthetic traffic.
+
+The XD mode doesn't make sense for synthetic traffic. The MX mode is
+technically possible but doesn't add much value. Hence we define two MD modes
+as follows.
+
+* INT-CLONE-MD (eMbed Data): INT Source devices create extra traffic through
+cloning the original packets and then embedding the INT instructions and metadata into
+the clones only. INT Transit devices accumulate metadata only on the clones,
+INT Sink devices may send telemetry reports before discarding the clones.
+Compared to INT-MD, INT-CLONE-MD produces extra traffic
+and may not capture actual network state that the orignal packets experience, while
+this mode avoids direct modification on the original data packets.
+This mode is similar to IFA [^IFA].
+
+* INT-PROBE-MD (eMbed Data): similar to INT-CLONE-MD, but INT is applied to
+special probe packets instead of clone packets.
+
+**NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
+specified otherwise.**
+
+[^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-05](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-05), March 2019.
+[^IFA]: Inband Flow Analyzer, [draft-kumar-ippm-ifa-01](https://tools.ietf.org/html/draft-kumar-ippm-ifa-01), February 2019.
 
 # What To Monitor
 
@@ -336,6 +429,10 @@ https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-d
 # INT Headers
 
 This section specifies the format and location of INT Headers.
+INT Headers and their locations are relevant for
+INT-MX, INT-MD and INT-CLONE/PROBE-MD modes
+where the INT instructions (and metadata stack in case of MD modes)
+are written into the packets.
 
 ## INT Header Types
 
@@ -1378,3 +1475,6 @@ assumptions in section [#sec-examples]
   - Fixed checksum subtract/add calls in the reference code
 * 2018-08-17
   - Fixed INT DSCP mask in the reference code
+* 2019-07-03
+  - Add INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
+  - Remove the reference code
