@@ -266,8 +266,11 @@ telemetry in general, not limited to the original classic INT where both instruc
 and metadata are embedeed in the data packets. Hence we define different modes of
 INT operations based on the following criteria:
 
-* whether INT is applied to real data packets vs synthetic (clone or probe) packets
-* the degree of packet modifications, i.e., what to embed in the packet
+* whether INT is applied to real data packets vs synthetic (clone or probe) packets.
+* the degree of packet modifications, i.e., what to embed in the packets.
+
+Figure [fig-int-modes] summarizes the different modes of operation and we detail
+them in the following texts.
 
 ## INT Applied to Real Data Packets
 
@@ -319,11 +322,19 @@ This mode is similar to IFA [^IFA].
 * INT-PROBE-MD (eMbed Data): similar to INT-CLONE-MD, but INT is applied to
 special probe packets instead of clone packets.
 
+
+
 **NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
 specified otherwise.**
 
 [^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-05](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-05), March 2019.
 [^IFA]: Inband Flow Analyzer, [draft-kumar-ippm-ifa-01](https://tools.ietf.org/html/draft-kumar-ippm-ifa-01), February 2019.
+
+~ Figure { #fig-int-modes; caption: "Various modes of INT operation." }
+![int-modes]
+~
+[int-modes]: images/INT_modes.pdf { width: 5.5in }
+
 
 # What To Monitor
 
