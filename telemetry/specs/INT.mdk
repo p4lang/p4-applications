@@ -193,7 +193,7 @@ The INT architectural model is intended to be generic and enables a
 number of interesting high level applications, such as:
 
 * Network troubleshooting
-  - Traceroute, micro-burst detection, packet history (a.k.a. postcards)
+  - Traceroute, micro-burst detection, packet history (a.k.a. postcards[^Postcard])
 * Advanced congestion control
 * Advanced routing
   - Utilization-aware routing (For example, HULA[^HULA], CLOVE[^CLOVE])
@@ -205,6 +205,7 @@ of Little Minions paper [^Minions].
 [^HULA]: HULA: Scalable Load Balancing Using Programmable Data Planes, ACM SOSR 2016
 [^CLOVE]: CLOVE: Congestion-Aware Load Balancing at the Virtual Edge, ACM CoNEXT 2017
 [^Minions]: Millions of Little Minions: Using Packets for Low Latency Network Programming and Visibility, ACM SIGCOMM 2014.
+[^Postcard]: I Know What Your Packet Did Last Hop: Using Packet Histories to Troubleshoot Networks, USENIX NSDI 2014.
 
 # Terminology
 
@@ -282,7 +283,9 @@ There are three variations based on the level of packet modifications.
 * **INT-XD** (eXport Data): network devices directly export metadata from
 their dataplane to the monitoring system based on the INT instructions configured
 at their Flow Watchlists. No packet Modification is needed. This mode was also
-known as "Postcard" mode in the previous versions of Telemetry Report spec.
+known as "Postcard" mode in the previous versions of Telemetry Report spec,
+originally inspired by [^Postcard].
+
 
 * **INT-MX** (eMbed instruct(X)ions): INT Source devices embed INT instructions in
 the packet header, each following Source/Transit device directly sends the metadata
