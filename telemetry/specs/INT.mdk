@@ -228,8 +228,8 @@ and insert or apply INT instructions on each matched flow. A flow is a set of
 packets having the same values on the selected header fields.
 
 * **INT Source**: A trusted entity that creates and inserts INT Headers into the
-packets it sends. A Flow Watchlist is configured to select the flows to insert
-INT Headers.
+packets it sends. A Flow Watchlist is configured to select the flows in which
+INT headers are to be inserted.
 
 * **INT Sink**: A trusted entity that extracts the INT Headers and collects the
 path state contained in the INT Headers. The INT Sink is responsible for
@@ -244,7 +244,8 @@ or embedded into the INT Header of the packet.
 
 Note that one physical device
 may play multiple roles -- INT Source, Transit, Sink -- at the same time
-for the same or different flows.
+for the same or different flows. For example, an INT Source device may
+embed its own metadata into the packet, playing the roles of INT Transit as well.
 
 * **INT Metadata**: Information that an INT Source or an INT Transit Hop device
 inserts into the INT Header. Examples of metadata are described in section
@@ -269,8 +270,8 @@ INT operations based on the following criteria:
 * whether INT is applied to real data packets vs synthetic (clone or probe) packets.
 * the degree of packet modifications, i.e., what to embed in the packets.
 
-Figure [fig-int-modes] summarizes the different modes of operation and we detail
-them in the following texts.
+The different modes of operations are described in detail below, and summarized
+in Figure [fig-int-modes].
 
 ## INT Applied to Real Data Packets
 
@@ -281,7 +282,7 @@ There are three variations based on the level of packet modifications.
 * **INT-XD** (eXport Data): network devices directly export metadata from
 their dataplane to the monitoring system based on the INT instructions configured
 at their Flow Watchlists. No packet Modification is needed. This mode was also
-known as "Postcard" mode.
+known as "Postcard" mode in the previous versions of Telemetry Report spec.
 
 * **INT-MX** (eMbed instruct(X)ions): INT Source devices embed INT instructions in
 the packet header, each following Source/Transit device directly sends the metadata
@@ -441,7 +442,7 @@ https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-d
 
 This section specifies the format and location of INT Headers.
 INT Headers and their locations are relevant for
-INT-MX, INT-MD and INT-CLONE/PROBE-MD modes
+INT-MX, INT-MD, INT-CLONE-MD, and INT-PROBE-MD modes
 where the INT instructions (and metadata stack in case of MD modes)
 are written into the packets.
 
