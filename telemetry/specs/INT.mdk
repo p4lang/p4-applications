@@ -1,8 +1,10 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
-Title Footer: 2018-05-08
+Title Footer: 2018-08-17
 Author : The P4.org Applications Working Group. Contributions from
-Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems Inc., Dell, Intel, Marvell, Netronome, VMware*
+
+Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
+
 Heading depth: 5
 Pdf Latex: xelatex
 Document Class: [11pt]article
@@ -245,7 +247,8 @@ The exact meaning of the following metadata (e.g., the unit of timestamp
 values, the precise definition of hop latency, queue occupancy or buffer 
 occupancy) can vary from one device to another for any number of reasons, 
 including the heterogeneity of device architecture, feature sets, 
-resource limits, etc. Thus, defining theexact meaning of each metadata is 
+
+resource limits, etc. Thus, defining the exact meaning of each metadata is 
 beyond the scope of this document. Instead we assume that the semantics of 
 metadata for each device model used in a deployment is communicated with 
 the entities interpreting/analyzing thereported data in an out-of-band fashion.
@@ -316,7 +319,21 @@ simply leaves those decisions to device vendors.
 
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded.
+INT packet observes in the device while being forwarded. The format of this 4-octet 
+metadata field is switch implementation specific and the metadata semantics YANG 
+model shall describe the format and units of this metadata field in the 
+metadata stack.
+
+* Buffer occupancy
+  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
+INT packet observes in the device while being forwarded. Use case is when the buffer 
+is shared between multiple queues. The format of this 4-octet metadata field is switch 
+implementation specific and the metadata semantics YANG model shall describe the format 
+and units of this metadata field in the metadata stack.
+
+Details of the metadata semantics YANG model can be accessed at the link below:
+
+https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
 
 * Buffer occupancy
   - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
@@ -767,12 +784,13 @@ INT Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Ver = 2|Rep|C|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |            DS Flags           |            DS Field           |     
+   |         DS Instruction        |            DS Flags           |     
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -835,6 +853,7 @@ The original packet must have C bit set to 0.
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
   - R (10b): Reserved bits.
+
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata, including the 
     Domain Specific Metadata in 4-Byte words to be inserted at each INT hop.
     - The largest value of Per-hop Metadata Length for baseline and domain specific
@@ -868,7 +887,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
-  - bit14: Domain Specfic Instruction
+  - bit14: Domain Specfic Extension
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   
@@ -897,6 +916,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   8 bytes of metadata. If bit 14 is set, the instruction requires a domain specific
   metadata of n bytes, n being a multiple of 4 bytes. Per-hop metadata length is 
   set accordingly at the INT source.
+
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -1478,8 +1498,9 @@ control IngressDeparserImpl(packet_out packet,
     }
 }
 
-/* indicate INT at LSB of DSCP */
+/* indicate INT by DSCP value */
 const bit<6> DSCP_INT = 0x17;
+const bit<6> DSCP_MASK = 0x3F;
 
 parser EgressParserImpl(packet_in packet,
                         out headers hdr,
@@ -1518,7 +1539,7 @@ parser EgressParserImpl(packet_in packet,
         packet.extract(hdr.tcp);
         transition select(hdr.ipv4.dscp) {
 	    /* &&& is a mask operator in p4_16 */
-            DSCP_INT &&& DSCP_INT: parse_intl4_shim;
+            DSCP_INT &&& DSCP_MASK: parse_intl4_shim;
             default: accept;
         }
     }
@@ -1526,7 +1547,7 @@ parser EgressParserImpl(packet_in packet,
     state parse_udp {
         packet.extract(hdr.udp);
         transition select(hdr.ipv4.dscp) {
-            DSCP_INT &&& DSCP_INT: parse_intl4_shim;
+            DSCP_INT &&& DSCP_MASK: parse_intl4_shim;
             default: accept;
         }
     }
@@ -1669,6 +1690,12 @@ control EgressDeparserImpl(packet_out packet,
                 });
         }
 
+        if (hdr.int_b_occupancy.isValid()) {
+            ck.add({
+	            hdr.int_b_occupancy.b_id,
+                    hdr.int_b_occupancy.b_occupancy
+                });
+        }
         if (hdr.tcp.isValid()) {
             ck.add({
                 hdr.tcp.srcPort,
@@ -1715,7 +1742,7 @@ control EgressDeparserImpl(packet_out packet,
         packet.emit(hdr.int_egress_tstamp);
         packet.emit(hdr.int_level2_port_ids);
         packet.emit(hdr.int_egress_port_tx_util);
-	packet.emit(hdr.int_b_occupancy);
+	      packet.emit(hdr.int_b_occupancy);
     }
 }
 
@@ -2203,3 +2230,5 @@ assumptions in section [#sec-examples]
   - **Tag v1.0 spec**
 * 2018-05-08
   - Fixed checksum subtract/add calls in the reference code
+* 2018-08-17
+  - Fixed INT DSCP mask in the reference code
