@@ -2,7 +2,7 @@ Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
 Title Footer: 2018-08-17
 Author : The P4.org Applications Working Group. Contributions from
-Affiliation : *Alibaba, Arista, Barefoot Networks, Dell, Intel, Marvell, Netronome, VMware*
+Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
 Heading depth: 5
 Pdf Latex: xelatex
 Document Class: [11pt]article
@@ -150,13 +150,22 @@ p4grammar {
 
 Inband Network Telemetry (“INT”) is a framework designed to allow the
 collection and reporting of network state, by the data plane, without requiring
-intervention or work by the control plane.  In the INT architectural model,
-packets contain header fields that are interpreted as “telemetry
-instructions” by network devices.  These instructions tell an INT-capable
-device what state to collect and write into the packet as it traverses the
-network.  INT traffic sources  (applications, end-host networking stacks,
+intervention or work by the control plane in collecting and deliverying
+the state from the data plane. In the INT architectural model,
+packets may contain header fields that are interpreted as “telemetry
+instructions” by network devices.
+INT traffic sources  (applications, end-host networking stacks,
 hypervisors, NICs, send-side ToRs, etc.) can embed the instructions either in
-normal data packets or in special probe packets.  Similarly, INT traffic sinks
+normal data packets, cloned copies of the data packets or in special probe packets.
+Alternatively, the instructions may be
+programmed in the network data plane to match on particular network flows
+and to execute the instructions on the matched flows.
+
+These instructions tell an INT-capable device what state to collect.
+The network state information may be directly exported by the data plane
+to the telemetry monitoring system, or can be
+written into the packet as it traverses the
+network. When the information is embedded in the packets, INT traffic sinks
 retrieve (and optionally report) the collected results of these instructions,
 allowing the traffic sinks to monitor the exact data plane state that the
 packets “observed” while being forwarded.
@@ -184,7 +193,7 @@ The INT architectural model is intended to be generic and enables a
 number of interesting high level applications, such as:
 
 * Network troubleshooting
-  - Traceroute, micro-burst detection, packet history (a.k.a. postcards)
+  - Traceroute, micro-burst detection, packet history (a.k.a. postcards[^Postcard])
 * Advanced congestion control
 * Advanced routing
   - Utilization-aware routing (For example, HULA[^HULA], CLOVE[^CLOVE])
@@ -196,8 +205,13 @@ of Little Minions paper [^Minions].
 [^HULA]: HULA: Scalable Load Balancing Using Programmable Data Planes, ACM SOSR 2016
 [^CLOVE]: CLOVE: Congestion-Aware Load Balancing at the Virtual Edge, ACM CoNEXT 2017
 [^Minions]: Millions of Little Minions: Using Packets for Low Latency Network Programming and Visibility, ACM SIGCOMM 2014.
+[^Postcard]: I Know What Your Packet Did Last Hop: Using Packet Histories to Troubleshoot Networks, USENIX NSDI 2014.
 
 # Terminology
+
+* **Monitoring System **: A system that collects telemetry data sent from
+different network devices. The monitoring system components may be physically
+distributed but logically centrallized.
 
 * **INT Header**: A packet header that carries INT information. There are two
 types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
@@ -205,20 +219,34 @@ types of INT Headers -- *Hop-by-hop* and *Destination* (See Section
 
 * **INT Packet**: A packet containing an INT Header.
 
-* **INT Instruction**: Instructions embedded in INT header, indicating which
-INT Metadata (defined below) to collect at each INT switch. The collected data
-is written into the INT Header.
+* **INT Instruction**: Instructions indicating which
+INT Metadata (defined below) to collect at each INT switch. The instructions
+are either configured at each INT-capable device's Flow Watchlist
+or written into the INT Header.
+
+* **Flow Watchlist**: A dataplane table that matches on packet headers
+and insert or apply INT instructions on each matched flow. A flow is a set of
+packets having the same values on the selected header fields.
 
 * **INT Source**: A trusted entity that creates and inserts INT Headers into the
-packets it sends.
+packets it sends. A Flow Watchlist is configured to select the flows in which
+INT headers are to be inserted.
 
 * **INT Sink**: A trusted entity that extracts the INT Headers and collects the
 path state contained in the INT Headers. The INT Sink is responsible for
 removing INT Headers so as to make INT transparent to upper layers. (Note that
-this does not preclude having nested or hierarchical INT domains.)
+this does not preclude having nested or hierarchical INT domains.) The INT Sink
+can decide to send the collected information to the monitoring system.
 
-* **INT Transit Hop**: A networking device that adds its own INT Metadata to an
-INT Packet by following the INT Instructions in the INT Header.
+* **INT Transit Hop**: A networking device that collects metadata from the data plane
+by following the INT Instructions. Based on the instruction, the data may be
+directly exported to the telemetry monitoring system
+or embedded into the INT Header of the packet.
+
+Note that one physical device
+may play multiple roles -- INT Source, Transit, Sink -- at the same time
+for the same or different flows. For example, an INT Source device may
+embed its own metadata into the packet, playing the roles of INT Transit as well.
 
 * **INT Metadata**: Information that an INT Source or an INT Transit Hop device
 inserts into the INT Header. Examples of metadata are described in section
@@ -232,6 +260,86 @@ a consistent way to ensure interoperability between the devices.
 Operators of an INT domain should deploy INT Sink capability at domain edges to
 prevent INT information from leaking out of the domain.
 
+# INT Modes of Operation
+Since INT was first introduced at P4.org in 2015, a number of variations of INT
+have been evolved and discussed in IETF and industry communities.
+Also the term 'INT' has been used to broadly indicate data plane
+telemetry in general, not limited to the original classic INT where both instructions
+and metadata are embedeed in the data packets. Hence we define different modes of
+INT operations based on the following criteria:
+
+* whether INT is applied to real data packets vs synthetic (clone or probe) packets.
+* the degree of packet modifications, i.e., what to embed in the packets.
+
+The different modes of operations are described in detail below, and summarized
+in Figure [#fig-int-modes].
+
+## INT Applied to Real Data Packets
+
+In this category, the original data packets are monitored and may be modified
+to carry INT instructions and metadata.
+There are three variations based on the level of packet modifications.
+
+* **INT-XD** (eXport Data): network devices directly export metadata from
+their dataplane to the monitoring system based on the INT instructions configured
+at their Flow Watchlists. No packet Modification is needed. This mode was also
+known as "Postcard" mode in the previous versions of Telemetry Report spec,
+originally inspired by [^Postcard].
+
+
+* **INT-MX** (eMbed instruct(X)ions): INT Source devices embed INT instructions in
+the packet header, each following Source/Transit device directly sends the metadata
+to the monitoring system by following the instructions embedded in the packets.
+INT Sink devices strip the instruction header before forwarding the packet to the
+receiver.
+Packet modification is limited to the instruction header, the packet size doesn't
+grow as the packet traverses more Transit devices.
+This mode is inspired by IOAM's "Immediate Export" [^IOAM].
+
+* **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
+written into the packets. This is the classic INT where 1) INT Source embeds
+instructions, 2) INT Source & Transit embed metadata, and 3) INT Sink strips
+the instructions and aggregated metadata out of the packet and
+(selectivly) send the data to the monitoring system.
+Packet is modified the most in this mode while it minimizes the overhead
+at the monitoring system to collate reports from multiple devices.
+
+## INT Applied to Synthetic Traffic
+
+In this category, INT Source devices generate synthetic traffic either by
+clonning the original data packets or by generating special probe packets.
+INT is applied to the synthetic traffic.
+
+The XD mode doesn't make sense for synthetic traffic. The MX mode is
+technically possible but doesn't add much value. Hence we define two MD modes
+as follows.
+
+* INT-CLONE-MD (eMbed Data): INT Source devices create extra traffic through
+cloning the original packets and then embedding the INT instructions and metadata into
+the clones only. INT Transit devices accumulate metadata only on the clones,
+INT Sink devices may send telemetry reports before discarding the clones.
+Compared to INT-MD, INT-CLONE-MD produces extra traffic
+and may not capture actual network state that the orignal packets experience, while
+this mode avoids direct modification on the original data packets.
+This mode is similar to IFA [^IFA].
+
+* INT-PROBE-MD (eMbed Data): similar to INT-CLONE-MD, but INT is applied to
+special probe packets instead of clone packets.
+
+
+
+**NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
+specified otherwise.**
+
+[^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-05](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-05), March 2019.
+[^IFA]: Inband Flow Analyzer, [draft-kumar-ippm-ifa-01](https://tools.ietf.org/html/draft-kumar-ippm-ifa-01), February 2019.
+
+~ Figure { #fig-int-modes; caption: "Various modes of INT operation." }
+![int-modes]
+~
+[int-modes]: images/INT_modes.pdf { width: 5.5in }
+
+
 # What To Monitor
 
 In theory, one may be able to define and collect any switch-internal
@@ -242,13 +350,14 @@ As the INT specification evolves, we expect to add more metadata to this
 INT specification.
 
 The exact meaning of the following metadata (e.g., the unit of timestamp
-values, the precise definition of hop latency or queue occupancy) can vary from
-one device to another for any number of reasons, including the heterogeneity of
-device architecture, feature sets, resource limits, etc. Thus, defining the
-exact meaning of each metadata is beyond the scope of this document. Instead
-we assume that the semantics of metadata for each device model used in a
-deployment is communicated with the entities interpreting/analyzing the
-reported data in an out-of-band fashion.
+values, the precise definition of hop latency, queue occupancy or buffer 
+occupancy) can vary from one device to another for any number of reasons, 
+including the heterogeneity of device architecture, feature sets, 
+resource limits, etc. Thus, defining the exact meaning of each metadata 
+is beyond the scope of this document. Instead we assume that the semantics 
+of metadata for each device model used in a deployment is communicated 
+with the entities interpreting/analyzing the reported data in an out-of-band 
+fashion.
 
 ## Switch-level Information
 
@@ -316,11 +425,29 @@ simply leaves those decisions to device vendors.
 
 * Queue occupancy
   - The build-up of traffic in the queue (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded.
+INT packet observes in the device while being forwarded. The format of this 4-octet 
+metadata field is switch implementation specific and the metadata semantics YANG 
+model shall describe the format and units of this metadata field in the 
+metadata stack.
+
+* Buffer occupancy
+  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
+INT packet observes in the device while being forwarded. Use case is when the buffer 
+is shared between multiple queues. The format of this 4-octet metadata field is switch 
+implementation specific and the metadata semantics YANG model shall describe the format 
+and units of this metadata field in the metadata stack.
+
+Details of the metadata semantics YANG model can be accessed at the link below:
+
+https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
 
 # INT Headers
 
 This section specifies the format and location of INT Headers.
+INT Headers and their locations are relevant for
+INT-MX, INT-MD, INT-CLONE-MD, and INT-PROBE-MD modes
+where the INT instructions (and metadata stack in case of MD modes)
+are written into the packets.
 
 ## INT Header Types
 
@@ -757,7 +884,7 @@ INT Metadata Header and Metadata Stack (Version = 1):
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 1|Rep|C|E|M|      Reserved     |  Hop ML |RemainingHopCnt|
+   |Ver = 1|Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -854,11 +981,22 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit5: Egress timestamp
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
+  - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
+  
+  Semantics of Queue occupancy and Buffer occupancy is the default semantics of
+  those two metadata. Additional semantics as needed for different implementation
+  can be defined in the metadata semantics YANG model. 
+  
+  Details of the metadata semantics YANG model can be accessed at the link below:
+  https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
+  
   Each instruction requests 4 bytes of metadata to be inserted at each hop,
   except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
   metadata length is set accordingly at the INT source.
+  
+  
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
 header.
@@ -1133,801 +1271,6 @@ INT Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-
-# P4 program specification for INT Transit
-
-P4 program is an unambiguous description of a protocol. Here we present a P4
-program for an INT Transit device, describing the INT headers, the parsing
-operations for the headers, incremental checksum updates,
-and the match-action tables implementing the INT
-Transit behaviors. The program is written in P4_16 on [PSA
-architecture](https://github.com/p4lang/p4-spec/blob/master/p4-16/psa/psa.p4),
-and it assumes INT over TCP/UDP as the encapsulation protocol.
-
-**This program is work in progress.**
-
-```
-#include <core.p4>
-#include <psa.p4>
-
-/********************************************************************
- * headers and structs
- *******************************************************************/
-
-/* INT shim header for TCP/UDP */
-header intl4_shim_t {
-    bit<8>  int_type;
-    bit<8>  rsvd1;
-    bit<8>  len;
-    bit<6>  dscp;
-    bit<2>  rsvd2;
-}
-
-/* INT header */
-/* 16 instruction bits are defined in four 4b fields to allow concurrent
-   lookups of the bits without listing 2^16 combinations */
-header int_header_t {
-    bit<4>  ver;
-    bit<2>  rep;
-    bit<1>  c;
-    bit<1>  e;
-    bit<1>  m;
-    bit<7>  rsvd1;
-    bit<3>  rsvd2;
-    bit<5>  hop_metadata_len;
-    bit<8>  remaining_hop_cnt;
-    bit<4>  instruction_mask_0003;
-    bit<4>  instruction_mask_0407;
-    bit<4>  instruction_mask_0811;
-    bit<4>  instruction_mask_1215;
-    bit<16> rsvd3;
-}
-
-/* INT meta-value headers - different header for each value type */
-header int_switch_id_t {
-    bit<32> switch_id;
-}
-
-header int_level1_port_ids_t {
-    bit<16> ingress_port_id;
-    bit<16> egress_port_id;
-}
-
-header int_hop_latency_t {
-    bit<32> hop_latency;
-}
-
-header int_q_occupancy_t {
-    bit<8>  q_id;
-    bit<24> q_occupancy;
-}
-
-header int_ingress_tstamp_t {
-    bit<32> ingress_tstamp;
-}
-
-header int_egress_tstamp_t {
-    bit<32> egress_tstamp;
-}
-
-header int_level2_port_ids_t {
-    bit<32> ingress_port_id;
-    bit<32> egress_port_id;
-}
-
-header int_egress_port_tx_util_t {
-    bit<32> egress_port_tx_util;
-}
-
-/* standard ethernet/ip/tcp headers */
-header ethernet_t {
-    bit<48> dstAddr;
-    bit<48> srcAddr;
-    bit<16> etherType;
-}
-
-/* define diffserv field as DSCP(6b) + ECN(2b) */
-header ipv4_t {
-    bit<4>  version;
-    bit<4>  ihl;
-    bit<6>  dscp;
-    bit<2>  ecn;
-
-    bit<16> totalLen;
-    bit<16> identification;
-    bit<3>  flags;
-    bit<13> fragOffset;
-    bit<8>  ttl;
-    bit<8>  protocol;
-    bit<16> hdrChecksum;
-    bit<32> srcAddr;
-    bit<32> dstAddr;
-}
-
-header tcp_t {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<32> seqNo;
-    bit<32> ackNo;
-    bit<4>  dataOffset;
-    bit<4>  res;
-    bit<8>  flags;
-    bit<16> window;
-    bit<16> checksum;
-    bit<16> urgentPtr;
-}
-
-header udp_t {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<16> length_;
-    bit<16> checksum;
-}
-
-struct headers {
-    ethernet_t                  ethernet;
-    ipv4_t                      ipv4;
-    tcp_t                       tcp;
-    udp_t                       udp;
-    intl4_shim_t                intl4_shim;
-    int_header_t                int_header;
-    int_switch_id_t             int_switch_id;
-    int_level1_port_ids_t       int_level1_port_ids;
-    int_hop_latency_t           int_hop_latency;
-    int_q_occupancy_t           int_q_occupancy;
-    int_ingress_tstamp_t        int_ingress_tstamp;
-    int_egress_tstamp_t         int_egress_tstamp;
-    int_level2_port_ids_t       int_level2_port_ids;
-    int_egress_port_tx_util_t   int_egress_port_tx_util;
-}
-
-struct empty_metadata_t {
-}
-
-/* port id and timestamp types are defined in PSA */
-struct bridged_ingress_input_metadata_t {
-    PortId_t    ingress_port;
-    Timestamp_t ingress_timestamp;
-}
-
-/* switch internal variables for INT logic implementation */
-struct int_metadata_t {
-    bit<16>  insert_byte_cnt;
-    bit<8>   int_hdr_word_len;
-    bit<32>  switch_id;
-}
-
-struct fwd_metadata_t {
-    bit<16>  l3_mtu;
-    bit<16>  checksum_state;
-}
-
-struct metadata {
-    bridged_ingress_input_metadata_t bridged_istd;
-    int_metadata_t                   int_metadata;
-    fwd_metadata_t                   fwd_metadata;
-}
-
-error {
-    BadIPv4HeaderChecksum
-}
-
-/********************************************************************
- * parsers and deparsers
- *******************************************************************/
-
-/* Checksum verification and update of ipv4, tcp and udp are inspired by
- * p4lang/p4-spec/blob/master/p4-16/psa/examples/psa-example-incremental-checksum2.p4
- * For checksum related details, check the notes in the PSA example.
- */
-
-/* This reference code processes INT Transit at egress where all
- * switch metadata become available.
- * Ingress doesn't need to parse or deparse INT.
- */
-
-parser IngressParserImpl(packet_in packet,
-                         out headers hdr,
-                         inout metadata meta,
-                         in psa_ingress_parser_input_metadata_t istd,
-                         in empty_metadata_t resubmit_meta,
-                         in empty_metadata_t recirculate_meta)
-{
-    InternetChecksum() ck;
-
-    state start {
-        transition parse_ethernet;
-    }
-    state parse_ethernet {
-        packet.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
-            16w0x800: parse_ipv4;
-            default: accept;
-        }
-    }
-    state parse_ipv4 {
-        packet.extract(hdr.ipv4);
-
-        ck.clear();
-        ck.add({
-                hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.dscp, hdr.ipv4.ecn,
-                hdr.ipv4.totalLen,
-                hdr.ipv4.identification,
-                hdr.ipv4.flags, hdr.ipv4.fragOffset,
-                hdr.ipv4.ttl, hdr.ipv4.protocol,
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr
-            });
-        verify(hdr.ipv4.hdrChecksum == ck.get(), error.BadIPv4HeaderChecksum);
-
-        // For incremental update of TCP/UDP checksums
-        // subtract out the contributions of the IPv4 'pseudo header'
-        // fields that the P4 program might change
-        ck.clear();
-        ck.subtract({
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr,
-                hdr.ipv4.totalLen
-            });
-
-        transition select(hdr.ipv4.protocol) {
-            6 : parse_tcp;
-            17: parse_udp;
-            default: accept;
-        }
-    }
-
-    state parse_tcp {
-        packet.extract(hdr.tcp);
-        ck.subtract({
-                hdr.tcp.srcPort,
-                hdr.tcp.dstPort,
-                hdr.tcp.seqNo,
-                hdr.tcp.ackNo,
-                hdr.tcp.dataOffset, hdr.tcp.res,
-                hdr.tcp.flags,
-                hdr.tcp.window,
-                hdr.tcp.checksum,
-                hdr.tcp.urgentPtr
-            });
-        meta.fwd_metadata.checksum_state = ck.get_state();
-        transition accept;
-    }
-
-    state parse_udp {
-        packet.extract(hdr.udp);
-        ck.subtract({
-                hdr.udp.srcPort,
-                hdr.udp.dstPort,
-                hdr.udp.length_,
-                hdr.udp.checksum
-            });
-        meta.fwd_metadata.checksum_state = ck.get_state();
-        transition accept;
-    }
-}
-
-control IngressDeparserImpl(packet_out packet,
-    out empty_metadata_t clone_i2e_meta,
-    out empty_metadata_t resubmit_meta,
-                            out metadata normal_meta,
-                            inout headers hdr,
-                            in metadata meta,
-                            in psa_ingress_output_metadata_t istd)
-{
-    apply {
-        if (psa_normal(istd)) {
-            normal_meta = meta;
-        }
-        packet.emit(hdr.ethernet);
-        packet.emit(hdr.ipv4);
-        packet.emit(hdr.tcp);
-        packet.emit(hdr.udp);
-    }
-}
-
-/* indicate INT by DSCP value */
-const bit<6> DSCP_INT = 0x17;
-const bit<6> DSCP_MASK = 0x3F;
-
-parser EgressParserImpl(packet_in packet,
-                        out headers hdr,
-                        inout metadata meta,
-                        in psa_egress_parser_input_metadata_t istd,
-                        in metadata normal_meta,
-                        in empty_metadata_t clone_i2e_meta,
-                        in empty_metadata_t clone_e2e_meta)
-{
-    InternetChecksum() ck;
-
-    state start {
-        transition copy_normal_meta;
-    }
-    state copy_normal_meta {
-        meta = normal_meta;
-        transition parse_ethernet;
-    }
-    state parse_ethernet {
-        packet.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
-            16w0x800: parse_ipv4;
-            default: accept;
-        }
-    }
-    state parse_ipv4 {
-        packet.extract(hdr.ipv4);
-        transition select(hdr.ipv4.protocol) {
-            6 : parse_tcp;
-            17: parse_udp;
-            default: accept;
-        }
-    }
-
-    state parse_tcp {
-        packet.extract(hdr.tcp);
-        transition select(hdr.ipv4.dscp) {
-	    /* &&& is a mask operator in p4_16 */
-            DSCP_INT &&& DSCP_MASK: parse_intl4_shim;
-            default: accept;
-        }
-    }
-
-    state parse_udp {
-        packet.extract(hdr.udp);
-        transition select(hdr.ipv4.dscp) {
-            DSCP_INT &&& DSCP_MASK: parse_intl4_shim;
-            default: accept;
-        }
-    }
-
-    /* INT headers are parsed first time at egress,
-     * hence subtract INT header fields from checksum
-     * for incremental update
-     */
-    state parse_intl4_shim {
-        packet.extract(hdr.intl4_shim);
-        ck.subtract({
-                hdr.intl4_shim.int_type, hdr.intl4_shim.rsvd1,
-                hdr.intl4_shim.len, hdr.intl4_shim.dscp, hdr.intl4_shim.rsvd2
-            });
-        transition parse_int_header;
-    }
-    state parse_int_header {
-        packet.extract(hdr.int_header);
-        ck.subtract({
-            hdr.int_header.ver, hdr.int_header.rep,
-            hdr.int_header.c, hdr.int_header.e,
-            hdr.int_header.m, hdr.int_header.rsvd1,
-            hdr.int_header.rsvd2, hdr.int_header.hop_metadata_len,
-            hdr.int_header.remaining_hop_cnt,
-            hdr.int_header.instruction_mask_0003,
-            hdr.int_header.instruction_mask_0407,
-            hdr.int_header.instruction_mask_0811,
-            hdr.int_header.instruction_mask_1215,
-            hdr.int_header.rsvd3
-        });
-        meta.fwd_metadata.checksum_state = ck.get_state();
-        transition accept;
-    }
-}
-
-control EgressDeparserImpl(packet_out packet,
-                           out empty_metadata_t clone_e2e_meta,
-                           out empty_metadata_t recirculate_meta,
-                           inout headers hdr,
-                           in metadata meta,
-                           in psa_egress_output_metadata_t istd,
-                           in psa_egress_deparser_input_metadata_t edstd)
-{
-    InternetChecksum() ck;
-    apply {
-        if (hdr.ipv4.isValid()) {
-            ck.clear();
-            ck.add({
-                hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.dscp, hdr.ipv4.ecn,
-                hdr.ipv4.totalLen,
-                hdr.ipv4.identification,
-                hdr.ipv4.flags, hdr.ipv4.fragOffset,
-                hdr.ipv4.ttl, hdr.ipv4.protocol,
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr
-            });
-            hdr.ipv4.hdrChecksum = ck.get();
-        }
-
-        // TCP/UDP header incremental checksum update.
-        // Restore the checksum state partially calculated in the parser.
-        ck.set_state(meta.fwd_metadata.checksum_state);
-
-        // Add back relevant header fields, including new INT metadata
-        if (hdr.ipv4.isValid()) {
-            ck.add({
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr,
-                hdr.ipv4.totalLen
-            });
-        }
-
-        if (hdr.intl4_shim.isValid()) {
-            ck.add({
-                    hdr.intl4_shim.int_type, hdr.intl4_shim.rsvd1,
-                    hdr.intl4_shim.len, hdr.intl4_shim.dscp, hdr.intl4_shim.rsvd2
-                });
-        }
-
-        if (hdr.int_header.isValid()) {
-            ck.add({
-                    hdr.int_header.ver, hdr.int_header.rep,
-                    hdr.int_header.c, hdr.int_header.e,
-                    hdr.int_header.m, hdr.int_header.rsvd1,
-                    hdr.int_header.rsvd2, hdr.int_header.hop_metadata_len,
-                    hdr.int_header.remaining_hop_cnt,
-                    hdr.int_header.instruction_mask_0003,
-                    hdr.int_header.instruction_mask_0407,
-                    hdr.int_header.instruction_mask_0811,
-                    hdr.int_header.instruction_mask_1215,
-                    hdr.int_header.rsvd3
-                });
-        }
-
-        if (hdr.int_switch_id.isValid()) {
-            ck.add({hdr.int_switch_id.switch_id});
-        }
-
-        if (hdr.int_level1_port_ids.isValid()) {
-            ck.add({
-                    hdr.int_level1_port_ids.ingress_port_id,
-                    hdr.int_level1_port_ids.egress_port_id
-                });
-        }
-
-        if (hdr.int_hop_latency.isValid()) {
-            ck.add({hdr.int_hop_latency.hop_latency});
-        }
-
-        if (hdr.int_q_occupancy.isValid()) {
-            ck.add({
-                    hdr.int_q_occupancy.q_id,
-                    hdr.int_q_occupancy.q_occupancy
-                });
-        }
-
-        if (hdr.int_ingress_tstamp.isValid()) {
-            ck.add({hdr.int_ingress_tstamp.ingress_tstamp});
-        }
-
-        if (hdr.int_egress_tstamp.isValid()) {
-            ck.add({hdr.int_egress_tstamp.egress_tstamp});
-        }
-
-        if (hdr.int_level2_port_ids.isValid()) {
-            ck.add({
-                    hdr.int_level2_port_ids.ingress_port_id,
-                    hdr.int_level2_port_ids.egress_port_id
-                });
-        }
-
-        if (hdr.int_egress_port_tx_util.isValid()) {
-            ck.add({hdr.int_egress_port_tx_util.egress_port_tx_util});
-        }
-
-        if (hdr.tcp.isValid()) {
-            ck.add({
-                hdr.tcp.srcPort,
-                hdr.tcp.dstPort,
-                hdr.tcp.seqNo,
-                hdr.tcp.ackNo,
-                hdr.tcp.dataOffset, hdr.tcp.res,
-                hdr.tcp.flags,
-                hdr.tcp.window,
-                hdr.tcp.urgentPtr
-            });
-            hdr.tcp.checksum = ck.get();
-        }
-
-        if (hdr.udp.isValid()) {
-            ck.add({
-                hdr.udp.srcPort,
-                hdr.udp.dstPort,
-                hdr.udp.length_
-            });
-
-            // If hdr.udp.checksum was received as 0, we
-            // should never change it.  If the calculated checksum is
-            // 0, send all 1 bits instead.
-            if (hdr.udp.checksum != 0) {
-                hdr.udp.checksum = ck.get();
-                if (hdr.udp.checksum == 0) {
-                    hdr.udp.checksum = 0xffff;
-                }
-            }
-        }
-
-        packet.emit(hdr.ethernet);
-        packet.emit(hdr.ipv4);
-        packet.emit(hdr.tcp);
-        packet.emit(hdr.udp);
-        packet.emit(hdr.intl4_shim);
-        packet.emit(hdr.int_header);
-        packet.emit(hdr.int_switch_id);
-        packet.emit(hdr.int_level1_port_ids);
-        packet.emit(hdr.int_hop_latency);
-        packet.emit(hdr.int_q_occupancy);
-        packet.emit(hdr.int_ingress_tstamp);
-        packet.emit(hdr.int_egress_tstamp);
-        packet.emit(hdr.int_level2_port_ids);
-        packet.emit(hdr.int_egress_port_tx_util);
-    }
-}
-
-control Int_metadata_insert(inout headers hdr,
-        in int_metadata_t int_metadata,
-        in bridged_ingress_input_metadata_t bridged_istd,
-        in psa_egress_input_metadata_t istd)
-{
-    /* this reference implementation covers only INT instructions 0-3 */
-    action int_set_header_0() {
-        hdr.int_switch_id.setValid();
-        hdr.int_switch_id.switch_id = int_metadata.switch_id;
-    }
-    action int_set_header_1() {
-        hdr.int_level1_port_ids.setValid();
-        hdr.int_level1_port_ids.ingress_port_id =
-            (bit<16>) bridged_istd.ingress_port;
-        hdr.int_level1_port_ids.egress_port_id =
-            (bit<16>) istd.egress_port;
-    }
-    action int_set_header_2() {
-        hdr.int_hop_latency.setValid();
-        hdr.int_hop_latency.hop_latency =
-            (bit<32>) (istd.egress_timestamp - bridged_istd.ingress_timestamp);
-    }
-    action int_set_header_3() {
-        hdr.int_q_occupancy.setValid();
-        // PSA doesn't support queueing metadata yet
-        hdr.int_q_occupancy.q_id = 0xFF;
-        hdr.int_q_occupancy.q_occupancy = 0xFFFFFF;
-    }
-
-    /* action functions for bits 0-3 combinations, 0 is msb, 3 is lsb */
-    /* Each bit set indicates that corresponding INT header should be added */
-    action int_set_header_0003_i0() {
-    }
-    action int_set_header_0003_i1() {
-        int_set_header_3();
-    }
-    action int_set_header_0003_i2() {
-        int_set_header_2();
-    }
-    action int_set_header_0003_i3() {
-        int_set_header_3();
-        int_set_header_2();
-    }
-    action int_set_header_0003_i4() {
-        int_set_header_1();
-    }
-    action int_set_header_0003_i5() {
-        int_set_header_3();
-        int_set_header_1();
-    }
-    action int_set_header_0003_i6() {
-        int_set_header_2();
-        int_set_header_1();
-    }
-    action int_set_header_0003_i7() {
-        int_set_header_3();
-        int_set_header_2();
-        int_set_header_1();
-    }
-    action int_set_header_0003_i8() {
-        int_set_header_0();
-    }
-    action int_set_header_0003_i9() {
-        int_set_header_3();
-        int_set_header_0();
-    }
-    action int_set_header_0003_i10() {
-        int_set_header_2();
-        int_set_header_0();
-    }
-    action int_set_header_0003_i11() {
-        int_set_header_3();
-        int_set_header_2();
-        int_set_header_0();
-    }
-    action int_set_header_0003_i12() {
-        int_set_header_1();
-        int_set_header_0();
-    }
-    action int_set_header_0003_i13() {
-        int_set_header_3();
-        int_set_header_1();
-        int_set_header_0();
-    }
-    action int_set_header_0003_i14() {
-        int_set_header_2();
-        int_set_header_1();
-        int_set_header_0();
-    }
-    action int_set_header_0003_i15() {
-        int_set_header_3();
-        int_set_header_2();
-        int_set_header_1();
-        int_set_header_0();
-    }
-
-    /* Table to process instruction bits 0-3 */
-    table int_inst_0003 {
-        key = {
-            hdr.int_header.instruction_mask_0003 : exact;
-        }
-        actions = {
-            int_set_header_0003_i0;
-            int_set_header_0003_i1;
-            int_set_header_0003_i2;
-            int_set_header_0003_i3;
-            int_set_header_0003_i4;
-            int_set_header_0003_i5;
-            int_set_header_0003_i6;
-            int_set_header_0003_i7;
-            int_set_header_0003_i8;
-            int_set_header_0003_i9;
-            int_set_header_0003_i10;
-            int_set_header_0003_i11;
-            int_set_header_0003_i12;
-            int_set_header_0003_i13;
-            int_set_header_0003_i14;
-            int_set_header_0003_i15;
-        }
-        default_action = int_set_header_0003_i0();
-        size = 16;
-    }
-
-    /* Similar tables can be defined for instruction bits 4-7 and bits 8-11 */
-    /* e.g., int_inst_0407, int_inst_0811 */
-
-    apply{
-        int_inst_0003.apply();
-        // int_inst_0407.apply();
-        // int_inst_0811.apply();
-    }
-}
-
-control Int_outer_encap(inout headers hdr,
-        in int_metadata_t int_metadata)
-{
-    action int_update_ipv4() {
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen + int_metadata.insert_byte_cnt;
-    }
-    action int_update_shim() {
-        hdr.intl4_shim.len = hdr.intl4_shim.len + int_metadata.int_hdr_word_len;
-    }
-
-    apply{
-        if (hdr.ipv4.isValid()) {
-            int_update_ipv4();
-        }
-        /* Add: UDP length update if you support UDP */
-
-        if (hdr.intl4_shim.isValid()) {
-            int_update_shim();
-        }
-    }
-}
-
-control Int_ingress(inout metadata meta,
-                    in psa_ingress_input_metadata_t  istd)
-{
-    action bridge_ingress_istd() {
-        meta.bridged_istd.ingress_port = istd.ingress_port;
-        meta.bridged_istd.ingress_timestamp = istd.ingress_timestamp;
-    }
-    apply{
-        bridge_ingress_istd();
-    }
-}
-
-control Int_egress(inout headers hdr,
-                   inout metadata meta,
-                   in    psa_egress_input_metadata_t  istd)
-{
-    action int_hop_cnt_exceeded() {
-        hdr.int_header.e = 1;
-    }
-    action int_mtu_limit_hit() {
-        hdr.int_header.m = 1;
-    }
-    action int_hop_cnt_decrement() {
-        hdr.int_header.remaining_hop_cnt =
-            hdr.int_header.remaining_hop_cnt - 1;
-    }
-    action int_transit(bit<32> switch_id, bit<16> l3_mtu) {
-        meta.int_metadata.switch_id = switch_id;
-        meta.int_metadata.insert_byte_cnt =
-            (bit<16>) hdr.int_header.hop_metadata_len << 2;
-        meta.int_metadata.int_hdr_word_len =
-            (bit<8>) hdr.int_header.hop_metadata_len;
-        meta.fwd_metadata.l3_mtu = l3_mtu;
-    }
-    table int_prep {
-        key = {}
-        actions = {int_transit;}
-    }
-
-    Int_metadata_insert() int_metadata_insert;
-    Int_outer_encap() int_outer_encap;
-
-    apply{
-        if(hdr.int_header.isValid()) {
-            if(hdr.int_header.remaining_hop_cnt == 0
-                    || hdr.int_header.e == 1) {
-                int_hop_cnt_exceeded();
-            } else if ((hdr.int_header.instruction_mask_0811 ++
-                        hdr.int_header.instruction_mask_1215)
-                        & 8w0xFE == 0 ) {
-                /* v1.0 spec allows two options for handling unsupported
-                 * INT instructions. This exmple code skips the entire
-                 * hop if any unsupported bit (bit 8 to 14 in v1.0 spec) is set.
-                 */
-                int_prep.apply();
-                // check MTU limit
-                if (hdr.ipv4.totalLen + meta.int_metadata.insert_byte_cnt
-                        > meta.fwd_metadata.l3_mtu) {
-                    int_mtu_limit_hit();
-                } else {
-                    int_hop_cnt_decrement();
-                    int_metadata_insert.apply(hdr,
-                                              meta.int_metadata,
-                                              meta.bridged_istd,
-                                              istd);
-                    int_outer_encap.apply(hdr, meta.int_metadata);
-                }
-            }
-        }
-    }
-}
-
-control ingress(inout headers hdr,
-                inout metadata meta,
-                in    psa_ingress_input_metadata_t  istd,
-                inout psa_ingress_output_metadata_t ostd)
-{
-    Int_ingress() int_ingress;
-    apply{
-        /* ... ingress code here ... */
-        int_ingress.apply(meta, istd);
-        /* ... ingress code here ... */
-    }
-}
-
-control egress(inout headers hdr,
-               inout metadata meta,
-               in    psa_egress_input_metadata_t  istd,
-               inout psa_egress_output_metadata_t ostd)
-{
-    Int_egress() int_egress;
-    apply{
-        /* ... egress code here ... */
-        int_egress.apply(hdr, meta, istd);
-        /* ... egress code here ... */
-    }
-}
-
-IngressPipeline(IngressParserImpl(),
-                ingress(),
-                IngressDeparserImpl()) ip;
-
-EgressPipeline(EgressParserImpl(),
-               egress(),
-               EgressDeparserImpl()) ep;
-
-PSA_SWITCH(ip, ep) main;
-
-
-/* End of Code snippet */
-
-```
-
 # Appendix: An extensive (but not exhaustive) set of Metadata {@h1:"A"}
 
 Here we list a set of examplary metadata that future versions of the spec may
@@ -2021,6 +1364,24 @@ INT packet was served.  The calculation mechanism of this value is device
 specific.
 * Queue drop count
   - Total # of packets dropped from the queue
+
+
+The metadata below are introduced to capture the buffer occupancy INT packet 
+observes in the device while being forwarded. Use case is when buffer is
+shared between multiple queue.
+
+* Buffer id
+  - The id of the buffer the device used to serve the INT packet.
+* Instantaneous buffer occupancy
+  - The instantaneous value (in bytes, or cells) of the buffer occupancy the INT
+packet has observed in the device while being forwarded.  The units used need
+not be consistent across an INT domain, but care must be taken to ensure that
+there is a known, consistent mapping of {device, buffer} values to their
+respective unit {bytes, cells}.
+* Average buffer occupancy
+  - The average value (in bytes or cells) of the buffer occupancy that
+the INT packet was observed. The calculation mechanism of this value is device
+specific.
 
 ## Miscellaneous
 
@@ -2129,3 +1490,6 @@ assumptions in section [#sec-examples]
   - Fixed checksum subtract/add calls in the reference code
 * 2018-08-17
   - Fixed INT DSCP mask in the reference code
+* 2019-07-03
+  - Add INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
+  - Remove the reference code
