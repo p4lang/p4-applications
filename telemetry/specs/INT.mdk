@@ -272,7 +272,7 @@ INT operations based on the following criteria:
 * the degree of packet modifications, i.e., what to embed in the packets.
 
 The different modes of operations are described in detail below, and summarized
-in Figure [fig-int-modes].
+in Figure [#fig-int-modes].
 
 ## INT Applied to Real Data Packets
 
