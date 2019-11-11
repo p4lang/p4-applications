@@ -32,8 +32,10 @@ If you use PRECISION in your research, please cite:
 	@article{Ran2018,
 		author = {Ran Ben Basat and Xiaoqi Chen and Gil Einziger and Ori Rottenstreich},
 		title = {Efficient Measurement on Programmable Switches Using Probabilistic Recirculation},
-		journal = {arXiv preprint arXiv:1808.03412},
-		year = {2018}
+		booktitle={2018 IEEE 26th International Conference on Network Protocols (ICNP)},
+		pages={313--323},
+		year={2018},
+		organization={IEEE}
 	}
 
 
