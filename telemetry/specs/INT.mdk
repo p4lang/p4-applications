@@ -494,18 +494,189 @@ corruption at preceding hops.
 
 ## Header Location
 
-We describe three encapsulation formats in this specification, covering
+We describe five encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+1. *INT over IPv4/GRE* - INT Headers are carried in the GRE encapsulation.
+2. *INT over IPv6* - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
+3. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-2. *INT over VXLAN* - VXLAN generic protocol extensions
+4. *INT over VXLAN* - VXLAN generic protocol extensions
 (draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
 the VXLAN header and the encapsulated VXLAN payload.
-3. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
+5. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
+
+### INT over IPv4/GRE
+
+In case the traffic being monitored is not encapsulated by any virtualization
+header, INT over VXLAN or INT over Geneve is not helpful. Instead, 
+the INT metadata can be carried in the GRE header. 
+
+IPv4 GRE Option format for carrying INT Header and 
+Metadata:
+
+When the INT data fields are included within an encapsulation that identifies 
+the next protocol using an EtherType (e.g., GRE or Geneve) the presence of 
+INT data fields are identified with TBD_INT. When this EtherType is used, 
+an additional INT header is also included. This header indicates the type 
+of INT data that follows, and the next protocol that follows the INT data.
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|    INT-Type   |     Length    |        Next Protocol          |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
+|                                                               |  N
+|  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
+|                                                               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+
+The format of the GRE Header in INT-MD (Embedded Metadata) is shown below:
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+| INT Type - MD | INT HDR Len   |          Next Protocol        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|  |
+|Ver = 2|Rep|C|E|M|     Reserved      | Hop ML  |Rmainig HopCnt |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+|      Instruction Bitmap       |     Domain Specific ID        |  T
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|          DS Flags             |         DS Instruction        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|          Variable Option Data (INT Metadata Metadata]         |  |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|                     Payload Original Packet                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+The format of the IPv4 packet with GRE Header for INT-MD (Embedded Metadata) 
+is shown below:
+
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Ethernet Header                         |  
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|Version|   HL  |Type of Service|          Total Length         |  O
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
+|        Identification         |Flags|      Fragment Offset    |  T	
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|  Time to Live | Protocol 0x2F |         Header Checksum       |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                     (Outer) Source Address                    |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
+|                  (Outer) Destination Address                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+| INT Type - MD | INT HDR Len   |       Protocol = 0x800        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
+|                                                               |  N
+|  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
+|                                                               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |             
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+The format of the GRE Header in INT-MX (Direct Export) is shown below:
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+| INT Type - MX | INT HDR Len   |          Next Protocol        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|  |
+|Ver = 2|Rep|C|E|M|     Reserved      | Hop ML  |Rmainig HopCnt |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+|      Instruction Bitmap       |     Domain Specific ID        |  T
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|          DS Flags             |         DS Instruction        |  |                    
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|                     Payload Original Packet                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+The format of the IPv4 packet with GRE Header for INT-MX (Direct Export) 
+is shown below:
+
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Ethernet Header                         |  
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|Version|   HL  |Type of Service|          Total Length         |  O
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
+|        Identification         |Flags|      Fragment Offset    |  T	
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|  Time to Live | Protocol 0x2F |         Header Checksum       |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                     (Outer) Source Address                    |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
+|                  (Outer) Destination Address                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+| INT Type - MX | INT HDR Len   |       Protocol = 0x800        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|Ver = 2|Rep|C|E|M|     Reserved      | Hop ML  |Rmainig HopCnt |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+|      Instruction Bitmap       |     Domain Specific ID        |  T
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|          DS Flags             |         DS Instruction        |  | 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |             
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 
 ### INT over TCP/UDP
 
