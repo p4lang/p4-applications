@@ -494,18 +494,18 @@ corruption at preceding hops.
 
 ## Header Location
 
-We describe four encapsulation formats in this specification, covering
+We describe five encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. "INT over IPv6" - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
-2. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+2. "INT over IPv6" - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
+3. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-3. *INT over VXLAN* - VXLAN generic protocol extensions
+4. *INT over VXLAN* - VXLAN generic protocol extensions
 (draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
 the VXLAN header and the encapsulated VXLAN payload.
-4. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
+5. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
 
 ### INT over IPv6
