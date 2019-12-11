@@ -999,7 +999,6 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
-  - bit14: Domain Specfic Extension
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   
