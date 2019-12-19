@@ -674,10 +674,19 @@ use cases:
     computed as a hash of the original outer 5 tuple. The second option
     is recommended to provide ECMP/LAG load-balancing logic with the same degree of
     entropy of the original data packet.
-The INT shim header has a field NPT (Next Protocol Type) that indicates
+In both cases, traffic with INT headers is likely to be hashed
+to a different path in the network as the UDP
+destination port (INT_TBD) becomes part of the outer 5 tuple used by ECMP.
+
+The INT shim header for UDP has a field NPT (Next Protocol Type) that indicates
 which of the two cases are applied to a given INT packet. In case a new UDP
-header was inserted, the INT sink will strip the UDP header off from the
-packet together with the rest of INT headers.
+header was inserted,
+INT sink must copy the original IP protocol number from the shim header
+to IP header, and strip the newly added UDP header with all INT headers.
+For the case that original packet already had UDP header, INT sink must
+restore the original destination port number from the shim header
+into the UDP header and strip the INT headers.
+
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
 INT header into a packet, it sets the reserved value in the field or sets the
@@ -759,18 +768,17 @@ the destination header type (See Section [#sec-int-header-types]).
 port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
 this field must be zero. When UDP destination port is INT_TBD, this field may have
 one of the two values:
-** one (1) indicates that UDP payload is followed by the INT stack, and
-the last two bytes of the shim header carries the UDP destination port.
+** one (1) indicates that the original UDP payload is followed by the INT stack,
+and the last two bytes of the shim header carries the original UDP destination port.
 ** two (2) indicates that another (the original) L4 header is followed by
-the INT stack, and the last byte of the shim heaer carries the IP protocol
+the INT stack, and the last byte of the shim header carries the IP protocol
 value for the L4 layer.
 * Length (8b): This is the total length of INT metadata header, INT stack and the
 shim header in 4-byte words. A non-INT device may read this field
 and skip over INT headers.
-
 * UDP port, IP proto, or DSCP: If IP DSCP is used to indicate INT, this field optionally
-stores the original DSCP value. For non-zero values of NPT, UDP port number or IP
-protocol number is carried accordingly. Otherwise, this field
+stores the original DSCP value. For non-zero values of NPT, either UDP port number
+or IP protocol number is carried accordingly. Otherwise, this field
 is reserved.
 
 The other bits in the shim header are reserved (R) for future use.
