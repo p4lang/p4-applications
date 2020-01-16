@@ -436,14 +436,16 @@ particular deployment.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                        Sequence Number                        |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |                       Ingress Timestamp                       |
+      |               Ingress Timestamp (first 4 bytes)               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |               Ingress Timestamp (last 4 bytes)                |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                  Variable Optional Metadata                   |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
 * Ver: Version
-  : This specification defines **version 1**.
+  : This specification defines **version 2**.
 
 * Length
   : Indicates the length of the telemetry report header in multiples of
@@ -462,7 +464,7 @@ particular deployment.
     * bit 0 (MSB): Ingress port id (16 bits) + Egress port id (16 bits)
     * bit 1: Hop latency
     * bit 2: Queue ID (8 bits) + Queue occupancy (24 bits)
-    * bit 3: Egress Timestamp
+    * bit 3: Egress Timestamp (8 bytes)
     * bit 4: Queue ID (8 bits) + Drop reason (8 bits) + Padding (16 bits)
     * bit 5: Egress port tx utilization
 
@@ -652,6 +654,8 @@ specification.
   - Editorial changes for v1.0
 * 2018-04-20
   - **Tag v1.0 spec**
+* 2020-01-05
+  - Increased ingress and egress timestamp size to 8 bytes
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
 

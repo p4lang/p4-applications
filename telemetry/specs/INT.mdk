@@ -977,8 +977,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit1: Level 1 Ingress Port ID (16 bits) + Egress Port ID (16 bits)
   - bit2: Hop latency
   - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
-  - bit4: Ingress timestamp
-  - bit5: Egress timestamp
+  - bit4: Ingress timestamp (8 bytes)
+  - bit5: Egress timestamp (8 bytes)
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
@@ -992,9 +992,9 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   Details of the metadata semantics YANG model can be accessed at the link below:
   https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
   
-  Each instruction requests 4 bytes of metadata to be inserted at each hop,
-  except if bit 6 is set, which requires 8 bytes of metadata. Per-hop
-  metadata length is set accordingly at the INT source.
+  Each instruction bit that is set requests 4 bytes of metadata to be inserted
+  at each hop, except bits 4, 5, and 6, which require 8 bytes of metadata.
+  Per-hop metadata length is set accordingly at the INT source.
   
   
 * Each INT Transit device along the path that supports INT adds its own metadata
@@ -1493,3 +1493,5 @@ assumptions in section [#sec-examples]
 * 2019-07-03
   - Add INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
   - Remove the reference code
+* 2020-01-15
+  - Increased ingress and egress timestamp size to 8 bytes
