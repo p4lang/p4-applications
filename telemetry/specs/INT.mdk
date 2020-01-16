@@ -517,21 +517,15 @@ the INT metadata can be carried as Hop-by-Hop option data.
 IPv6 Hop-by-Hop Option format for carrying INT Header and 
 Metadata:
 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Option Type   | Opt Data Len  |        Reserved (MBZ)         |  
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|  Nxt HDR = UL | HbyH Ext Len  |           Padding|(MBZ)       |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
-| Option Type   | Opt Data Len  |        Reserved (MBZ)         |  N
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  T
 |   Variable Option Data (INT Metadata Headers and Metadata)    |  |
+.                                                               .  |
+.                                                               .  N
+.                                                               .  T
+.                                                               .  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-
-
-Nxt Hdr: 8-bit selector. Identifies the type of header immediately following the 
-Hop-by-Hop or Destination Options header. Uses the same values as the IPv4 Protocol
-Field [IANA-PN]
-
-HDR Ext Len: 8-bit unsigned integer. Length of the Hop-by-Hop or Destination
-Options header in 8-octet units, not including the first 8 octets.
 
 Option Type: 8-bit identifier of the type of option.
 
@@ -541,14 +535,18 @@ Option Type: 8-bit identifier of the type of option.
 Opt Data Len: 8-bit unsigned integer. Length of the Reserved and Option Data field of this 
 option, in octets.
 
-Reserved (MBZ): 16 bit field, must be filled with zeroes.
-Variable Opt Data: INT Header and Metadata, multiple of four octets in length.
+Reserved (MBZ): 16 bit field, must be filled with zeroes upon transmission and ignored upon reception.
 
-Padding: 16-bit pad. Needed to ensure that the variable length of the complete 
-Hop-by-Hop or Destination Options Header is an integer multiple of 8 octets long.
+Variable Option Data: Variable length field. INT Header and Metadata, multiple of four octets in length.
 
+The INT IPv6 options defined here have alignment requirements. Specifically, they require 4n alignment.
+This ensures that 4 octet fields of the INT metadata, such as Hop Latency, are aligned at a multiple-of-4
+offset from the start of the Hop-by-Hop Options header. In INT v2.0, there are 4-octets in the
+shim header and 12-octets in the fixed header. In order to maintain IPv6 extension header 8-octet 
+alignment...padding requirement TBD
 
-The format of the IPv6 packet with Hop-by-Hop option is shown below:
+The format of the IPv6 packet with Hop-by-Hop option where there are no other Hop-by-Hop option 
+present is shown below:
 
 0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -570,7 +568,8 @@ The format of the IPv6 packet with Hop-by-Hop option is shown below:
 |               Payload + Padding (L4/ESP/….)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-The format of the IPv6 packet with Hop-by-Hop option for INT-MD (Embedded Metadata) is shown below:
+The format of the IPv6 packet with Hop-by-Hop option for INT-MD (Embedded Metadata) where 
+there are no other Hop-by-Hop option present is shown below:
  
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -600,7 +599,8 @@ The format of the IPv6 packet with Hop-by-Hop option for INT-MD (Embedded Metada
 |                     Payload Original Packet                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-The format of the IPv6 packet with Hop-by-Hop option for INT-MX (Direct Export) is shown below:
+The format of the IPv6 packet with Hop-by-Hop option for INT-MX (Direct Export) where 
+there are no other Hop-by-Hop option present is shown below:
 
 0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
