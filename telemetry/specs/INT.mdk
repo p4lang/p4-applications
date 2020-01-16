@@ -830,7 +830,8 @@ and metadata) used a VXLAN or VXLAN GPE encapsulation.
     determine whether to progress the packet using a VXLAN GPE encapsulation,
     or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
     GPE) encapsulation.
-* Length: This is the total length of the variable INT option data, not including the shim header, in 4-byte words.
+* Length: This is the total length of the variable INT option data,
+  not including the shim header, in 4-byte words.
 
 ### INT over Geneve
 
