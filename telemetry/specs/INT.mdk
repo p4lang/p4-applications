@@ -326,8 +326,6 @@ This mode is similar to IFA [^IFA].
 * INT-PROBE-MD (eMbed Data): similar to INT-CLONE-MD, but INT is applied to
 special probe packets instead of clone packets.
 
-
-
 **NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
 specified otherwise.**
 
@@ -672,8 +670,15 @@ cases:
     calculated using a hash of fields from the original packet, for example
     the original outer 5 tuple or the original L4 header fields.
     This is to enable a level of entropy for ECMP/LAG load balancing logic.
+    It is recommended that the checksum in the new UDP header be set to zero.
+    For IPv6 packets, this falls under the case of tunnel protocols,
+    which are allowed to use zero UDP checksums as specified in RFC 6936.
+    The existing L4 header will typically include a checksum computed
+    using the encapsulating IPv6 header fields, thus offering some protection
+    against IPv6 header corruption.
+
 In both cases, traffic with INT headers is likely to be hashed
-to a different path in the network as the UDP
+to a different path in the network as the new UDP
 destination port (INT_TBD) becomes part of the outer 5 tuple used by ECMP.
 
 The INT shim header for UDP has a field NPT (Next Protocol Type) that indicates
@@ -711,6 +716,7 @@ is optional.
     into the INT domain and there is no INT header present, it must ensure that
     the DSCP/Traffic class value is not the same as any of the values used
     to indicate INT.
+
 * Probe Marker fields: If DSCP field or values cannot be reserved for INT,
 probe marker option could be used. A specific 64-bit value can be inserted
 after the TCP/UDP header to indicate the existence of INT after TCP/UDP.
@@ -776,11 +782,11 @@ shim header in 4-byte words. A non-INT device may read this field
 and skip over INT headers.
 * UDP port, IP proto, or DSCP (16b): The contents of this field differ depending on the
 value of NPT.
-** NPT 0: The first byte and the last two bits of this 16b field are reserved,
+** NPT=0: The first byte and the last two bits of this 16b field are reserved,
 set to zero upon transmission and ignored upon reception. The first 6 bits of
 the second byte may optionally carry the original DSCP value.
-** NPT 1: The original UDP destination port value.
-** NPT 2: The first byte is reserved, set to zero upon transmission and ignored
+** NPT=1: The original UDP destination port value.
+** NPT=2: The first byte is reserved, set to zero upon transmission and ignored
 upon reception. The second byte carries the original IP protocol value.
 
 The other bits in the shim header are reserved (R) for future use,
@@ -1172,12 +1178,12 @@ TCP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-INT Shim Header for TCP/UDP, INT type is hop-by-hop:
+INT Shim Header for TCP/UDP, INT type is INT-MD, NPT is zero:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |     Type=1    |   Reserved    |  Length = 8   |   DSCP    |R R|
+   |Type=1 | 0 |R R|   Length=7    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
