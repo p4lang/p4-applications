@@ -767,7 +767,7 @@ encapsulated and assumes that the payload following the VXLAN header is an
 Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe proposes
 changes to the VXLAN header to allow for multi-protocol encapsulation. We use
 this VXLAN generic protocol extension draft and propose a new
-“Next-protocol” type for INT.
+“Next Protocol” field value for INT.
 
 
 VXLAN GPE Header:
@@ -790,20 +790,19 @@ Next Protocol Values:
 * 0x02: IPv6
 * 0x03: Ethernet
 * 0x04: Network Service Header (NSH)
-* 0x05: MPLS
-* 0x06: GBP
-* 0x07: vBNG
-* 0x08: In-band Network Telemetry Header (This value has not been reserved by
+* 0x05 to 0x7F: Unassigned
+* 0x80 to 0xFF: Unassigned (shim headers)
+* 0x80: In-band Network Telemetry Header (This value has not been reserved by
 VXLAN GPE specification yet, and is hence subject to change)
 
 When there is one INT Header in the VXLAN GPE stack, the VXLAN GPE header for
-the INT Header will have a next-protocol value other than INT Header indicating
+the INT Header will have a next protocol value other than INT Header indicating
 the payload following the INT Header - typically Ethernet. If there are multiple
 INT Headers in the VXLAN GPE stack (for example if both hop-by-hop and
 destination type INT headers are being carried), then all VXLAN GPE shim
-headers for the INT Headers other than the last one will carry 0x08 for
-their next-protocol values, and the VXLAN GPE header for the last INT Header
-will carry next-protocol value of the original VXLAN payload (e.g., Ethernet).
+headers for the INT Headers other than the last one will carry 0x80 for
+their next protocol values, and the VXLAN GPE header for the last INT Header
+will carry next protocol value of the original VXLAN payload (e.g., Ethernet).
 
 To embed a variable-length data (i.e., INT metadata) in the VXLAN GPE stack, we
 introduce the INT shim header. This header follows each VXLAN GPE header for
@@ -814,7 +813,7 @@ INT shim header for VXLAN GPE encapsulation:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Type     |G|  Reserved   |     Length    | Next-Protocol |
+   |      Type     |    Length     |G|  Reserved   | Next Protocol |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |   Variable Option Data (INT Metadata Headers and Metadata)    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -831,8 +830,7 @@ and metadata) used a VXLAN or VXLAN GPE encapsulation.
     determine whether to progress the packet using a VXLAN GPE encapsulation,
     or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
     GPE) encapsulation.
-* Length: This is the total length of the variable INT option data and the shim
-header in 4-byte words.
+* Length: This is the total length of the variable INT option data, not including the shim header, in 4-byte words.
 
 ### INT over Geneve
 
@@ -1183,7 +1181,7 @@ VXLAN GPE Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x8 |
+   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x80|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1195,7 +1193,7 @@ INT Shim Header for VXLAN GPE, hop-by-hop INT type:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |     Type=1    |0|  Reserved   |  Length=9     | NextProto=0x3 |
+   |     Type=1    |   Length=8    |0|  Reserved   | NextProto=0x3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1505,3 +1503,7 @@ assumptions in section [#sec-examples]
   - Remove the reference code
 * 2020-01-15
   - Added GPE bit to INT shim header for VXLAN GPE encapsulation
+  - Swapped the length and reserved bytes in the shim header to align with
+    other INT transports, and to align with the VXLAN GPE shim header format.
+  - Changed the length definition in the shim header to exclude the shim
+    header itself, in order to align with the VXLAN GPE shim header format.
