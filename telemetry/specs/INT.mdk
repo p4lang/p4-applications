@@ -1,4 +1,4 @@
-Title         : In-band Network Telemetry (INT) Dataplane Specification
+Title         : In-band Network Telemetry (INT) Version 2.0 Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
 Title Footer: 2018-08-17
 Author : The P4.org Applications Working Group. Contributions from
@@ -362,7 +362,7 @@ including the heterogeneity of device architecture, feature sets,
 resource limits, etc. Thus, defining the exact meaning of each metadata is 
 beyond the scope of this document. Instead we assume that the semantics of 
 metadata for each device model used in a deployment is communicated with 
-the entities interpreting/analyzing thereported data in an out-of-band fashion.
+the entities interpreting/analyzing the reported data in an out-of-band fashion.
 
 ## Switch-level Information
 
@@ -442,10 +442,16 @@ is shared between multiple queues. The format of this 4-octet metadata field is 
 implementation specific and the metadata semantics YANG model shall describe the format 
 and units of this metadata field in the metadata stack.
 
+* Buffer occupancy
+  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
+INT packet observes in the device while being forwarded. Use case is when the buffer 
+is shared between multiple queues. The format of this 4-octet metadata field is switch 
+implementation specific and the metadata semantics YANG model shall describe the format 
+and units of this metadata field in the metadata stack.
+
 Details of the metadata semantics YANG model can be accessed at the link below:
 
 https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
-
 
 # INT Headers
 
@@ -895,7 +901,7 @@ INT Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |         DS Instruction        |            DS Flags           |     
+   |         DS Instruction        |            DS Flags           |          
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -959,6 +965,7 @@ INT Metadata Header and Metadata Stack:
     - When a packet is received with the Remaining Hop Count equal to 0, the
       device must ignore the INT instruction, pushing no new metadata onto
       the stack, and the device must set the E bit.
+      
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
@@ -981,26 +988,28 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   Details of the metadata semantics YANG model can be accessed at the link below:
   https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
   
-  Bits 0 - 13 are Baseline INT Instructions and Bit 14, Domain Specific Instruction.
-  Domain Specific Instruction is an instruction that requires additional 
-  processing of Domain Specific ID, Domain Specific Flags (DS Flags) and 
-  Domain Specific Field (DS Instructions Field). If the Domain Specific ID doesn't match the 
-  Domain ID of the node, then the transit node is required to pad the node's 
-  INT Metadata stack with the special all-ones reserved value for Domain Specific 
+  Bits 0 - 14 are Baseline INT Instructions.
+  
+  * Domain Specific ID (16b): the unique ID of the INT Domain.
+  
+  * DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
+  Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
+  processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
+  If the Domain Specific ID doesn't match the Domain ID of the node, then the transit node is 
+  required to pad the node's INT Metadata stack with the special all-ones reserved value for Domain Specific 
   Metadata length as calculated by subtracting the Baseline Metadata Length from Hop_ML.
   
   If the Domain Specific ID matches the node's Domain ID then additional processing 
-  of the Domain Specific Flags and Domain Specific Field is required and 
+  of the Domain Specific Flags and Domain Specific Instruction is required and 
   Domain Specific Metadata is appended to the Baseline Metadata before 
-  Checksum Complement is inserted.
+  Checksum Complement is inserted. The amount of Domain Specific Metadata
+  must be a multiple of 4 bytes, determined from the Domain Specific
+  Instruction and consistent with the per-hop metadata length (Hop ML) set by the
+  INT source.
 
-  Each instruction requests 4 bytes of metadata to be inserted at each hop,
-  except if bit 6 and bit 14 is set. If bit 6 is set, the instruction requires 
-  8 bytes of metadata. If bit 14 is set, the instruction requires a domain specific
-  metadata of n bytes, n being a multiple of 4 bytes. Per-hop metadata length is 
-  set accordingly at the INT source. Note an INT-Transit node for Non-Domain-Specific
-  mdoe may add Domain-specific INT fields (ID, Instructions and flags) serving in effect
-  as the INT-Source for the Domain-specific functionality. 
+  Each instruction requests 4 bytes of metadata to be inserted at each hop, except if bit 6. 
+  If bit 6 is set, the instruction requires 8 bytes of metadata. Per-hop metadata length is 
+  set accordingly at the INT source.
 
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
