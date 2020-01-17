@@ -777,9 +777,10 @@ and the last two bytes of the shim header carry the original UDP destination por
 ** two (2) indicates that another (the original) L4 header follows
 the INT stack, and the last byte of the shim header carries the IP protocol
 value for the L4 layer.
-* Length (8b): This is the total length of INT metadata header, INT stack and the
-shim header in 4-byte words. A non-INT device may read this field
-and skip over INT headers.
+* Length (8b): This is the total length of INT metadata header and INT stack
+in 4-byte words. The length of the shim header (1 word) is NOT counted
+since INT version 2.0.
+A non-INT device may read this field and skip over INT headers.
 * UDP port, IP proto, or DSCP (16b): The contents of this field differ depending on the
 value of NPT.
 ** NPT=0: The first byte and the last two bits of this 16b field are reserved,
@@ -1178,12 +1179,13 @@ TCP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-INT Shim Header for TCP/UDP, INT type is INT-MD, NPT is zero:
+INT Shim Header for TCP/UDP, INT type is INT-MD (1) and
+NPT (Next Protocol Type) is zero:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Type=1 | 0 |R R|   Length=7    |  Reserved     |   DSCP    |R R|
+   |Type=1 | 0 |R R|   Length=6    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1542,5 +1544,9 @@ assumptions in section [#sec-examples]
 * 2018-08-17
   - Fixed INT DSCP mask in the reference code
 * 2019-07-03
-  - Add INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
-  - Remove the reference code
+  - Added INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
+  - Removed the reference code
+* 2020-01-16
+  - Changed the meaning of the length field in every INT shim header.
+    The length of the shim header is NOT included any more.
+  - Revised INT over UDP encap, using a new UDP destination port number.
