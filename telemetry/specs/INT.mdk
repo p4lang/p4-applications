@@ -326,8 +326,6 @@ This mode is similar to IFA [^IFA].
 * INT-PROBE-MD (eMbed Data): similar to INT-CLONE-MD, but INT is applied to
 special probe packets instead of clone packets.
 
-
-
 **NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
 specified otherwise.**
 
@@ -652,7 +650,45 @@ both INT header stacks carry information for respective layers and need not be
 considered interfering with each other.
 
 A field in Ethernet, IP, or TCP/UDP should indicate if the
-INT header exists after the TCP/UDP header. We propose two options.
+INT header exists after the TCP/UDP header. We propose three options.
+
+* UDP destination port field: a new UDP port number (INT_TBD) will be assigned
+by IANA to indicate the existence of INT after UDP. This option supports two
+cases:
+  - The original packet already has UDP header either as user application
+    protocol or as part of another UDP-based encapsulation such as VXLAN,
+    GENEVE, RoCEv2. INT is inserted after the UDP header with the UDP
+    destination port number changed to INT_TBD.
+    The original destination port number
+    is carried in the shim header for the INT sink to restore, when it
+    removes the INT stack from the packet.
+  - A new UDP header for INT is inserted between IP and the existing L4 header.
+    The protocol field of IP header is set to 17 for UDP and the original
+    IP protocol value is carried in the INT shim header.
+    In the new UDP header, INT_TBD is used as the destination port number.
+    It is recommended that the source port number of the new UDP header be
+    calculated using a hash of fields from the original packet, for example
+    the original outer 5 tuple or the original L4 header fields.
+    This is to enable a level of entropy for ECMP/LAG load balancing logic.
+    It is recommended that the checksum in the new UDP header be set to zero.
+    For IPv6 packets, this falls under the case of tunnel protocols,
+    which are allowed to use zero UDP checksums as specified in RFC 6936.
+    The existing L4 header will typically include a checksum computed
+    using the encapsulating IPv6 header fields, thus offering some protection
+    against IPv6 header corruption.
+
+In both cases, traffic with INT headers is likely to be hashed
+to a different path in the network as the new UDP
+destination port (INT_TBD) becomes part of the outer 5 tuple used by ECMP.
+
+The INT shim header for UDP has a field NPT (Next Protocol Type) that indicates
+which of the two cases are applied to a given INT packet. In case a new UDP
+header was inserted,
+INT sink must copy the original IP protocol number from the shim header
+to IP header, and strip the newly added UDP header with all INT headers.
+For the case that original packet already had UDP header, INT sink must
+restore the original destination port number from the shim header
+into the UDP header and strip the INT headers.
 
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
@@ -680,6 +716,7 @@ is optional.
     into the INT domain and there is no INT header present, it must ensure that
     the DSCP/Traffic class value is not the same as any of the values used
     to indicate INT.
+
 * Probe Marker fields: If DSCP field or values cannot be reserved for INT,
 probe marker option could be used. A specific 64-bit value can be inserted
 after the TCP/UDP header to indicate the existence of INT after TCP/UDP.
@@ -724,22 +761,37 @@ INT shim header for TCP/UDP:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Type     |    Reserved   |     Length    |   DSCP    |R R|
+   | Type  |NPT|R|R|     Length    |  UDP port, IP Proto, or DSCP  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-* Type: This field indicates the type of INT Header following the shim header.
+* Type (4b): This field indicates the type of INT Header following the shim header.
 Two Type values are used: one for the hop-by-hop header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
-* Length: This is the total length of INT metadata header, INT stack and the
-shim header in 4-byte words. A non-INT device may read this field
-and skip over INT headers.
+* NPT (Next Protocol Type, 2b): This field is meaningful only when the UDP destination
+port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
+this field must be zero. When UDP destination port is INT_TBD, this field may have
+one of the two values:
+** one (1) indicates that the original UDP payload follows the INT stack,
+and the last two bytes of the shim header carry the original UDP destination port.
+** two (2) indicates that another (the original) L4 header follows
+the INT stack, and the last byte of the shim header carries the IP protocol
+value for the L4 layer.
+* Length (8b): This is the total length of INT metadata header and INT stack
+in 4-byte words. The length of the shim header (1 word) is NOT counted
+since INT version 2.0.
+A non-INT device may read this field and skip over INT headers.
+* UDP port, IP proto, or DSCP (16b): The contents of this field differ depending on the
+value of NPT.
+** NPT=0: The first byte and the last two bits of this 16b field are reserved,
+set to zero upon transmission and ignored upon reception. The first 6 bits of
+the second byte may optionally carry the original DSCP value.
+** NPT=1: The original UDP destination port value.
+** NPT=2: The first byte is reserved, set to zero upon transmission and ignored
+upon reception. The second byte carries the original IP protocol value.
 
-* DSCP: If IP DSCP is used to indicate INT, this field optionally
-stores the original DSCP value. Otherwise, this field
-is reserved.
-
-All the other bits in the shim header are reserved for future use.
+The other bits in the shim header are reserved (R) for future use,
+set to zero upon transmission and ignored upon reception.
 
 ### INT over VXLAN GPE
 
@@ -1127,12 +1179,13 @@ TCP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-INT Shim Header for TCP/UDP, INT type is hop-by-hop:
+INT Shim Header for TCP/UDP, INT type is INT-MD (1) and
+NPT (Next Protocol Type) is zero:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |     Type=1    |   Reserved    |  Length = 8   |   DSCP    |R R|
+   |Type=1 | 0 |R R|   Length=6    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1491,5 +1544,9 @@ assumptions in section [#sec-examples]
 * 2018-08-17
   - Fixed INT DSCP mask in the reference code
 * 2019-07-03
-  - Add INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
-  - Remove the reference code
+  - Added INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
+  - Removed the reference code
+* 2020-01-16
+  - Changed the meaning of the length field in every INT shim header.
+    The length of the shim header is NOT included any more.
+  - Revised INT over UDP encap, using a new UDP destination port number.
