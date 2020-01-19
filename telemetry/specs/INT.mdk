@@ -988,28 +988,30 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   Details of the metadata semantics YANG model can be accessed at the link below:
   https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
   
-  Bits 0 - 14 are Baseline INT Instructions.
+  Bits 0 - 14 are Baseline INT Instructions. Each instruction requests 4 bytes of metadata to be 
+  inserted at each hop, except for bit 6. If bit 6 is set, the instruction requires 8 bytes of 
+  metadata. Per-hop metadata length is set accordingly at the INT source.
   
   * Domain Specific ID (16b): the unique ID of the INT Domain.
   
   * DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
   Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
   processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
-  If the Domain Specific ID doesn't match the Domain ID of the node, then the transit node is 
-  required to pad the node's INT Metadata stack with the special all-ones reserved value for Domain Specific 
-  Metadata length as calculated by subtracting the Baseline Metadata Length from Hop_ML.
   
-  If the Domain Specific ID matches the node's Domain ID then additional processing 
-  of the Domain Specific Flags and Domain Specific Instruction is required and 
-  Domain Specific Metadata is appended to the Baseline Metadata before 
-  Checksum Complement is inserted. The amount of Domain Specific Metadata
-  must be a multiple of 4 bytes, determined from the Domain Specific
-  Instruction and consistent with the per-hop metadata length (Hop ML) set by the
-  INT source.
-
-  Each instruction requests 4 bytes of metadata to be inserted at each hop, except if bit 6. 
-  If bit 6 is set, the instruction requires 8 bytes of metadata. Per-hop metadata length is 
-  set accordingly at the INT source.
+  If the Domain Specific ID matches any Domain ID known to this node, then additional processing 
+  of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific 
+  Metadata is appended to the Baseline Metadata before Checksum Complement is inserted. The amount 
+  of Domain Specific Metadata must be a multiple of 4 bytes, determined from the Domain Specific
+  Instruction and consistent with the per-hop metadata length (Hop ML) set by the INT source.
+  
+  If the Domain Specific ID does not match any Domain ID known to this node, then 
+  the node is required to either:
+  
+      - Pad the node's INT Metadata stack with the special all-ones reserved value for a 
+      Domain Specific Metadata length, calculated by subtracting from the Hop ML a length 
+      computed from all bits in the 16-bit INT Instruction field, or
+      
+      - Skip INT processing altogether and not insert any metadata into the packet.
 
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap immediately after the INT metadata
