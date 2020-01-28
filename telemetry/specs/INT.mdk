@@ -318,18 +318,18 @@ as all traffic.
 The only difference between live traffic and Synthetic traffic is that 
 INT-Sink nodes may need to discard synthetic traffic after extracting 
 the collected INT data as opposed to forwading the traffic. This is 
-indicated by using the 'C' bit of the INT-Header to mark relavant packets
+indicated by using the 'C' bit of the INT-Header to mark relevant packets
 as being Copies/Clones, to be discarded at the INT-Sink.  
 
-All INT modes may be used on these Syntehtic/probe packets, as decided by the INT-Source node. 
+All INT modes may be used on these synthetic/probe packets, as decided by the INT-Source node. 
 Specifically the **INT-MD** (eMbed Data) mode applied to Synthetic or probe packets allows 
 functionality similar to **IFA**[^IFA] 
 
-It is likely that sytnetic traffic created by cloning would be discraded at the Sink,
-while Probe packets might be marked for forwatrding or discarding, depending on the
+It is likely that synthetic traffic created by cloning would be discarded at the Sink,
+while Probe packets might be marked for forwarding or discarding, depending on the
 use-case. It is the responsibility of the INT-Source node to mark packets correctly 
 to determine if the INT-Sink will forward or discard packets after extracting the 
-INT Data colected along the path. 
+INT Data collected along the path. 
 
 **NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
 specified otherwise.**
@@ -432,13 +432,6 @@ INT packet observes in the device while being forwarded. The format of this 4-oc
 metadata field is switch implementation specific and the metadata semantics YANG 
 model shall describe the format and units of this metadata field in the 
 metadata stack.
-
-* Buffer occupancy
-  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded. Use case is when the buffer 
-is shared between multiple queues. The format of this 4-octet metadata field is switch 
-implementation specific and the metadata semantics YANG model shall describe the format 
-and units of this metadata field in the metadata stack.
 
 * Buffer occupancy
   - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
@@ -949,7 +942,7 @@ INT Metadata Header and Metadata Stack:
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 2|Res|C|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
+   |Ver = 2|Res|D|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -972,7 +965,7 @@ INT Metadata Header and Metadata Stack:
 * The fields in the INT metadata header are interpreted the following way:
   - Ver (4b): INT metadata header version. Should be 2 for this version.
   - Res (2b): Reserved
-  - C   (1b): Copy/Clone. INT Sink should Discard the packet after Extracting INT data 
+  - D   (1b): Discard Copy/Clone. INT Sink should Discard the packet after Extracting INT data 
   - E (1b): Max Hop Count exceeded.
     - This flag must be set if a device cannot prepend its own metadata due to
       the Remaining Hop Count reaching zero.
@@ -1029,7 +1022,6 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
-  - bit14: Domain Specific Instructions
   - bit15: Checksum Complement
   - The remaining bits are reserved.
   
@@ -1104,12 +1096,12 @@ header.
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, C, M, Per-hop Metadata Length, Remaining Hop Count,
+    - Ver, D, M, Per-hop Metadata Length, Remaining Hop Count,
       and Instruction Bitmap.
     - INT Source must set all reserved bits to zero.
-    - INt Source may set the Domain-specific fileds. 
+    - INT Source may set the Domain-specific fileds. 
   - Intermediate devices can set the following fields:
-    - C, E, M, Remaining Hop Count, Domain-specific fields
+    - D, E, M, Remaining Hop Count, Domain-specific fields
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
@@ -1142,7 +1134,7 @@ port ID)
 * The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
   - Ver = 1
-  - C = 0
+  - D = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
@@ -1212,7 +1204,7 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
