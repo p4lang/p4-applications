@@ -289,7 +289,6 @@ at their Flow Watchlists. No packet Modification is needed. This mode was also
 known as "Postcard" mode in the previous versions of Telemetry Report spec,
 originally inspired by [^Postcard].
 
-
 * **INT-MX** (eMbed instruct(X)ions): INT Source devices embed INT instructions in
 the packet header, each following Source/Transit device directly sends the metadata
 to the monitoring system by following the instructions embedded in the packets.
@@ -300,7 +299,7 @@ grow as the packet traverses more Transit devices.
 This mode is inspired by IOAM's "Immediate Export" [^IOAM].
 
 * **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
-written into the packets. This is the classic INT where 1) INT Source embeds
+written into the packets. This is the classic hop-by-hop INT where 1) INT Source embeds
 instructions, 2) INT Source & Transit embed metadata, and 3) INT Sink strips
 the instructions and aggregated metadata out of the packet and
 (selectivly) send the data to the monitoring system.
@@ -313,7 +312,6 @@ INT Source devices may generate INT-marked synthetic traffic either by
 cloning  original data packets or by generating special probe packets.
 INT is applied to this traffic by transit nodes in exactly the same way 
 as all traffic. 
-
 
 The only difference between live traffic and Synthetic traffic is that 
 INT-Sink nodes may need to discard synthetic traffic after extracting 
@@ -454,14 +452,15 @@ are written into the packets.
 
 ## INT Header Types
 
-There are two types of INT Headers, *hop-by-hop* and *destination*.  A given INT
+There are two types of INT Headers defined for INT-MD (eMbed Data) and
+INT-Destination. A given INT
 packet may have one or both types of INT Headers. When both INT Header types
-are present, the hop-by-hop type must precede the destination type header.
+are present, the INT-MD must precede the destination type header.
 
-* Hop-by-Hop type (**INT Header type 1**)
+* MD type (**INT Header type 1**)
   - Intermediate devices (INT Transit Hops) must process this type of INT
     Header. The format of this header is defined in section
-    [#sec-int-hop-by-hop-metadata-header-format]
+    [#sec-int-md-metadata-header-format]
 * Destination type (**INT Header type 2**)
   - Destination headers must only be consumed by the INT Sink. Intermediate
     devices must ignore Destination headers.
@@ -629,6 +628,8 @@ different deployment scenarios, with and without network virtualization:
 
 1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
+Since v2.0, the spec also supports an option to insert a new UDP header
+(followed by INT headers) before the existing L4 header.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
 2. *INT over VXLAN* - VXLAN generic protocol extensions
@@ -771,7 +772,7 @@ INT shim header for TCP/UDP:
 `
 
 * Type (4b): This field indicates the type of INT Header following the shim header.
-Two Type values are used: one for the hop-by-hop header type and the other for
+Two Type values are used: one for the INT-MD header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
 * NPT (Next Protocol Type, 2b): This field is meaningful only when the UDP destination
 port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
@@ -856,7 +857,7 @@ VXLAN GPE specification yet, and is hence subject to change)
 When there is one INT Header in the VXLAN GPE stack, the VXLAN GPE header for
 the INT Header will have a next-protocol value other than INT Header indicating
 the payload following the INT Header - typically Ethernet. If there are multiple
-INT Headers in the VXLAN GPE stack (for example if both hop-by-hop and
+INT Headers in the VXLAN GPE stack (for example if both MD and
 destination type INT headers are being carried), then all VXLAN GPE shim
 headers for the INT Headers other than the last one will carry 0x08 for
 their next-protocol values, and the VXLAN GPE header for the last INT Header
@@ -878,7 +879,7 @@ INT shim header for VXLAN GPE encapsulation:
 `
 
 * Type: This field indicates the type of INT Header following the shim header.
-Two Type values are used: one for the hop-by-hop header type and the other for
+Two Type values are used: one for the MD header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
 * Length: This is the total length of the variable INT option data and the shim
 header in 4-byte words.
@@ -927,16 +928,16 @@ values are defined for INT.
 the actual INT metadata header and metadata.
 * The Length field of the Geneve Option header is 5-bits long, which
 limits a single Geneve option instance to no more than 124 bytes long (31 * 4).
-Remaining Hop Count in hop-by-hop INT header has to be set accordingly at the
+Remaining Hop Count in INT-MD type header has to be set accordingly at the
 INT source to ensure that the Geneve option does not overflow. The entire
-hop-by-hop INT header must fit in a single Geneve option.
+INT-MD header must fit in a single Geneve option.
 
-## INT Hop-by-Hop Metadata Header Format
+## INT-MD Metadata Header Format
 
-In this section, we define the format for INT hop-by-hop metadata headers,
+In this section, we define the format for INT-MD metadata headers,
 and the metadata itself.
 
-INT Metadata Header and Metadata Stack:
+INT-MD Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1195,7 +1196,7 @@ NPT (Next Protocol Type) is zero:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Type=1 | 0 |R R|   Length=6    |  Reserved     |   DSCP    |R R|
+   |Type=1 | 0 |R R|   Length=7    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1219,6 +1220,158 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
    |                      queue occupancy of hop1                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          TCP payload                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+## Example with new UDP header and INT inserted before TCP
+
+As before we consider a scenario where host1 sends a TCP packet to host2.
+The ToR switch
+of host1 (Switch1) acts as the INT source. It adds a new UDP header,
+INT headers and its own metadata in the packet.
+Switch2 prepends its metadata. Finally, the ToR
+switch of host2 (Switch3) acts as the INT sink and removes the UDP and
+INT headers before forwarding the packet to host2.
+
+Below is the packet received by INT sink Switch3, starting from the IPv4
+header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
+INT headers.
+
+IP Header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Identification        |Flags|      Fragment Offset    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Time to Live |   Proto = 17   |        Header Checksum       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Source Address                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Destination Address                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+UDP Header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Source Port          |  Destination Port = INT_TBD   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Length              |           Checksum            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+INT Shim Header for UDP, INT type is INT-MD (1) and
+NPT (Next Protocol Type) is 2 indicating another L4 header follows INT.
+IP proto is 6 to indicate that TCP follows INT:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Type=1 | 2 |R R|   Length=7    |  Reserved     |  IP proto = 6 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+INT Metadata Header and Metadata Stack, followed by TCP header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop2                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      queue occupancy of hop2                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop1                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      queue occupancy of hop1                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          TCP header                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+## Example with INT in-between UDP header and UDP payload 
+
+In this scenario host1 sends a UDP packet to host2. The ToR switch
+of host1 (Switch1) acts as the INT source. It alters the UDP destination port
+to INT_TBD, inserts INT headers before the UDP payload.
+Switch2 prepends its metadata. Finally, the ToR
+switch of host2 (Switch3) acts as the INT sink and removes the
+INT headers and restores the original UDP destination port
+before forwarding the packet to host2.
+
+Below is the packet received by INT sink Switch3, starting from the IPv4
+header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
+INT headers.
+
+IP Header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Identification        |Flags|      Fragment Offset    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Time to Live |   Proto = 17   |        Header Checksum       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Source Address                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Destination Address                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+UDP Header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Source Port          |  Destination Port = INT_TBD   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Length              |           Checksum            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+INT Shim Header for UDP, INT type is INT-MD (1) and
+NPT (Next Protocol Type) is 1 indicating UDP payload follows the INT.
+The original port number XYZ is stored in the shim header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Type=1 | 1 |R R|   Length=7    |        UDP port = XYZ         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+INT Metadata Header and Metadata Stack, followed by UDP payload:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop2                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      queue occupancy of hop2                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop1                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      queue occupancy of hop1                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1247,7 +1400,7 @@ VXLAN GPE Header:
 `
 
 
-INT Shim Header for VXLAN-GPE, hop-by-hop INT type:
+INT Shim Header for VXLAN-GPE, INT-MD type:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1306,7 +1459,7 @@ Geneve Header:
 `
 
 
-Geneve Option for INT, hop-by-hop type:
+Geneve Option for INT-MD type:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1496,7 +1649,7 @@ example in section [#sec-examples].
   - Removed BOS (Bottom-Of-Stack) bit at each 4B metadata, from the header
 definition and examples
   - Updated the INT instruction bitmap and the meaning of a few instructions
-(section [#sec-int-hop-by-hop-metadata-header-format])
+(section [#sec-int-md-metadata-header-format])
   - Moved the INT transit P4 program from Appendix to the main section
 [#sec-p4-program-specification-for-int-transit]. Re-wrote the program in
 p4_16.
