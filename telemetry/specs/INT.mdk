@@ -1299,7 +1299,7 @@ INT Metadata Header and Metadata Stack, followed by TCP header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-## Example with INT in-between UDP header and UDP payload 
+## Example with INT in-between UDP header and UDP payload
 
 In this scenario host1 sends a UDP packet to host2. The ToR switch
 of host1 (Switch1) acts as the INT source. It alters the UDP destination port
