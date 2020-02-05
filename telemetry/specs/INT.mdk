@@ -1037,9 +1037,9 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   inserted at each hop, except for bit 6. If bit 6 is set, the instruction requires 8 bytes of 
   metadata. Per-hop metadata length is set accordingly at the INT source.
   
-  * Domain Specific ID (16b): the unique ID of the INT Domain.
+* Domain Specific ID (16b): the unique ID of the INT Domain.
   
-  * DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
+* DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
   Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
   processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
   
@@ -1097,12 +1097,12 @@ header.
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, D, M, Per-hop Metadata Length, Remaining Hop Count,
+    - Ver, D, M, Hop ML, Remaining Hop Count,
       and Instruction Bitmap.
     - INT Source must set all reserved bits to zero.
     - INT Source may set the Domain-specific fileds. 
-  - Intermediate devices can set the following fields:
-    - D, E, M, Remaining Hop Count, Domain-specific fields
+  - Intermediate transit devices can set the following fields:
+    - E, M, Remaining Hop Count, Domain-specific fields
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
