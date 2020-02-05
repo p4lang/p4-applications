@@ -1,6 +1,6 @@
-Title         : In-band Network Telemetry (INT) Version 2.0 Dataplane Specification
-Title Note : Working draft. Note: consider using tagged versions for implementation.
-Title Footer: 2018-08-17
+Title         : In-band Network Telemetry (INT) Dataplane Specification
+Title Note : This is a working draft towards v2.0. Consider using tagged versions for implementation.
+Title Footer: 2020-02-04
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
