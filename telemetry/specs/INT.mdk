@@ -988,14 +988,16 @@ INT-MD Metadata Header and Metadata Stack:
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
   - R (10b): Reserved bits.
-
-  - Hop ML (5b): Per-hop Metadata Length, the length of metadata, including the 
-    Domain Specific Metadata in 4-Byte words to be inserted at each INT hop.
-    - The largest value of Per-hop Metadata Length for baseline and domain specific
+  - Hop ML (5b): Per-hop Metadata Length. This is the length of metadata including the
+    Domain Specific Metadata in 4-Byte words to be inserted at each INT transit hop.
+    - If an INT domain uses 'source-only' Domain Specific Metadata,
+      which will be defined below, the length of the source-only Domain Specific Metadata
+      are excluded in Hop ML.
+    - The largest value of Hop ML for baseline and domain specific
       metadata is 31. An INT-capable device may be limited in the maximum number 
       of instructions it can process and/or maximum length of metadata it can 
       insert in data packets. An INT hop that cannot process all instructions 
-      must still insert Per-hop Metadata Length \* 4 bytes, with all-ones 
+      must still insert Hop ML \* 4 bytes, with all-ones
       reserved value (4 or 8 bytes of 0xFF depending on the length of metadata) 
       for the metadata corresponding to instructions it cannot process. An 
       INT hop that cannot insert Per-hop Metadata Length \* 4 bytes must skip INT
@@ -1042,15 +1044,23 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
 * DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
   Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
   processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
+
+  Some instruction bits can be defined as 'source-only' metadata by the INT domain. Those metadata
+  will be inserted only by the INT source, not by INT transit or sink devices.
   
   If the Domain Specific ID matches any Domain ID known to this node, then additional processing 
   of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific 
   Metadata is appended to the Baseline Metadata before Checksum Complement is inserted. The amount 
-  of Domain Specific Metadata must be a multiple of 4 bytes, determined from the Domain Specific
-  Instruction and consistent with the per-hop metadata length (Hop ML) set by the INT source.
+  of Domain Specific Metadata added by each hop must be a multiple of 4 bytes,
+  determined from the Domain Specific Instruction. In case of INT transit, the amount
+  must be consistent with the per-hop metadata length (Hop ML) set by the INT source.
+  The amount of Domain Specific Metadata added by the INT source can be larger and
+  the delta must match the total size of 'source-only' Domain Specific Metadata.
+  Although the delta is excluded in Hop ML, it must be counted in the INT length field of
+  the INT shim header.
   
   If the Domain Specific ID does not match any Domain ID known to this node, then 
-  the node is required to either:
+  the transit node is required to either:
   
       - Pad the node's INT Metadata stack with the special all-ones reserved value for a 
       Domain Specific Metadata length, calculated by subtracting from the Hop ML a length 
@@ -1063,7 +1073,8 @@ values as specified in the instruction bitmap immediately after the INT metadata
 header.
   - When adding a new metadata, each device must prepend its metadata in
     front of the metadata that are already added by the upstream devices.
-    This is similar to the push operation on a stack. Hence, the most recently
+    This is similar to the push operation on a stack data structure.
+    Hence, the most recently
     added metadata appears at the top of the stack. The device must add
     metadata in the order of bits set in the instruction bitmap.
   - If a device is unable to provide a metadata value specified in the
@@ -1074,7 +1085,7 @@ header.
     (irrespective of the availability of the metadata values that are asked
     for), it must skip processing that particular INT packet entirely. This
     ensures that each INT Transit device adds either zero bytes or
-    Per-hop Metadata Length\*4 bytes to the packet.
+    Hop ML \* 4 bytes to the packet.
   - Reserved bits in the instruction bitmap are to be handled similarly. If an
     INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
     set by a INT source that is running a newer version), the transit hop must
@@ -1089,9 +1100,9 @@ header.
     a version 1.0 INT switch cannot operate alongside version 2.0 INT switches
     if a new 8B metadata is introduced in version 2.0, as the version 1.0
     INT switch could insert 0xFFFFFFFF reserved value for a 8B metadata field,
-    thus breaking the metadata stack length invariance - the length of
-    metadata stack will not be a multiple of Per-Hop Metadata length \* 4
-    in this case.
+    thus breaking the metadata length invariance - the length of
+    metadata stack (excluding 'source-only' Domain Specific Metadata)
+    must be a multiple of Hop ML \* 4.
   - If an INT transit hop does not add metadata to a packet due to any of the
     above reasons, it must not decrement the remaining INT hop count in the INT
     metadata header.
@@ -1104,13 +1115,10 @@ header.
   - Intermediate transit devices can set the following fields:
     - E, M, Remaining Hop Count, Domain-specific fields
 * The length (in bytes) of the INT metadata stack must always
-be a multiple of (Per-hop Metadata Length \* 4). This length can be determined
+be a multiple of (Hop ML \* 4), plus the size of 'source-only' Domain Specific
+Metadata if added by the source. This stack length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
 from (shim header length \* 4).
-For INT over Geneve it is 8 bytes subtracted from (length in Geneve tunnel
-option header \* 4).
-
-
 
 # Examples
 
