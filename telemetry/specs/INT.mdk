@@ -990,9 +990,10 @@ INT-MD Metadata Header and Metadata Stack:
   - R (10b): Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length. This is the length of metadata including the
     Domain Specific Metadata in 4-Byte words to be inserted at each INT transit hop.
-    - If an INT domain uses 'source-only' Domain Specific Metadata,
+    - Hop ML is set by the INT source for transit and sink hops to abide by.
+      If an INT domain uses 'source-only' Domain Specific Metadata,
       which will be defined below, the length of the source-only Domain Specific Metadata
-      are excluded in Hop ML.
+      are *excluded* in Hop ML.
     - The largest value of Hop ML for baseline and domain specific
       metadata is 31. An INT-capable device may be limited in the maximum number 
       of instructions it can process and/or maximum length of metadata it can 
@@ -1044,17 +1045,22 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
 * DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
   Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
   processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
+  If the Domain Specific ID matches any Domain ID known to this node, then additional processing
+  of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific
+  Metadata is appended to the Baseline Metadata before Checksum Complement is inserted.
 
   Some instruction bits can be defined as 'source-only' metadata by the INT domain. Those metadata
   will be inserted only by the INT source, not by INT transit or sink devices.
-  
-  If the Domain Specific ID matches any Domain ID known to this node, then additional processing 
-  of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific 
-  Metadata is appended to the Baseline Metadata before Checksum Complement is inserted. The amount 
-  of Domain Specific Metadata added by each hop must be a multiple of 4 bytes,
+  In a sense, 'source-only' bits do not serve as instructions for downstream INT devices
+  to follow. The INT source sets the bits to indicate which source-only DS metadata it's adding
+  such that the monitoring system (or any consumer of the metadata) knows how to parse and use
+  the data.
+
+  The amount of Domain Specific Metadata added by each hop must be a multiple of 4 bytes,
   determined from the Domain Specific Instruction. In case of INT transit, the amount
   must be consistent with the per-hop metadata length (Hop ML) set by the INT source.
-  The amount of Domain Specific Metadata added by the INT source can be larger and
+  The amount of Domain Specific Metadata added by the INT source can be larger than
+  the amount added by a transit hop and
   the delta must match the total size of 'source-only' Domain Specific Metadata.
   Although the delta is excluded in Hop ML, it must be counted in the INT length field of
   the INT shim header.
@@ -1116,7 +1122,7 @@ header.
     - E, M, Remaining Hop Count, Domain-specific fields
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Hop ML \* 4), plus the size of 'source-only' Domain Specific
-Metadata if added by the source. This stack length can be determined
+Metadata if added by the source. The total stack length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
 from (shim header length \* 4).
 
