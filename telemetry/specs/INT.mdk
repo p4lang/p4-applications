@@ -624,18 +624,68 @@ corruption at preceding hops.
 
 ## Header Location
 
-We describe three encapsulation formats in this specification, covering
+We describe five encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+2. "INT over IPv6" - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
+3. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-2. *INT over VXLAN* - VXLAN generic protocol extensions
+4. *INT over VXLAN* - VXLAN generic protocol extensions
 (draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
 the VXLAN header and the encapsulated VXLAN payload.
-3. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
+5. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
+
+### INT over IPv6
+
+INT in IPv6 can be supported by encapsulating the INT Metadata Header and 
+Metadata in "option data" field of the Hop-by-Hop Options header. In order
+for INT to work in IPv6 networks, INT must be explicitly enabled per interface
+on every node within the INT domain. Unless a particular interface is explicity
+enabled (i.e. explicity configured) for INT, a router MUST drop packets which
+contain extension headers carrying INT Metadata Header and Metadata. This
+ensures that INT data does not unitentionally get forwarded outside the
+INT domain.
+
+IPv6 Hop-by-Hop Option format for carrying INT Header and 
+Metadata:
+
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Option Type   | Opt Data Len  |Reserved (MBZ) |   INT TYPE    |  
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|   Variable Option Data (INT Metadata Headers and Metadata)    |  |
+.                                                               .  |
+.                                                               .  N
+.                                                               .  T
+.                                                               .  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+
+* Option Type: 8-bit identifier of the type of option.
+
+  001xxxxxx 8-bit identifier of the type of option. xxxxxx=TBD_IANA_INT_HOP_BY_HOP_OPTION_IPV6.
+  001xxxxxx 8-bit identifier of the type of option. xxxxxx=TBD_IANA_INT_DESTINATION_OPTION_IPV6.
+
+* Opt Data Len: 8-bit unsigned integer. Length of the Reserved and Option Data field of this 
+option, in octets.
+
+* Reserved (MBZ): 16 bit field, must be filled with zeroes upon transmission and ignored upon 
+reception.
+
+* Type: This field indicates the type of INT Metadata Header and Metadata following.
+Two Type values are used: one for the hop-by-hop header type and the other for
+the destination header type (See Section [#sec-int-header-types]).
+
+* Variable Option Data: Variable length field. INT Metadata Header and Metadata, multiple of 
+four octets in length.
+
+The INT IPv6 options defined here have alignment requirements. Specifically, they require 4n alignment.
+This ensures that 4 octet fields of the INT metadata, such as Hop Latency, are aligned at a multiple-of-4
+offset from the start of the Hop-by-Hop Options header. In INT v2.0, there are 4-octets in the
+shim header and 12-octets in the fixed header. In order to maintain IPv6 extension header 8-octet 
+alignment...padding requirement TBD
+
 
 ### INT over TCP/UDP
 
@@ -940,7 +990,6 @@ INT Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Ver = 2|Res|D|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1110,7 +1159,6 @@ For INT over Geneve it is 8 bytes subtracted from (length in Geneve tunnel
 option header \* 4).
 
 
-
 # Examples
 
 This section shows example INT Headers with two hosts (Host1 and Host2),
@@ -1220,7 +1268,40 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          TCP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+
+
+## Example with INT over IPv6 using Hop-by-Hop option
+
+The format of the IPv6 packet with Hop-by-Hop option for INT-MD 
+(Embedded Metadata) where there are no other Hop-by-Hop option present 
+is shown below:
+ 
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version| Traffic Class |            Flow Label                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Payload Length            | Nxt HDR = HbyH|   Hop Limit   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                   (Outer) Source IPv6 Address                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                  (Outer) Destination IPv6 Address             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+| Nxt HDR = IPv6| HbyH Ext Len  |           Padding|(MBZ)       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  
+| Option Type   | Opt Data Len  |Reserved (MBZ) |   INT TYPE    |   
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|Ver = 2|Rep|D|E|M|     Reserved      | Hop ML  |RemainingHopCnt|  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|      Instruction Bitmap       |     Domain Specific ID        |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+|          DS Flags             |         DS Instruction        |  T
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                Variable Option Data (INT DATA)                |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|                     Payload Original Packet                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 
 ## Example with INT over VXLAN GPE
 
