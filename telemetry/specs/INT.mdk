@@ -1,8 +1,10 @@
-Title         : In-band Network Telemetry (INT) Dataplane Specification
+Title         : In-band Network Telemetry (INT) Version 2.0 Dataplane Specification
 Title Note : Working draft. Note: consider using tagged versions for implementation.
 Title Footer: 2018-08-17
 Author : The P4.org Applications Working Group. Contributions from
+
 Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
+
 Heading depth: 5
 Pdf Latex: xelatex
 Document Class: [11pt]article
@@ -172,7 +174,7 @@ packets “observed” while being forwarded.
 
 Some examples of traffic sink behavior are described below:
 
-* OAM – the traffic sink might simply collect the encoded network state, then
+* OAM – the traffic sink[^Transit] might simply collect the encoded network state, then
 export that state to an external controller.  This export could be in a raw
 format, or could be combined with basic processing (such as compression,
 deduplication, truncation).
@@ -185,7 +187,7 @@ of these types of feedback loops).
 
 * Network Event Detection - If the collected path state indicates a condition
 that requires immediate attention or resolution (such as severe congestion or
-violation of certain data-plane invariances), the traffic sinks could generate
+violation of certain data-plane invariances), the traffic sinks[^Transit] could generate
 immediate actions to respond to the network events, forming a feedback control
 loop either in a centralized or a fully decentralized fashion (a la TCP).
 
@@ -206,6 +208,7 @@ of Little Minions paper [^Minions].
 [^CLOVE]: CLOVE: Congestion-Aware Load Balancing at the Virtual Edge, ACM CoNEXT 2017
 [^Minions]: Millions of Little Minions: Using Packets for Low Latency Network Programming and Visibility, ACM SIGCOMM 2014.
 [^Postcard]: I Know What Your Packet Did Last Hop: Using Packet Histories to Troubleshoot Networks, USENIX NSDI 2014.
+[^Transit]: WHile this will be commonly done by Sink nodes, Transit nodes may also generate OAM's or carry out Network Event Detection 
 
 # Terminology
 
@@ -274,9 +277,9 @@ INT operations based on the following criteria:
 The different modes of operations are described in detail below, and summarized
 in Figure [#fig-int-modes].
 
-## INT Applied to Real Data Packets
+## INT Application Modes 
 
-In this category, the original data packets are monitored and may be modified
+Original data packets are monitored and may be modified
 to carry INT instructions and metadata.
 There are three variations based on the level of packet modifications.
 
@@ -306,27 +309,27 @@ at the monitoring system to collate reports from multiple devices.
 
 ## INT Applied to Synthetic Traffic
 
-In this category, INT Source devices generate synthetic traffic either by
-clonning the original data packets or by generating special probe packets.
-INT is applied to the synthetic traffic.
-
-The XD mode doesn't make sense for synthetic traffic. The MX mode is
-technically possible but doesn't add much value. Hence we define two MD modes
-as follows.
-
-* INT-CLONE-MD (eMbed Data): INT Source devices create extra traffic through
-cloning the original packets and then embedding the INT instructions and metadata into
-the clones only. INT Transit devices accumulate metadata only on the clones,
-INT Sink devices may send telemetry reports before discarding the clones.
-Compared to INT-MD, INT-CLONE-MD produces extra traffic
-and may not capture actual network state that the orignal packets experience, while
-this mode avoids direct modification on the original data packets.
-This mode is similar to IFA [^IFA].
-
-* INT-PROBE-MD (eMbed Data): similar to INT-CLONE-MD, but INT is applied to
-special probe packets instead of clone packets.
+INT Source devices may generate INT-marked synthetic traffic either by
+cloning  original data packets or by generating special probe packets.
+INT is applied to this traffic by transit nodes in exactly the same way 
+as all traffic. 
 
 
+The only difference between live traffic and Synthetic traffic is that 
+INT-Sink nodes may need to discard synthetic traffic after extracting 
+the collected INT data as opposed to forwading the traffic. This is 
+indicated by using the 'C' bit of the INT-Header to mark relevant packets
+as being Copies/Clones, to be discarded at the INT-Sink.  
+
+All INT modes may be used on these synthetic/probe packets, as decided by the INT-Source node. 
+Specifically the **INT-MD** (eMbed Data) mode applied to Synthetic or probe packets allows 
+functionality similar to **IFA**[^IFA] 
+
+It is likely that synthetic traffic created by cloning would be discarded at the Sink,
+while Probe packets might be marked for forwarding or discarding, depending on the
+use-case. It is the responsibility of the INT-Source node to mark packets correctly 
+to determine if the INT-Sink will forward or discard packets after extracting the 
+INT Data collected along the path. 
 
 **NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
 specified otherwise.**
@@ -353,11 +356,11 @@ The exact meaning of the following metadata (e.g., the unit of timestamp
 values, the precise definition of hop latency, queue occupancy or buffer 
 occupancy) can vary from one device to another for any number of reasons, 
 including the heterogeneity of device architecture, feature sets, 
-resource limits, etc. Thus, defining the exact meaning of each metadata 
-is beyond the scope of this document. Instead we assume that the semantics 
-of metadata for each device model used in a deployment is communicated 
-with the entities interpreting/analyzing the reported data in an out-of-band 
-fashion.
+
+resource limits, etc. Thus, defining the exact meaning of each metadata is 
+beyond the scope of this document. Instead we assume that the semantics of 
+metadata for each device model used in a deployment is communicated with 
+the entities interpreting/analyzing the reported data in an out-of-band fashion.
 
 ## Switch-level Information
 
@@ -706,7 +709,45 @@ both INT header stacks carry information for respective layers and need not be
 considered interfering with each other.
 
 A field in Ethernet, IP, or TCP/UDP should indicate if the
-INT header exists after the TCP/UDP header. We propose two options.
+INT header exists after the TCP/UDP header. We propose three options.
+
+* UDP destination port field: a new UDP port number (INT_TBD) will be assigned
+by IANA to indicate the existence of INT after UDP. This option supports two
+cases:
+  - The original packet already has UDP header either as user application
+    protocol or as part of another UDP-based encapsulation such as VXLAN,
+    GENEVE, RoCEv2. INT is inserted after the UDP header with the UDP
+    destination port number changed to INT_TBD.
+    The original destination port number
+    is carried in the shim header for the INT sink to restore, when it
+    removes the INT stack from the packet.
+  - A new UDP header for INT is inserted between IP and the existing L4 header.
+    The protocol field of IP header is set to 17 for UDP and the original
+    IP protocol value is carried in the INT shim header.
+    In the new UDP header, INT_TBD is used as the destination port number.
+    It is recommended that the source port number of the new UDP header be
+    calculated using a hash of fields from the original packet, for example
+    the original outer 5 tuple or the original L4 header fields.
+    This is to enable a level of entropy for ECMP/LAG load balancing logic.
+    It is recommended that the checksum in the new UDP header be set to zero.
+    For IPv6 packets, this falls under the case of tunnel protocols,
+    which are allowed to use zero UDP checksums as specified in RFC 6936.
+    The existing L4 header will typically include a checksum computed
+    using the encapsulating IPv6 header fields, thus offering some protection
+    against IPv6 header corruption.
+
+In both cases, traffic with INT headers is likely to be hashed
+to a different path in the network as the new UDP
+destination port (INT_TBD) becomes part of the outer 5 tuple used by ECMP.
+
+The INT shim header for UDP has a field NPT (Next Protocol Type) that indicates
+which of the two cases are applied to a given INT packet. In case a new UDP
+header was inserted,
+INT sink must copy the original IP protocol number from the shim header
+to IP header, and strip the newly added UDP header with all INT headers.
+For the case that original packet already had UDP header, INT sink must
+restore the original destination port number from the shim header
+into the UDP header and strip the INT headers.
 
 * IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
@@ -734,6 +775,7 @@ is optional.
     into the INT domain and there is no INT header present, it must ensure that
     the DSCP/Traffic class value is not the same as any of the values used
     to indicate INT.
+
 * Probe Marker fields: If DSCP field or values cannot be reserved for INT,
 probe marker option could be used. A specific 64-bit value can be inserted
 after the TCP/UDP header to indicate the existence of INT after TCP/UDP.
@@ -778,22 +820,37 @@ INT shim header for TCP/UDP:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Type     |    Reserved   |     Length    |   DSCP    |R R|
+   | Type  |NPT|R|R|     Length    |  UDP port, IP Proto, or DSCP  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-* Type: This field indicates the type of INT Header following the shim header.
+* Type (4b): This field indicates the type of INT Header following the shim header.
 Two Type values are used: one for the hop-by-hop header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
-* Length: This is the total length of INT metadata header, INT stack and the
-shim header in 4-byte words. A non-INT device may read this field
-and skip over INT headers.
+* NPT (Next Protocol Type, 2b): This field is meaningful only when the UDP destination
+port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
+this field must be zero. When UDP destination port is INT_TBD, this field may have
+one of the two values:
+** one (1) indicates that the original UDP payload follows the INT stack,
+and the last two bytes of the shim header carry the original UDP destination port.
+** two (2) indicates that another (the original) L4 header follows
+the INT stack, and the last byte of the shim header carries the IP protocol
+value for the L4 layer.
+* Length (8b): This is the total length of INT metadata header and INT stack
+in 4-byte words. The length of the shim header (1 word) is NOT counted
+since INT version 2.0.
+A non-INT device may read this field and skip over INT headers.
+* UDP port, IP proto, or DSCP (16b): The contents of this field differ depending on the
+value of NPT.
+** NPT=0: The first byte and the last two bits of this 16b field are reserved,
+set to zero upon transmission and ignored upon reception. The first 6 bits of
+the second byte may optionally carry the original DSCP value.
+** NPT=1: The original UDP destination port value.
+** NPT=2: The first byte is reserved, set to zero upon transmission and ignored
+upon reception. The second byte carries the original IP protocol value.
 
-* DSCP: If IP DSCP is used to indicate INT, this field optionally
-stores the original DSCP value. Otherwise, this field
-is reserved.
-
-All the other bits in the shim header are reserved for future use.
+The other bits in the shim header are reserved (R) for future use,
+set to zero upon transmission and ignored upon reception.
 
 ### INT over VXLAN GPE
 
@@ -938,6 +995,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 
+
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Ver = 2|Res|D|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1032,7 +1090,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   Bits 0 - 14 are Baseline INT Instructions. Each instruction requests 4 bytes of metadata to be 
   inserted at each hop, except for bit 6. If bit 6 is set, the instruction requires 8 bytes of 
   metadata. Per-hop metadata length is set accordingly at the INT source.
-  
+
   * Domain Specific ID (16b): the unique ID of the INT Domain.
   
   * DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
@@ -1131,8 +1189,7 @@ port ID)
 * The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
   - Ver = 1
-  - Rep = 0 (No replication)
-  - C = 0
+  - D = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
@@ -1187,12 +1244,13 @@ TCP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-INT Shim Header for TCP/UDP, INT type is hop-by-hop:
+INT Shim Header for TCP/UDP, INT type is INT-MD (1) and
+NPT (Next Protocol Type) is zero:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |     Type=1    |   Reserved    |  Length = 8   |   DSCP    |R R|
+   |Type=1 | 0 |R R|   Length=6    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1201,9 +1259,11 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                           sw id of hop2                       |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1325,9 +1385,11 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=2 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                           sw id of hop3                       |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1373,7 +1435,7 @@ Geneve Option for INT, hop-by-hop type:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Option Class=0x00AB      |     Type=1    |R|R|R|  Len=8  |
+   |      Option Class=0x00AB      |     Type=1    |R|R|R|  Len=9  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
@@ -1382,9 +1444,11 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=1 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=2 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|           Reserved            |
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                       sw id of hop3                           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1493,7 +1557,6 @@ INT packet was served.  The calculation mechanism of this value is device
 specific.
 * Queue drop count
   - Total # of packets dropped from the queue
-
 
 The metadata below are introduced to capture the buffer occupancy INT packet 
 observes in the device while being forwarded. Use case is when buffer is
@@ -1631,5 +1694,9 @@ assumptions in section [#sec-examples]
 * 2018-08-17
   - Fixed INT DSCP mask in the reference code
 * 2019-07-03
-  - Add INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
-  - Remove the reference code
+  - Added INT modes of operation: INT-XD/MX/MD and INT-CLONE/PROBE-MD.
+  - Removed the reference code
+* 2020-01-16
+  - Changed the meaning of the length field in every INT shim header.
+    The length of the shim header is NOT included any more.
+  - Revised INT over UDP encap, using a new UDP destination port number.
