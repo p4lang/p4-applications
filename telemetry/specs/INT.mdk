@@ -297,6 +297,7 @@ receiver.
 Packet modification is limited to the instruction header, the packet size doesn't
 grow as the packet traverses more Transit devices.
 This mode is inspired by IOAM's "Immediate Export" [^IOAM].
+A new INT type header for INT-MX will be defined in the next minor revision.
 
 * **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
 written into the packets. This is the classic hop-by-hop INT where 1) INT Source embeds
@@ -305,6 +306,10 @@ the instructions and aggregated metadata out of the packet and
 (selectivly) send the data to the monitoring system.
 Packet is modified the most in this mode while it minimizes the overhead
 at the monitoring system to collate reports from multiple devices.
+
+Since v2.0, INT-MD mode supports 'source-only' metadata as part of Domain Specific
+Instructions. This allows INT Source to embed additional metadata for INT Sink
+or the monitoring system to consume.
 
 ## INT Applied to Synthetic Traffic
 
@@ -464,8 +469,8 @@ are present, the INT-MD must precede the destination type header.
 * Destination type (**INT Header type 2**)
   - Destination headers must only be consumed by the INT Sink. Intermediate
     devices must ignore Destination headers.
-  - Destination headers can be used to enable communication between the INT
-    Source and INT Sink. For example:
+  - Destination headers can be used to enable Edge-to-Edge communication between
+    the INT Source and INT Sink. For example:
       - INT Source can add a sequence number to detect loss of INT packets.
       - INT Source can add the original values of IP TTL and INT Remaining
         Hop Count, thus enabling the INT sink to detect network devices
@@ -473,7 +478,12 @@ are present, the INT-MD must precede the destination type header.
         decrement against INT Remaining Hop Count decrement (assuming each
         network device is an L3 hop)
   - The data format of Destination type INT Headers is not defined in this
-    version.
+    version. Note some Edge-to-Edge INT use cases can be supported by 'source-only'
+    metadata, part of Domain Specific Instructions in the MD type header.
+* MX type (**INT Header type 3**)
+  - Intermediate devices (INT Transit Hops) must process this type of INT
+    Header and generate reports to the monitoring system as instructed.
+    The format of this header will be defined in the next minor revision.
 
 ## Per-Hop Header Creation
 
@@ -1075,8 +1085,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
       - Skip INT processing altogether and not insert any metadata into the packet.
 
 * Each INT Transit device along the path that supports INT adds its own metadata
-values as specified in the instruction bitmap immediately after the INT metadata
-header.
+values as specified in the instruction bitmap and DS instructions immediately after
+the INT metadata header.
   - When adding a new metadata, each device must prepend its metadata in
     front of the metadata that are already added by the upstream devices.
     This is similar to the push operation on a stack data structure.
@@ -1103,12 +1113,9 @@ header.
     marked reserved in this specification may be used for a 8B metadata only
     in the next major version, breaking backward compatibility and requiring all
     INT switches to be upgraded to the new major version. For example
-    a version 1.0 INT switch cannot operate alongside version 2.0 INT switches
-    if a new 8B metadata is introduced in version 2.0, as the version 1.0
-    INT switch could insert 0xFFFFFFFF reserved value for a 8B metadata field,
-    thus breaking the metadata length invariance - the length of
-    metadata stack (excluding 'source-only' Domain Specific Metadata)
-    must be a multiple of Hop ML \* 4.
+    a version 2.0 INT switch cannot operate alongside version 3.0 INT switches
+    if a new 8B metadata is introduced in version 3.0, as the version 2.0
+    INT switch could insert 0xFFFFFFFF reserved value for a 8B metadata field.
   - If an INT transit hop does not add metadata to a packet due to any of the
     above reasons, it must not decrement the remaining INT hop count in the INT
     metadata header.
@@ -1731,4 +1738,12 @@ assumptions in section [#sec-examples]
 * 2020-01-16
   - Changed the meaning of the length field in every INT shim header.
     The length of the shim header is NOT included any more.
-  - Revised INT over UDP encap, using a new UDP destination port number.
+  - Revised INT over UDP encap, using a new UDP destination port number (INT_TBD).
+* 2020-01-28
+  - Added Domain ID, Domain Specific (DS) Instructions, and DS Flags.
+  - As a result, the INT common header size is increased from 8B to 12B.
+  - Removed Rep bits and 'C' bit, introduced 'D' bit for Discarding Copy/Clone
+    at INT Sink.
+* 2020-02-11
+  - Added 'source-only' metadata as part of DS instructions.
+  - Changed the Hop ML to be required only by Transit and Sink devices.
