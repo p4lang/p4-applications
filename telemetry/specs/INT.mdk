@@ -1139,7 +1139,7 @@ the INT metadata header.
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (Hop ML \* 4), plus the size of 'source-only' Domain Specific
 Metadata if added by the source. The total stack length can be determined
-by subtracting the total INT fixed header sizes (12 bytes)
+by subtracting the total INT fixed header sizes (16 bytes)
 from (shim header length \* 4).
 
 # Examples
