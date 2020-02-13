@@ -782,8 +782,7 @@ INT shim header for TCP/UDP:
 `
 
 * Type (4b): This field indicates the type of INT Header following the shim header.
-Two Type values are used: one for the INT-MD header type and the other for
-the destination header type (See Section [#sec-int-header-types]).
+  The Type values are defined in Section [#sec-int-header-types].
 * NPT (Next Protocol Type, 2b): This field is meaningful only when the UDP destination
 port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
 this field must be zero. When UDP destination port is INT_TBD, this field may have
