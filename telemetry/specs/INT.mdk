@@ -881,25 +881,27 @@ INT shim header for VXLAN GPE encapsulation:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Type     |    Length     |G|  Reserved   | Next Protocol |
+   | Type  | Rsvd  |    Length     |G|  Reserved   | Next Protocol |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |   Variable Option Data (INT Metadata Headers and Metadata)    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-* Type: This field indicates the type of INT Header following the shim header.
-Two Type values are used: one for the MD header type and the other for
-the destination header type (See Section [#sec-int-header-types]).
+* Type (4b): This field indicates the type of INT Header following the shim header.
+  The Type values are defined in Section [#sec-int-header-types].
+* Rsvd (4b): These 4 bits must be set to zero in order to allign with the
+  shim header format recommended by Internet draft draft-ietf-nvo3-vxlan-gpe,
+  which allocates 8 bits for the Type field.
+* Length: This is the total length of the variable INT option data,
+  not including the shim header, in 4-byte words.
 * G: Indicates whether the original packet (before insertion of INT headers
-and metadata) used a VXLAN or VXLAN GPE encapsulation.
+  and metadata) used a VXLAN or VXLAN GPE encapsulation.
   - 0: Original packet used VXLAN GPE encapsulation.
   - 1: Original packet used VXLAN encapsulation.
   - This may be used as a hint that helps the INT sink (when it is not the VTEP)
     determine whether to progress the packet using a VXLAN GPE encapsulation,
     or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
     GPE) encapsulation.
-* Length: This is the total length of the variable INT option data,
-  not including the shim header, in 4-byte words.
 
 ### INT over Geneve
 
