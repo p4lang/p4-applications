@@ -1040,8 +1040,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit1: Level 1 Ingress Port ID (16 bits) + Egress Port ID (16 bits)
   - bit2: Hop latency
   - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
-  - bit4: Ingress timestamp
-  - bit5: Egress timestamp
+  - bit4: Ingress timestamp (8 bytes)
+  - bit5: Egress timestamp (8 bytes)
   - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
@@ -1055,9 +1055,10 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   Details of the metadata semantics YANG model can be accessed at the link below:
   https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
   
-  Bits 0 - 14 are Baseline INT Instructions. Each instruction requests 4 bytes of metadata to be 
-  inserted at each hop, except for bit 6. If bit 6 is set, the instruction requires 8 bytes of 
-  metadata. Per-hop metadata length is set accordingly at the INT source.
+  Bits 0 - 14 are Baseline INT Instructions. Each instruction bit that is set
+  requests 4 bytes of metadata to be inserted at each hop, except for bits 4-6,
+  each requires 8 bytes of metadata. Per-hop metadata length (Hop ML) is set accordingly
+  at the INT source.
   
 * Domain Specific ID (16b): the unique ID of the INT Domain.
   
@@ -1751,6 +1752,7 @@ assumptions in section [#sec-examples]
     other INT transports, and to align with the VXLAN GPE shim header format.
   - Changed the length definition in the shim header to exclude the shim
     header itself, in order to align with the VXLAN GPE shim header format.
+  - Increased ingress and egress timestamp size to 8 bytes.
 * 2020-01-16
   - Changed the meaning of the length field in every INT shim header.
     The length of the shim header is NOT included any more.
