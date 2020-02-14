@@ -627,7 +627,8 @@ corruption at preceding hops.
 We describe five encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. *INT over IPv4/GRE* - INT Headers are carried in the GRE encapsulation.
+1. *INT over IPv4/GRE* - INT headers are carried between the GRE header and the 
+encapsulated GRE payload.
 2. *INT over IPv6* - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
 3. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
@@ -643,11 +644,26 @@ Geneve options to be defined for INT Headers.
 
 In case the traffic being monitored is not encapsulated by any virtualization
 header, INT over VXLAN or INT over Geneve is not helpful. Instead, 
-a GRE encapsulation as defined in [RFC2784] is utilized. The INT metadata 
+a GRE encapsulation as defined in [RFC2784] can be utilized. The INT metadata 
 header and INT metadata follows the GRE header. In an administrative domain 
 where INT is used, insertion of the INT metadata header and metadata in 
 GRE is enabled at the INT source and deletion of INT metadata header 
 and metadata is enabled at the INT sink by means of configuration. 
+
+There are two scenarios when utilizing GRE encapsulation to support INT:
+
+1. If the incoming packet at the source node of the INT domain is not GRE 
+encapsulated, then the source node should add a GRE encapsulation and insert 
+the INT Metadata Header and Metadata following the GRE header. The sink node 
+of the INT domain should remove the GRE encapsulation along with removing 
+the INT Metadata Header and the Metadata stack before forwarding the packet 
+to the destination.
+
+2. If the incoming packet at the source node of the INT domain is GRE 
+encapsulated, then the source node should add the INT Metadata Header 
+and Metadata following the GRE header. The sink node of the INT domain
+should remove the INT Metadata Header and Metadata stack before forwarding
+the GRE encapsulated packet to the destination.
 
 IPv4 GRE Option format for carrying INT Header and 
 Metadata:
@@ -665,7 +681,7 @@ Metadata:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
 |                        Routing (Optional)                     |  |     
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|      Type     |     Length    |        Next Protocol          |  |
+| Type  |R|R|R|R|     Length    |        Next Protocol          |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
 |                                                               |  N
 |  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
@@ -680,16 +696,17 @@ The INT Shim header for GRE option is defined as follows:
 * Type: This field indicates the type of INT Header following the shim header.
 Two Type values are used: one for the hop-by-hop header type and the other for
 the destination header type (See Section [#sec-int-header-types]).
-* Length: This is the total length of INT metadata header, INT stack and the
+* Length: This is the total length of INT metadata header, INT stack excluding the
 shim header in 4-byte words. A non-INT device may read this field
 and skip over INT headers.
 * Next Protocol: 16 bits Next Protocol field contains the protocol type of the
-packet follwing INT Metadata Header and Metadata. When the most significant 
-octet is 0x00, the Protocol Type is taken to be an IP Protocol Number as 
-defined in [IP-PROT]. Otherwise, the Protocol Type is defined to be an 
-EtherType value from [ETYPES]. An implementation receiving a packet 
-containing a Protocol Type which is not  listed in one of those 
-registries SHOULD discard the packet.
+packet follwing INT Metadata Header and Metadata. Protocol Type is defined 
+to be an EtherType value from [ETYPES]. An implementation receiving a packet 
+containing a Protocol Type which is not listed in one of those registries 
+SHOULD discard the packet.
+
+The other bits in the shim header are reserved (R) for future use,
+set to zero upon transmission and ignored upon reception.
 
 ### INT over TCP/UDP
 
@@ -1279,35 +1296,6 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
 
 ## Example with INT over IPv4/GRE
 
-The format of the GRE Header in INT-MD (Embedded Metadata) is shown below:
-
-0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|     Checksum (optional)       |        Offset (Optional)      |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
-|                         Key (Optional)                        |  R
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
-|                   Sequence Number (Optional)                  |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|                        Routing (Optional)                     |  |     
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-| INT Type - MD | INT HDR Len   |          Next Protocol        |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|  |
-|Ver = 2|Rep|C|E|M|     Reserved      | Hop ML  |Rmainig HopCnt |  I
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
-|      Instruction Bitmap       |     Domain Specific ID        |  T
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|          DS Flags             |         DS Instruction        |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|          Variable Option Data (INT Metadata Metadata]         |  |                      
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|                     Payload Original Packet                   |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-
 The format of the IPv4 packet with GRE Header for INT-MD (Embedded Metadata) 
 is shown below:
 
@@ -1337,10 +1325,16 @@ is shown below:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
 |                        Routing (Optional)                     |  |     
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-| INT Type - MD | INT HDR Len   |       Protocol = 0x800        |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
-|                                                               |  N
-|  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
+|Type=1 |R|R|R R|    Length     |       Protocol = 0x800        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|Ver = 2|Rep|C|E|M|     Reserved      | Hop ML  |RemainingHopCnt|  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|      Instruction Bitmap       |     Domain Specific ID        |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+|          DS Flags             |         DS Instruction        |  T
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                                                               |  |
+|  Variable Option Data (INT Metadata Headers and Metadata]     |  |                     
 |                                                               |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
 |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |             
