@@ -633,22 +633,21 @@ corruption at preceding hops.
 
 ## Header Location
 
-We describe five encapsulation formats in this specification, covering
+We describe four encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
 1. *INT over IPv4/GRE* - INT headers are carried between the GRE header and the 
 encapsulated GRE payload.
-2. *INT over IPv6* - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
-3. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+2. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
 Since v2.0, the spec also supports an option to insert a new UDP header
 (followed by INT headers) before the existing L4 header.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-4. *INT over VXLAN* - VXLAN generic protocol extensions
+3. *INT over VXLAN* - VXLAN generic protocol extensions
 (draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
 the VXLAN header and the encapsulated VXLAN payload.
-5. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
+4. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
 
 ### INT over IPv4/GRE
@@ -663,18 +662,19 @@ and metadata is enabled at the INT sink by means of configuration.
 
 There are two scenarios when utilizing GRE encapsulation to support INT:
 
-1. If the incoming packet at the source node of the INT domain is not GRE 
+1. If the incoming packet at the source node of the INT domain is GRE
+encapsulated, then the source node should add the INT Metadata Header
+and Metadata following the GRE header. The sink node of the INT domain
+should remove the INT Metadata Header and Metadata stack before forwarding
+the GRE encapsulated packet to the destination.
+
+2. If the incoming packet at the source node of the INT domain is not GRE
 encapsulated, then the source node should add a GRE encapsulation and insert 
 the INT Metadata Header and Metadata following the GRE header. The sink node 
 of the INT domain should remove the GRE encapsulation along with removing 
 the INT Metadata Header and the Metadata stack before forwarding the packet 
 to the destination.
 
-2. If the incoming packet at the source node of the INT domain is GRE 
-encapsulated, then the source node should add the INT Metadata Header 
-and Metadata following the GRE header. The sink node of the INT domain
-should remove the INT Metadata Header and Metadata stack before forwarding
-the GRE encapsulated packet to the destination.
 
 IPv4 GRE Option format for carrying INT Header and 
 Metadata:
@@ -692,7 +692,7 @@ Metadata:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
 |                        Routing (Optional)                     |  |     
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-| Type  |G|R|R|R|     Length    |        Next Protocol          |  |
+| Type  |G| Rsvd|     Length    |        Next Protocol          |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
 |                                                               |  N
 |  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
@@ -704,35 +704,29 @@ value is TBD_INT.
 
 The INT Shim header for GRE option is defined as follows:
 
-* Type: This field indicates the type of INT Header following the shim header.
-Two Type values are used: one for the hop-by-hop header type and the other for
-the destination header type (See Section [#sec-int-header-types]).
-* Length: This is the total length of INT metadata header, INT stack excluding the
-shim header in 4-byte words. A non-INT device may read this field
-and skip over INT headers.
-* G: Indicates whether the original packet (before insertion of INT headers
-  and metadata) was GRE encapsulated.
-  - 0: Original packet had no GRE encapsulation.
-  - 1: Original packet had GRE encapsulation.
-  - This may be used as a hint that helps the INT sink (when it is not the VTEP)
-    determine whether to progress the packet using a VXLAN GPE encapsulation,
-    or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
-    GPE) encapsulation.
-* Next Protocol: 16 bits Next Protocol field contains the protocol type of the
-packet follwing INT Metadata Header and Metadata. Protocol Type is defined 
-to be an EtherType value from [ETYPES]. An implementation receiving a packet 
-containing a Protocol Type which is not listed in one of those registries 
-SHOULD discard the packet.
-
-
-The other bits in the shim header are reserved (R) for future use,
-set to zero upon transmission and ignored upon reception.
+* Type (4b): This field indicates the type of INT Header following the shim header.
+  The Type values are defined in Section [#sec-int-header-types].
+* G (1b): Indicates whether the GRE headers were inserted to transport INT
+  by the INT source.
+  - 0: Original packet (before insertion of INT headers and metadata) had
+    GRE encapsulation.
+  - 1: Original packet had no GRE encapsulation, hence the INT source inserted GRE.
+  - This is a hint that helps the INT sink (when it is not the GRE tunnel endpoint)
+    determine whether to remove the GRE headers part of INT decapsulation (if G=1).
+* Rsvd (3b): reserved for future use, set to zero upon transmission and ignored
+  upon reception.
+* Length (8b): This is the total length of INT metadata header, INT stack excluding the
+  shim header in 4-byte words. A non-INT device may read this field
+  and skip over INT headers.
+* Next Protocol (16b): this field contains an EtherType value (defined in [ETYPES])
+  indicating the type of the protocol following the INT stack. An implementation
+  receiving a packet containing a Protocol Type which is not listed in one of those
+  registries SHOULD discard the packet.
 
 ### INT over TCP/UDP
 
 In case the traffic being monitored is not encapsulated by any virtualization
-header, INT over VXLAN or INT over Geneve is not helpful.
-Instead, one can put the INT metadata just after layer 4 headers (TCP/UDP).
+header, one can also put the INT metadata just after layer 4 headers (TCP/UDP).
 The scheme assumes that the non-INT devices between the INT source and the
 INT sink either do not parse beyond layer-4 headers or can skip through the
 INT stack using the Length field in the INT shim header. If TCP has any options,
@@ -1042,7 +1036,7 @@ INT-MD Metadata Header and Metadata Stack:
 
 
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 2|Res|D|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
+   |Ver = 2|D|E|M|       Reserved        | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1064,7 +1058,6 @@ INT-MD Metadata Header and Metadata Stack:
 
 * The fields in the INT metadata header are interpreted the following way:
   - Ver (4b): INT metadata header version. Should be 2 for this version.
-  - Res (2b): Reserved
   - D   (1b): Discard Copy/Clone. INT Sink should Discard the packet after Extracting INT data 
   - E (1b): Max Hop Count exceeded.
     - This flag must be set if a device cannot prepend its own metadata due to
@@ -1086,7 +1079,7 @@ INT-MD Metadata Header and Metadata Stack:
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
-  - R (10b): Reserved bits.
+  - R (12b): Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length. This is the length of metadata including the
     Domain Specific Metadata in 4-Byte words to be inserted at each INT transit hop.
     - Hop ML is set by the INT source for transit and sink hops to abide by.
@@ -1316,7 +1309,7 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1333,53 +1326,6 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
    |                          TCP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
-
-## Example with INT over IPv4/GRE
-
-The format of the IPv4 packet with GRE Header added at INT source for 
-INT-MD (Embedded Metadata) is shown below:
-
-
-0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                       Ethernet Header                         |  
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|Version|   HL  |Type of Service|          Total Length         |  O
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
-|        Identification         |Flags|      Fragment Offset    |  T	
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
-|  Time to Live | Protocol 0x2F |         Header Checksum       |  R
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|                     (Outer) Source Address                    |  I
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
-|                  (Outer) Destination Address                  |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|     Checksum (optional)       |        Offset (Optional)      |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
-|                         Key (Optional)                        |  R
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
-|                   Sequence Number (Optional)                  |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|                        Routing (Optional)                     |  |     
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|Type=1 |0|R|R R|    Length     |       Protocol = 0x800        |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|Ver = 2|Rep|D|E|M|     Reserved      | Hop ML  |RemainingHopCnt|  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|      Instruction Bitmap       |     Domain Specific ID        |  I
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
-|          DS Flags             |         DS Instruction        |  T
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|                                                               |  |
-|  Variable Option Data (INT Metadata Headers and Metadata]     |  |                     
-|                                                               |  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-|      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |             
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
 
 ## Example with new UDP header and INT inserted before TCP
 
@@ -1439,7 +1385,7 @@ INT Metadata Header and Metadata Stack, followed by TCP header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1515,7 +1461,7 @@ INT Metadata Header and Metadata Stack, followed by UDP payload:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 | 0 |0|0|0|     Reserved      | HopML=2 |RemainingHopC=6|
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1531,6 +1477,61 @@ INT Metadata Header and Metadata Stack, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+## Example with INT over IPv4/GRE
+
+In this scenario host1 sends an IPv4 packet to host2.
+The ToR switch of host1 (Switch1) acts as the INT source.
+It does IPv4/GRE encapsulation and inserts INT headers before the
+inner (original) IPv4. Switch2 prepends its metadata. Finally, the ToR
+switch of host2 (Switch3) acts as the INT sink and removes the INT headers
+and decapsulates outer IPv4/GRE before forwarding the packet to host2.
+
+Below is the packet received by INT sink Switch3, starting from the
+outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
+the GRE was inserted by the INT source.
+
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|            Length             |  O
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
+   |        Identification         |Flags|      Fragment Offset    |  T
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+   |  Time to Live | Proto = 0x2F  |         Header Checksum       |  R
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                     (Outer) Source Address                    |  I
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
+   |                  (Outer) Destination Address                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |     Checksum (optional)       |        Offset (Optional)      |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+   |                         Key (Optional)                        |  R
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+   |                   Sequence Number (Optional)                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                        Routing (Optional)                     |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x800        |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  I
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+   |                           sw id of hop2                       |  T
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                      queue occupancy of hop2                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                           sw id of hop1                       |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                      queue occupancy of hop1                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
 
 ## Example with INT over VXLAN GPE
 
@@ -1570,7 +1571,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1629,7 +1630,7 @@ INT Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 | 0 |0|0|0|0|   Reserved      | HopML=2 |RemainingHopC=5|
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1801,6 +1802,9 @@ specification and implementation of this spec.
 * Heidi OU
 * Mickey Spiegel
 * Bapi Vinnakota
+* Ramesh Sivakolundu
+* Daniel Alvarez
+
 
 # Change log
 
