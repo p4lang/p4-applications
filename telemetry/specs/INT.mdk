@@ -633,20 +633,100 @@ corruption at preceding hops.
 
 ## Header Location
 
-We describe three encapsulation formats in this specification, covering
+We describe five encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
+1. *INT over IPv4/GRE* - INT headers are carried between the GRE header and the 
+encapsulated GRE payload.
+2. *INT over IPv6* - INT Headers are carried in the IPv6 packets as Hop-by-Hop option.
+3. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
 Since v2.0, the spec also supports an option to insert a new UDP header
 (followed by INT headers) before the existing L4 header.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-2. *INT over VXLAN* - VXLAN generic protocol extensions
+4. *INT over VXLAN* - VXLAN generic protocol extensions
 (draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
 the VXLAN header and the encapsulated VXLAN payload.
-3. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
+5. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
+
+### INT over IPv4/GRE
+
+In case the traffic being monitored is not encapsulated by any virtualization
+header, INT over VXLAN or INT over Geneve is not helpful. Instead, 
+a GRE encapsulation as defined in [RFC2784] can be utilized. The INT metadata 
+header and INT metadata follows the GRE header. In an administrative domain 
+where INT is used, insertion of the INT metadata header and metadata in 
+GRE is enabled at the INT source and deletion of INT metadata header 
+and metadata is enabled at the INT sink by means of configuration. 
+
+There are two scenarios when utilizing GRE encapsulation to support INT:
+
+1. If the incoming packet at the source node of the INT domain is not GRE 
+encapsulated, then the source node should add a GRE encapsulation and insert 
+the INT Metadata Header and Metadata following the GRE header. The sink node 
+of the INT domain should remove the GRE encapsulation along with removing 
+the INT Metadata Header and the Metadata stack before forwarding the packet 
+to the destination.
+
+2. If the incoming packet at the source node of the INT domain is GRE 
+encapsulated, then the source node should add the INT Metadata Header 
+and Metadata following the GRE header. The sink node of the INT domain
+should remove the INT Metadata Header and Metadata stack before forwarding
+the GRE encapsulated packet to the destination.
+
+IPv4 GRE Option format for carrying INT Header and 
+Metadata:
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+| Type  |G|R|R|R|     Length    |        Next Protocol          |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
+|                                                               |  N
+|  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
+|                                                               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+
+The GRE header and fields are defined in [RFC2784].  The GRE Protocol Type 
+value is TBD_INT.
+
+The INT Shim header for GRE option is defined as follows:
+
+* Type: This field indicates the type of INT Header following the shim header.
+Two Type values are used: one for the hop-by-hop header type and the other for
+the destination header type (See Section [#sec-int-header-types]).
+* Length: This is the total length of INT metadata header, INT stack excluding the
+shim header in 4-byte words. A non-INT device may read this field
+and skip over INT headers.
+* G: Indicates whether the original packet (before insertion of INT headers
+  and metadata) was GRE encapsulated.
+  - 0: Original packet had no GRE encapsulation.
+  - 1: Original packet had GRE encapsulation.
+  - This may be used as a hint that helps the INT sink (when it is not the VTEP)
+    determine whether to progress the packet using a VXLAN GPE encapsulation,
+    or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
+    GPE) encapsulation.
+* Next Protocol: 16 bits Next Protocol field contains the protocol type of the
+packet follwing INT Metadata Header and Metadata. Protocol Type is defined 
+to be an EtherType value from [ETYPES]. An implementation receiving a packet 
+containing a Protocol Type which is not listed in one of those registries 
+SHOULD discard the packet.
+
+
+The other bits in the shim header are reserved (R) for future use,
+set to zero upon transmission and ignored upon reception.
 
 ### INT over TCP/UDP
 
@@ -960,6 +1040,7 @@ INT-MD Metadata Header and Metadata Stack:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 
+
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Ver = 2|Res|D|E|M|      Reserved     | Hop ML  |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1253,6 +1334,53 @@ INT Metadata Header and Metadata Stack, followed by TCP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
+## Example with INT over IPv4/GRE
+
+The format of the IPv4 packet with GRE Header added at INT source for 
+INT-MD (Embedded Metadata) is shown below:
+
+
+0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Ethernet Header                         |  
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|Version|   HL  |Type of Service|          Total Length         |  O
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
+|        Identification         |Flags|      Fragment Offset    |  T	
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|  Time to Live | Protocol 0x2F |         Header Checksum       |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                     (Outer) Source Address                    |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
+|                  (Outer) Destination Address                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|     Checksum (optional)       |        Offset (Optional)      |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+|                         Key (Optional)                        |  R
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+|                   Sequence Number (Optional)                  |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                        Routing (Optional)                     |  |     
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|Type=1 |0|R|R R|    Length     |       Protocol = 0x800        |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|Ver = 2|Rep|D|E|M|     Reserved      | Hop ML  |RemainingHopCnt|  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|      Instruction Bitmap       |     Domain Specific ID        |  I
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+|          DS Flags             |         DS Instruction        |  T
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+|                                                               |  |
+|  Variable Option Data (INT Metadata Headers and Metadata]     |  |                     
+|                                                               |  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+|      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |             
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
 ## Example with new UDP header and INT inserted before TCP
 
 As before we consider a scenario where host1 sends a TCP packet to host2.
@@ -1403,7 +1531,6 @@ INT Metadata Header and Metadata Stack, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
 
 ## Example with INT over VXLAN GPE
 
@@ -1639,6 +1766,17 @@ specific.
   - This field enables a Checksum-neutral update when INT is encapsulated over
 an L4 protocol that uses a Checksum field, such as TCP or UDP.
 
+# References
+
+ [ETYPES]  "IANA Ethernet Numbers"
+           <https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml>.
+           
+ [IP-PROT] "IANA Protocol Number"
+           <https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml>.
+           
+ [RFC2784] Farinacci, D., Li, T., Hanks, S., Meyer, D., and P.Traina, "Generic
+           Routing Encapsulation (GRE)", RFC 2784, DOI 10.17487/RFC2784, March 2000, 
+           <https://www.rfc-editor.org/info/rfc2784>.
 
 # Acknowledgements
 
