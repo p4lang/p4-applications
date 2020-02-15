@@ -1,9 +1,9 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
-Title Note : This is a working draft towards v2.0. Consider using tagged versions for implementation.
+Title Note : This is a working draft towards v2.1. Consider using tagged versions for implementation.
 Title Footer: 2020-02-14
 Author : The P4.org Applications Working Group. Contributions from
 
-Affiliation : *Alibaba, Arista, Barefoot Networks, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
+Affiliation : *Alibaba, Arista, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
 
 Heading depth: 5
 Pdf Latex: xelatex
@@ -204,12 +204,11 @@ number of interesting high level applications, such as:
 A number of use case descriptions and evaluations are described in the Millions
 of Little Minions paper [^Minions].
 
+[^Transit]: While this will be commonly done by Sink nodes, Transit nodes may also generate OAM's or carry out Network Event Detection
+[^Postcard]: I Know What Your Packet Did Last Hop: Using Packet Histories to Troubleshoot Networks, USENIX NSDI 2014.
 [^HULA]: HULA: Scalable Load Balancing Using Programmable Data Planes, ACM SOSR 2016
 [^CLOVE]: CLOVE: Congestion-Aware Load Balancing at the Virtual Edge, ACM CoNEXT 2017
 [^Minions]: Millions of Little Minions: Using Packets for Low Latency Network Programming and Visibility, ACM SIGCOMM 2014.
-[^Postcard]: I Know What Your Packet Did Last Hop: Using Packet Histories to Troubleshoot Networks, USENIX NSDI 2014.
-[^Transit]: WHile this will be commonly done by Sink nodes, Transit nodes may also generate OAM's or carry out Network Event Detection 
-
 # Terminology
 
 * **Monitoring System**: A system that collects telemetry data sent from
