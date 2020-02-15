@@ -1166,8 +1166,8 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   If the Domain Specific ID does not match any Domain ID known to this node, then 
   the transit node is required to either:
   
-  - Pad the node's INT Metadata stack with the special all-ones reserved value for a 
-    Domain Specific Metadata length, calculated by subtracting from the Hop ML a length 
+  - Pad the node's INT Metadata stack with the special all-ones reserved value for a
+    Domain Specific Metadata length, calculated by subtracting from the Hop ML a length
     computed from all bits in the 16-bit INT Instruction field, or
       
   - Skip INT processing altogether and not insert any metadata into the packet.
