@@ -865,26 +865,26 @@ INT shim header for TCP/UDP:
 * Type (4b): This field indicates the type of INT Header following the shim header.
   The Type values are defined in Section [#sec-int-header-types].
 * NPT (Next Protocol Type, 2b): This field is meaningful only when the UDP destination
-port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
-this field must be zero. When UDP destination port is INT_TBD, this field may have
-one of the two values:
-** one (1) indicates that the original UDP payload follows the INT stack,
-and the last two bytes of the shim header carry the original UDP destination port.
-** two (2) indicates that another (the original) L4 header follows
-the INT stack, and the last byte of the shim header carries the IP protocol
-value for the L4 layer.
+  port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
+  this field must be zero. When UDP destination port is INT_TBD, this field may have
+  one of the two values:
+  - one (1) indicates that the original UDP payload follows the INT stack,
+    and the last two bytes of the shim header carry the original UDP destination port.
+  - two (2) indicates that another (the original) L4 header follows
+    the INT stack, and the last byte of the shim header carries the IP protocol
+    value for the L4 layer.
 * Length (8b): This is the total length of INT metadata header and INT stack
-in 4-byte words. The length of the shim header (1 word) is NOT counted
-since INT version 2.0.
-A non-INT device may read this field and skip over INT headers.
+  in 4-byte words. The length of the shim header (1 word) is NOT counted
+  since INT version 2.0.
+  A non-INT device may read this field and skip over INT headers.
 * UDP port, IP proto, or DSCP (16b): The contents of this field differ depending on the
-value of NPT.
-** NPT=0: The first byte and the last two bits of this 16b field are reserved,
-set to zero upon transmission and ignored upon reception. The first 6 bits of
-the second byte may optionally carry the original DSCP value.
-** NPT=1: The original UDP destination port value.
-** NPT=2: The first byte is reserved, set to zero upon transmission and ignored
-upon reception. The second byte carries the original IP protocol value.
+  value of NPT.
+  - NPT=0: The first byte and the last two bits of this 16b field are reserved,
+    set to zero upon transmission and ignored upon reception. The first 6 bits of
+    the second byte may optionally carry the original DSCP value.
+  - NPT=1: The original UDP destination port value.
+  - NPT=2: The first byte is reserved, set to zero upon transmission and ignored
+    upon reception. The second byte carries the original IP protocol value.
 
 The other bits in the shim header are reserved (R) for future use,
 set to zero upon transmission and ignored upon reception.
