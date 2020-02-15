@@ -1244,7 +1244,7 @@ port ID)
 * The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
   - Ver = 2
-  - D = 0
+  - D = 0 (Packet is not a clone/copy, hence the Sink must not Discard)
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
   - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
