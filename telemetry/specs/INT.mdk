@@ -1166,11 +1166,11 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   If the Domain Specific ID does not match any Domain ID known to this node, then 
   the transit node is required to either:
   
-      - Pad the node's INT Metadata stack with the special all-ones reserved value for a 
-      Domain Specific Metadata length, calculated by subtracting from the Hop ML a length 
-      computed from all bits in the 16-bit INT Instruction field, or
+  - Pad the node's INT Metadata stack with the special all-ones reserved value for a 
+    Domain Specific Metadata length, calculated by subtracting from the Hop ML a length 
+    computed from all bits in the 16-bit INT Instruction field, or
       
-      - Skip INT processing altogether and not insert any metadata into the packet.
+  - Skip INT processing altogether and not insert any metadata into the packet.
 
 * Each INT Transit device along the path that supports INT adds its own metadata
 values as specified in the instruction bitmap and DS instructions immediately after
@@ -1243,7 +1243,7 @@ port ID)
   both metadata (switch ID and queue occupancy).
 * The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
-  - Ver = 1
+  - Ver = 2
   - D = 0
   - E = 0 (Max Hop Count not exceeded)
   - M = 0 (MTU not exceeded at any switch)
