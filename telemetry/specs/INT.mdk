@@ -1598,7 +1598,7 @@ INT Metadata Header and Metadata Stack:
 
 ## Example with INT over Geneve
 
-Finally, we consider a scenario where Host1 and Host2 use Geneve encapsulation.
+In this scenario we consider a scenario where Host1 and Host2 use Geneve encapsulation.
 Host1 acts as Geneve tunnel endpoint and INT source, inserts Geneve and INT
 headers with instruction bits corresponding to the network state to be
 reported at intermediate switches. In this example, Host1 itself does
@@ -1652,6 +1652,63 @@ INT Metadata Header and Metadata Stack:
    |                         sw id of hop1                         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                   queue occupancy of hop1                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+## Example with INT includingn source-only metadata
+
+Finally, we consider a scenario where Host1 is on a wireless network behind a NAT and their identify can not be confirmed by port location.  Host1 does not support INT.  The gateway acts at the INT source, inserting the header and the MAC address of Host1.  Intermediate switches parse populate the INT metadata while preserving the source-only domain specific metadata. Host2 acts as INT sink and Geneve
+tunnel endpoint, removes INT and Geneve headers.  This examples uses UDP encapsulation, but this can work with any of the above enacapsulation methods.
+
+The following is the UDP and INT Headers attached to the packet received by
+Host2.
+
+ Details of the Transparent Secuirty domain specific model can be accessed at the link below:
+  https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md
+
+UDP Header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Source Port          |  Destination Port = INT_TBD   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Length              |           Checksum            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+INT Shim Header for UDP, INT type is INT-MD (1) and
+NPT (Next Protocol Type) is 1 indicating UDP payload follows the INT.
+The original port number XYZ is stored in the shim header:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Type=1 | 1 |R R|   Length=8    |        UDP port = XYZ         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+INT Metadata Header and Metadata Stack, followed by UDP payload. The Domain Specific ID is 0x5453 (ascii for ts), bit 0 is set in the domain bitmask to indicate the 16 bit source-only device source and bit 1 is set in the DS flag to indicate that this was set by the gateway:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 |0|0|0|       Reserved        | HopML=1 |RemainingHopC=6|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 1 0 1 0 0 0 1 0 1 0 0 1 1|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop2                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop1                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          sw id of gateway                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    First 4 bytes of host1 MAC                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Last 2 bytes of host1 MAC     |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
