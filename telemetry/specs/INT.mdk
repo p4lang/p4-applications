@@ -1654,15 +1654,20 @@ INT Metadata Header and Metadata Stack:
    |                   queue occupancy of hop1                     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
-## Example with INT includingn source-only metadata
+## Example with INT including source-only metadata
 
-Finally, we consider a scenario where Host1 is on a wireless network behind a NAT and their identify can not be confirmed by port location.  Host1 does not support INT.  The gateway acts at the INT source, inserting the header and the MAC address of Host1.  Intermediate switches parse populate the INT metadata while preserving the source-only domain specific metadata. Host2 acts as INT sink and Geneve
-tunnel endpoint, removes INT and Geneve headers.  This examples uses UDP encapsulation, but this can work with any of the above enacapsulation methods.
+Finally, we consider a scenario where Host1 is on a wireless network behind a NAT
+and their identity can not be confirmed by port location.  Host1 does not support
+INT.  The gateway acts at the INT source, inserting the header and the MAC address
+of Host1.  Intermediate switches parse populate the INT metadata while preserving
+the source-only domain specific metadata. This examples uses UDP encapsulation,
+but this can work with any of the above enacapsulation methods.
 
-The following is the UDP and INT Headers attached to the packet received by
-Host2.
+The following is the UDP and INT Headers attached to the packet transmitted by
+the hop2 switch.
 
- Details of the Transparent Secuirty domain specific model can be accessed at the link below:
+ Details of the Transparent Secuirty domain specific model can be accessed at the link
+ below:
   https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md
 
 UDP Header:
@@ -1687,7 +1692,10 @@ The original port number XYZ is stored in the shim header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-INT Metadata Header and Metadata Stack, followed by UDP payload. The Domain Specific ID is 0x5453 (ascii for ts), bit 0 is set in the domain bitmask to indicate the 16 bit source-only device source and bit 1 is set in the DS flag to indicate that this was set by the gateway:
+INT Metadata Header and Metadata Stack, followed by UDP payload. The Domain
+Specific ID is 0x5453 (ascii for ts), bit 0 is set in the domain bitmask to
+indicate the 16 bit source-only device source and bit 1 is set in the DS flag
+to indicate that this was set by the gateway:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
