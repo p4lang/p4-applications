@@ -152,7 +152,7 @@ p4grammar {
 
 Inband Network Telemetry (“INT”) is a framework designed to allow the
 collection and reporting of network state, by the data plane, without requiring
-intervention or work by the control plane in collecting and deliverying
+intervention or work by the control plane in collecting and delivering
 the state from the data plane. In the INT architectural model,
 packets may contain header fields that are interpreted as “telemetry
 instructions” by network devices.
