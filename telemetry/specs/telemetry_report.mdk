@@ -430,7 +430,9 @@ particular deployment.
        0                   1                   2                   3
        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |  Ver  |Length |NProt| RepMdBits | Reserved  |D|Q|F|   hw_id   |
+      |  Ver  |Length |NProt| RepMdBits | Reserved|M|D|Q|F|   hw_id   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |         Report Length         |           Reserved            |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                           Switch id                           |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -474,6 +476,11 @@ particular deployment.
 
     See the INT specification [^INT] for definitions of the remaining metadata.
 
+* M: Multiple reports
+  : Indicates that at least one additional report is contained in this packet.
+    The next report header will begin after (Length + Report Length) * 4
+    octets.
+
 * D: Dropped
   : Indicates that at least one packet matching a drop watchlist was dropped.
 
@@ -496,6 +503,10 @@ particular deployment.
     identify a specific linecard, or a subsystem within a linecard. The hw_id
     is unique within the scope of a Switch id.
 
+* Report Length
+  : The length in in multiples of 4 octets of the report, excluding the
+    length of the header and metadata.
+ 
 * Switch id
   : The unique ID of a switch (generally administratively assigned). Switch IDs
     must be unique within a management domain.
