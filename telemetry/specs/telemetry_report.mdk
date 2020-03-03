@@ -424,7 +424,7 @@ The Destination Port is user configurable. The expectation is that the same
 Destination Port value will be used for all telemetry reports in a
 particular deployment.
 
-## Telemetry Report Header (16+ octets)
+## Telemetry Report Header (20+ octets)
 
 `
        0                   1                   2                   3
