@@ -3,7 +3,7 @@ Title Note : This is a working draft towards v2.1. Consider using tagged version
 Title Footer: 2020-02-14
 Author : The P4.org Applications Working Group. Contributions from
 
-Affiliation : *Alibaba, Arista, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
+Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
 
 Heading depth: 5
 Pdf Latex: xelatex
@@ -1772,6 +1772,56 @@ specific.
   - This field enables a Checksum-neutral update when INT is encapsulated over
 an L4 protocol that uses a Checksum field, such as TCP or UDP.
 
+# Domain Specific Examples
+
+Here we list a set of examplary domain specific implemenations.
+
+## Example with INT including source-only metadata
+
+We consider a case where Host1 is on a wireless network behind a NAT
+and its identity can not be confirmed by port location.  Host1 does not support
+INT.  The gateway acts at the INT source, inserting the header and the MAC address
+of Host1.  Intermediate switches populate the INT metadata while preserving
+the source-only domain specific metadata. This examples uses UDP encapsulation,
+but this can work with any of the above enacapsulation methods.
+
+The MAC addresss from host1 is copied from the source device on the Ethernet frame.
+The MAC is a 6 byte id.  Since the INT metadata header is measured in blocks of 4 bytes,
+the last 2 bytes are reserved.  For example a source device's MAC address is
+"a6:1a:f6:b1:64:7d" the device ID would be 0xA61AF6B1647d0000.
+
+The following is the UDP and INT Headers attached to the packet transmitted by
+the hop2 switch.
+
+Details of the Transparent Secuirty domain specific model can be accessed at the link below:
+https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md
+
+INT Metadata Header and Metadata Stack, followed by UDP payload. The Domain
+Specific ID is 0x5453 ('TS' in ascii), bit 0 is set in the domain bitmask to
+indicate the 16 bit source-only device source and bit 1 is set in the DS flag
+to indicate that this was set by the gateway:
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 |0|0|0|       Reserved        | HopML=1 |RemainingHopC=6|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 1 0 1 0 0 0 1 0 1 0 0 1 1|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop2                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sw id of hop1                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          sw id of gateway                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    First 4 bytes of host1 MAC                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Last 2 bytes of host1 MAC     |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
@@ -1797,6 +1847,7 @@ specification and implementation of this spec.
 * Bapi Vinnakota
 * Ramesh Sivakolundu
 * Daniel Alvarez
+* Randy Levensalor
 
 
 # Change log
