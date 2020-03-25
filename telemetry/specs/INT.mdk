@@ -752,12 +752,12 @@ hop-by-hop INT header must fit in a single Geneve option.
 In this section, we define the format for INT hop-by-hop metadata headers,
 and the metadata itself.
 
-INT Metadata Header and Metadata Stack (Version = 1):
+INT Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 1|Rep|C|E|M|      Reserved     |  Hop ML |RemainingHopCnt|
+   |  Ver  |Rep|C|E|M|      Reserved     |  Hop ML |RemainingHopCnt|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |            Reserved           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -821,7 +821,7 @@ The original packet must have C bit set to 0.
       switch(es) set the M bit based on knowledge of the network topology
       and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
       metadata stack.
-  - R (10b): Reserved bits.
+  - R: Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length, the length of metadata in 4-Byte words
     to be inserted at each INT hop.
     - While the largest value of Per-hop Metadata Length is 31, an INT-capable
