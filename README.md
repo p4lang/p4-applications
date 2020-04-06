@@ -14,7 +14,10 @@ The Applications WG charter is available [here](https://github.com/p4lang/p4-app
 
 Meeting Minutes
 ---------------------
-WG meeting minutes are posted to the [Wiki](https://github.com/p4lang/p4-applications/wiki) of thie repo.
+WG meeting minutes prior to Oct 2019 are posted to the [Wiki](https://github.com/p4lang/p4-applications/wiki) of thie repo.
+
+Meeting minutes from Oct 2019 and after are directly distributed to the mailing list. You can find them in the archive
+[http://lists.p4.org/pipermail/p4-apps_lists.p4.org/](http://lists.p4.org/pipermail/p4-apps_lists.p4.org/)
 
 Directory Structure
 ------------------
@@ -25,7 +28,7 @@ Directory Structure
 * _Makefile_ - Makefile to compile charter.mdk
 * _charter.mdk_ - source file for charter
 
-Mailing lists
+Mailing list
 -------------------
 - To subscribe, visit
   [http://lists.p4.org/mailman/listinfo/p4-apps_lists.p4.org](http://lists.p4.org/mailman/listinfo/p4-apps_lists.p4.org)
