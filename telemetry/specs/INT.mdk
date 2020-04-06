@@ -489,11 +489,15 @@ are present, the MD/MX-type header must precede the Destination-type header.
 ### INT Source Node
 
 In the INT-MD, INT-MX model, the INT Source device in the packet forwarding 
-path creates the INT-MD or INT-MX Header and add its own INT metadata. To avoid
-exhausting header space in the case of a forwarding loop or any other anomalies,
-it is strongly recommended to limit the number of total INT metadata fields
-added by Transit Hop devices by setting the Remaining Hop Count field in INT header
-appropriately. The INT-MD and INT-MX header is described in detail in the subsequent
+path creates the INT-MD or INT-MX Header. 
+
+In INT-MD, the source node add its own INT metadata after the header. To avoid 
+exhausting header space in the case of a forwarding loop or any other anomalies, 
+it is strongly recommended to limit the number of total INT metadata fields added 
+by Transit Hop devices by setting the Remaining Hop Count field in INT header 
+appropriately. 
+
+The INT-MD and INT-MX header is described in detail in the subsequent
 sections.
 
 ### INT Transit Hop Node
