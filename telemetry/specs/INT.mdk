@@ -295,7 +295,9 @@ INT Sink devices strip the instruction header before forwarding the packet to th
 receiver.
 Packet modification is limited to the instruction header, the packet size doesn't
 grow as the packet traverses more Transit devices.
+
 This mode is inspired by IOAM's "Direct Export" [^IOAM].
+
 A new INT type header for INT-MX will be defined in the next minor revision.
 
 * **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
@@ -1373,6 +1375,7 @@ values as specified in the instruction bitmap and DS instructions.
 * The length (in bytes) of the INT metadata sent to the monitoring system 
 must always be a multiple of 4B.
 
+
 # Examples
 
 This section shows example INT Headers with two hosts (Host1 and Host2),
@@ -1508,6 +1511,17 @@ Switch2 prepends its metadata. Finally, the ToR
 switch of host2 (Switch3) acts as the INT sink and removes the UDP and
 INT headers before forwarding the packet to host2.
 
+
+## Example with new UDP header and INT inserted before TCP
+
+As before we consider a scenario where host1 sends a TCP packet to host2.
+The ToR switch
+of host1 (Switch1) acts as the INT source. It adds a new UDP header,
+INT headers and its own metadata in the packet.
+Switch2 prepends its metadata. Finally, the ToR
+switch of host2 (Switch3) acts as the INT sink and removes the UDP and
+INT headers before forwarding the packet to host2.
+
 Below is the packet received by INT sink Switch3, starting from the IPv4
 header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
@@ -1573,6 +1587,7 @@ INT-MD Metadata Header and Metadata Stack, followed by TCP header:
    |                          TCP header                           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
+
 INT-MX Metadata Header, followed by TCP header:
 `
     0                   1                   2                   3
@@ -1641,6 +1656,7 @@ The original port number XYZ is stored in the shim header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
+
 INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
 `
     0                   1                   2                   3
@@ -1663,6 +1679,7 @@ INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
    |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
+
 
 INT-MX Metadata Header, followed by UDP payload:
 `
@@ -1691,6 +1708,7 @@ and decapsulates outer IPv4/GRE before forwarding the packet to host2.
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
 the GRE was inserted by the INT source.
+
 
 INT-MD over IPv4/GRE
 `
@@ -1735,6 +1753,7 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
+
 INT-MX over IPv4/GRE
 `
     0                   1                   2                   3
@@ -1769,6 +1788,7 @@ INT-MX over IPv4/GRE
    |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
+
 ## Example with INT over VXLAN GPE
 
 We now consider a scenario where Host1 and Host2 use VXLAN encapsulation.
@@ -2199,3 +2219,4 @@ assumptions in section [#sec-examples]
 * 2020-04-06  
   - Added INT-MX Header details
   - **Tag V2.1 spec**
+
