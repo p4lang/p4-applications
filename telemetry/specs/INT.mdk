@@ -372,8 +372,8 @@ must be unique within an INT domain.
 
 ## Ingress Information
 
-* Ingress port identifier
-  - The port on which the INT packet was received. A packet may be received
+* Ingress interface identifier
+  - The interface on which the INT packet was received. A packet may be received
     on an arbitrary stack of port constructs starting with a physical port.
     For example, a packet may be received on a physical port that belongs to
     a link aggregation port group, which in turn is part of a Layer 3 Switched
@@ -396,7 +396,7 @@ must be unique within an INT domain.
 
 ## Egress Information
 
-* Egress port identifier
+* Egress interface identifier
   - The port on which the INT packet was sent out. A packet may
     be transmitted on an arbitrary stack of port constructs ending at a
     physical port. For example, a packet may be transmitted on a tunnel,
@@ -1115,7 +1115,7 @@ INT-MD Metadata Header and Metadata Stack:
       limitation. In theory, if this does not occur at consecutive hops,
       it may be possible for the monitoring system to derive which
       switch(es) set the M bit based on knowledge of the network topology
-      and "Switch ID, Ingress port ID, Egress port ID" tuples in the INT
+      and "Switch ID, Ingress interface ID, Egress interface ID" tuples in the INT
       metadata stack.
   - R (12b): Reserved bits.
   - Hop ML (5b): Per-hop Metadata Length. This is the length of metadata including the
@@ -1148,12 +1148,12 @@ INT-MD Metadata Header and Metadata Stack:
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
-  - bit1: Level 1 Ingress Port ID (16 bits) + Egress Port ID (16 bits)
+  - bit1: Level 1 Ingress Interface ID (16 bits) + Egress Interface ID (16 bits)
   - bit2: Hop latency
   - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
   - bit4: Ingress timestamp (8 bytes)
   - bit5: Egress timestamp (8 bytes)
-  - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
+  - bit6: Level 2 Ingress Interface ID + Egress Interface ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
@@ -1293,12 +1293,12 @@ be accessed at the link below:
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
-  - bit1: Level 1 Ingress Port ID (16 bits) + Egress Port ID (16 bits)
+  - bit1: Level 1 Ingress Interface ID (16 bits) + Egress Interface ID (16 bits)
   - bit2: Hop latency
   - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
   - bit4: Ingress timestamp (8 bytes)
   - bit5: Egress timestamp (8 bytes)
-  - bit6: Level 2 Ingress Port ID + Egress Port ID (4 bytes each)
+  - bit6: Level 2 Ingress Interface ID + Egress Interface ID (4 bytes each)
   - bit7: Egress port Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
@@ -1390,7 +1390,7 @@ Detailed assumptions made for this example are as follows
 (For the sake of illustration we only consider switch ID and queue occupancy
 being inserted at each hop. Queue IDs are typically defined per port, hence
 in a real use-case queue occupancy is likely to be collected along with egress
-port ID)
+interface ID)
 * There are three devices (hops) on the path, and all the devices expose
   both metadata (switch ID and queue occupancy).
 * The maximum number of hops (network diameter) is 8.
@@ -1917,8 +1917,8 @@ at the time packets were forwarded.
 
 ## Ingress
 
-* Ingress port identifier
-  - The port on which the INT packet was received. A packet may be received
+* Ingress interface identifier
+  - The interface on which the INT packet was received. A packet may be received
     on an arbitrary stack of port constructs starting with a physical port.
     For example, a packet may be received on a physical port that belongs to a
     link aggregation port group, which in turn is part of a Layer 3 Switched
@@ -1930,7 +1930,7 @@ at the time packets were forwarded.
 * Ingress timestamp
   - The device local time when the INT packet was received on the **_ingress_**
 physical or logical port.
-* Ingress port RX pkt count
+* Ingress interface RX pkt count
   - Total # of packets received so far (since device initialization or counter
 reset) on the ingress physical or logical port where the INT packet was
 received.
@@ -1948,8 +1948,8 @@ INT framework leaves those decisions to device vendors.
 
 ## Egress
 
-* Egress port identifier
-  - The port on which the INT packet was sent out. A packet may be transmitted
+* Egress interface identifier
+  - The interface on which the INT packet was sent out. A packet may be transmitted
     on an arbitrary stack of port constructs ending at a physical port.
     For example, a packet may be transmitted on a tunnel, out of a Layer 3
     Switched Virtual Interface, on a Link Aggregation Group, out of a
