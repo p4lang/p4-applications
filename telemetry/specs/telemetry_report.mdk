@@ -530,12 +530,12 @@ particular deployment.
     metadata, except for bit 4,5 & 6 which represents 8 octets of optional metadata.
     
     * bit 0 (MSB): Reserved
-    * bit 1: Level 1 Ingress ID (16 bits) & Egress Port ID (16 bits)
+    * bit 1: Level 1 Ingress Interface ID (16 bits) & Egress Interface ID (16 bits)
     * bit 2: Hop Latency
     * bit 3: Queue ID (8 bits) + Queue Occupancy (24 bits)
     * bit 4: Ingress Timestamp (64 bits)
     * bit 5: Egress Timestamp (64 bits)
-    * bit 6: Level 2 Ingress port ID (32 bits) + Egress Port ID (32 bits)
+    * bit 6: Level 2 Ingress Interface ID (32 bits) + Egress Interface ID (32 bits)
     * bit 7: Egress Port TX Utilization
     * bit 8: Buffer ID (8 bits) + Buffer Occupancy (24 bits)
     * bit 9-14: Reserved. Should be set to zero.
