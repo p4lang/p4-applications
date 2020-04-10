@@ -1035,7 +1035,6 @@ INT-MD header must fit in a single Geneve option.
 In this section, we define the format for INT-MD metadata headers,
 and the metadata itself.
 
-
 INT-MD Metadata Header and Metadata Stack:
 `
     0                   1                   2                   3
