@@ -512,7 +512,7 @@ particular deployment.
 * F (1b): Tracked Flow Association
   : Indicates that this telemetry report is for a tracked flow, i.e. the
     packet matched a flow watchlist somewhere (in case of INT-MD, INT-MX or IOAM) or
-    locally (in case of INT-MX). The report might include INT-MD or IOAM
+    locally (in case of INT-XD). The report might include INT-MD or IOAM
     metadata beyond the inner ethernet header. Other telemetry reports are
     likely to be received for the same tracked flow, from the same network
     device and (in case of drop reports, INT-MX, INT-XD or path changes) from
