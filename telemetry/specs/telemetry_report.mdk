@@ -2,7 +2,7 @@ Title : Telemetry Report Format Specification Version 2.0
 Title Note : Working draft. Note: consider using tagged versions for implementation.
 Title Footer : 2018-04-20
 Author : The P4.org Applications Working Group
-Affiliation: Contributions from *Barefoot Networks, Cisco Systems, VMware, Xilinx*
+Affiliation: Contributions from *Barefoot Networks/Intel, Cisco Systems, VMware, Xilinx*
 Heading depth : 5
 
 Pdf Latex: xelatex
@@ -451,9 +451,9 @@ particular deployment.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
       |RepType| InType| Report Length |   MD Length   |D|Q|F|I|  Rsvd |  |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  R
-      |            RepMdbit           |      Domain Specific ID       |  E
+      |            RepMdBits          |      Domain Specific ID       |  E
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
-      |            DSMdbit            |          DSMdstatus           |  O                        
+      |            DSMdBits           |          DSMdstatus           |  O                        
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  R
       |          Variable Optional Baseline & DS Metadata             |  T                   
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
@@ -476,12 +476,12 @@ particular deployment.
     intended destination.
 
 * Node ID (32b): Node ID
-  : The unique ID of a switch (generally administratively assigned). Node IDs
+  : The unique ID of a network device (such as routers, switches, NICs etc.) This is generally administratively assigned. Node IDs
     must be unique within a management domain.
 
 * RepType (4b): Report Type
   : Type of Telemetry report
-    * 0: INT v2.0
+    * 0: INT v2.0 or later.
     * 1: IOAM
     * 2 – 15: Reserved
 
@@ -492,7 +492,7 @@ particular deployment.
     * 2: Ethernet
     * 3: IPv4
     * 4: IPv6
-    * 5-7: Reserved.
+    * 5-15: Reserved.
 
 * Report Length (8b): Report Length
   : Indicates length of report header in multiple of 4-byte words, including the variable 
@@ -511,11 +511,11 @@ particular deployment.
 
 * F (1b): Tracked Flow Association
   : Indicates that this telemetry report is for a tracked flow, i.e. the
-    packet matched a flow watchlist somewhere (in case of INT or IOAM) or
-    locally (in case of postcard). The report might include INT or IOAM
+    packet matched a flow watchlist somewhere (in case of INT-MD, INT-MX or IOAM) or
+    locally (in case of INT-MX). The report might include INT-MD or IOAM
     metadata beyond the inner ethernet header. Other telemetry reports are
     likely to be received for the same tracked flow, from the same network
-    device and (in case of drop reports, postcard or path changes) from
+    device and (in case of drop reports, INT-MX, INT-XD or path changes) from
     other network devices.
   
 * I (1b): Intermediate Report
@@ -527,7 +527,7 @@ particular deployment.
 * RepMdBits (16b): Report Metadata Bits
   : Bitmap that indicates which optional metadata is present in the
     telemetry report header. Each bit represents 4 octets of optional
-    metadata, except for bit 4,5 & 6 which represents 8 octets of optional metadata.
+    metadata, except for bits 4, 5 & 6 which represents 8 octets of optional metadata.
     
     * bit 0 (MSB): Reserved
     * bit 1: Level 1 Ingress Interface ID (16 bits) & Egress Interface ID (16 bits)
@@ -538,7 +538,7 @@ particular deployment.
     * bit 6: Level 2 Ingress Interface ID (32 bits) + Egress Interface ID (32 bits)
     * bit 7: Egress Port TX Utilization
     * bit 8: Buffer ID (8 bits) + Buffer Occupancy (24 bits)
-    * bit 9-14: Reserved. Should be set to zero.
+    * bit 9-14: Reserved. Should be set to zero upon transmission and ignore upon reception.
     * bit 15: Queue ID (8 bits) + Drop Reason (8 bits) + Padding (16 bits)
 
     This specification defines the following metadata:
@@ -552,10 +552,19 @@ particular deployment.
 * Domain Specific ID (16b)
   : The unique ID of the INT Domain
 
-* DSMdbit (16b): Domain Specific Md Bits
+* DSMdBits (16b): Domain Specific Md Bits
   : Bitmap that indicates which optional domain specific metadata is 
     present in the record of the telemetry report. Each bit represents 
-    4 octets of domain specific optional metadata.
+    4 octets of domain specific optional metadata. 
+    When using INT-MD or INT-MX, if the Domain Specific ID does not match 
+    any Domain ID known to this node, then the node may either: 
+    
+      -  Copy the INT Hop ML to the Telemetry Report MD Length, copy the INT DS Instruction 
+         to the Telemetry Report DSMdBits field, and pad the Variable Optional Baseline & 
+         DS Metadata with the special all-ones reserved value out to MD Length, or 
+         
+      - Set the Telemetry Report DSMdBits field to zero and rederive the Telemetry Report 
+         MD Length from RepMdBits.
     
 * DSMdstatus (16b): Domain Specific Md Status
   : Bitmap that indicates the domain specific metadata status. 
@@ -568,7 +577,7 @@ particular deployment.
   : The metadata corresponding to the DSMdBits, 4 octets for each bit.
     
 * Additional DS Extension Data
-  : Additional Domain Specific Specific Extension Data not associated with DSMdbit.
+  : Additional Domain Specific Specific Extension Data not associated with DSMdBits.
   
 * Truncated Packet
   : L2/L3/ESP/L4 of the packet for flow details 
@@ -576,11 +585,13 @@ particular deployment.
 
 ## Flow Identification
 
-There is no explicit metadata defined for flow identification. The
-expectation is that packet headers will be included in the telemetry
-report or domain specific flow identification metadata will be included, 
-allowing the distributed telemetry monitoring system to categorize
-and identify flows in any manner that it desires.
+There is no explicit metadata defined for flow identification. The expectation is that either:
+
+  - a truncated packet fragment including packet headers will be included in the telemetry report, 
+  allowing the distributed telemetry monitoring system to categorize and identify flows in any 
+  manner that it desires, or
+
+  - domain specific flow identification metadata will be included.
 
 ## Embedded Telemetry Metadata { #embedded }
 
