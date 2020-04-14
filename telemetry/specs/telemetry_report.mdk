@@ -457,7 +457,7 @@ particular deployment.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  R
       |          Variable Optional Baseline & DS Metadata             |  T                   
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-      |      Truncated Packet or  Additional DS Extension Data        |  |  
+      |    Truncated Packet or  Additional DS Extension Data or TLV   |  |  
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
       
 * Ver (4b): Version
@@ -488,11 +488,12 @@ particular deployment.
 * InType (4b): Inner Type
   : Type of data embedded after Variable Optional Baseline & DS Metadata.
     * 0: None
-    * 1: Domain Specific Extension Data
-    * 2: Ethernet
-    * 3: IPv4
-    * 4: IPv6
-    * 5-15: Reserved.
+    * 1: TLV
+    * 2: Domain Specific Extension Data
+    * 3: Ethernet
+    * 4: IPv4
+    * 5: IPv6
+    * 6-15: Reserved.
 
 * Report Length (8b): Report Length
   : Indicates length of report header in multiple of 4-byte words, including the variable 
@@ -576,11 +577,96 @@ particular deployment.
 * Variable Optional Domain Specific Metadata
   : The metadata corresponding to the DSMdBits, 4 octets for each bit.
     
+* Truncated Packet
+  : L2/L3/ESP/L4 of the packet for flow details 
+  
 * Additional DS Extension Data
   : Additional Domain Specific Specific Extension Data not associated with DSMdBits.
   
-* Truncated Packet
-  : L2/L3/ESP/L4 of the packet for flow details 
+* TLV
+  : Type Length Value format. Multiple TLV formated data following the Variable Optional
+  Baseline Metadata and Variable Optional Domain Specific Metadata.
+
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|TLVType|  Rsvd |   TLVLength   |        TLV Data Template      | 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          Variable TLV Data as identified by TLVType           |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+TLVType (4b): TLV Type – TLV data type.
+0 – Domain Specific Extension Data
+1 - Ethernet
+2 – IPv4
+3 – IPv6
+4-15 – Reserved.
+
+Rsvd (4b) – Reserved. Should be set to zero upon transmission and ignored upon reception.
+
+TLVLength (8b) - Indicates the length, in 4-byte word, of Variable TLV Data as identified by TLVType.
+
+TLV Data Template (16b) – TLV Data Template specifies the format of the Variable TLV Data. 
+A non-zero TLV Data Template value specifies the template for TLVType codepoint of Domain 
+Specific Extension Data. For TLVType codepoints Ethernet, IPv4, and IPv6, the TLV Data 
+Template value should be zero upon transmission and ignored upon reception.
+
+Variable TLV Data – Variable length data based upon TLVType as 4-byte words.
+
+# Example
+
+This section shows examples of Telemetry Report 
+
+## Example of Telemetry Report with Baseline Metadata and Truncated IPv4
+
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Ver = 2|   hw_id   |           Sequence Number                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                           Node ID                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|RepType|0 1 0 0| Report Length |   MD Length   |D|Q|F|I|  Rsvd |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            RepMdBits          |     Domain Specific ID        | 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|                         
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+|                 Variable Optional RepMdBits Data              |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                     Truncated IPv4 Packet                     |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+## Example of Telemetry Report with Baseline Metadata, Domain Specific
+Metadata, DS Extension Data & Truncated IPv4
+ 
+
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Ver = 2|   hw_id   |           Sequence Number                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                           Node ID                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|RepType|0 0 0 1| Report Length |   MD Length   |D|Q|F|I|  Rsvd |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            RepMdBits          |      Domain Specific ID       | 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            DSMdBits           |          DSMdstatus           |                         
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ 
+|                 Variable Optional RepMdBits Data              |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                 Variable Optional DSMdBits Data               |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|0 0 0 0|  Rsvd |   TLVLength   |       TLV Data Template       | 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       Variable TLV Data (Domain Specific Extension Data)      |                      
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|0 0 1 0|  Rsvd |   TLVLength   |           Reserved            | 
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Variable TLV Data (Truncated IPv4 Packet)           |                                           
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
 ## Flow Identification
