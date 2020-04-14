@@ -555,7 +555,7 @@ particular deployment.
 * DSMdBits (16b): Domain Specific Md Bits
   : Bitmap that indicates which optional domain specific metadata is 
     present in the record of the telemetry report. Each bit represents 
-    4 octets of domain specific optional metadata. 
+    4 octets or multiples of 4 octets of domain specific optional metadata. 
     When using INT-MD or INT-MX, if the Domain Specific ID does not match 
     any Domain ID known to this node, then the node may either: 
     
