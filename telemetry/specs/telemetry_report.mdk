@@ -617,7 +617,8 @@ Variable TLV Data – Variable length data based upon TLVType as 4-byte words.
 
 This section shows examples of Telemetry Report 
 
-## Example of Telemetry Report with Baseline Metadata and Truncated IPv4
+## Example of Telemetry Report with Baseline Metadata and Truncated IPv4. InType codepoint of 4 
+for Truncated IPv4.
 
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -639,7 +640,9 @@ This section shows examples of Telemetry Report
 
 
 ## Example of Telemetry Report with Baseline Metadata, Domain Specific
-Metadata, DS Extension Data & Truncated IPv4
+Metadata, DS Extension Data & Truncated IPv4. InType codepoint of 1 for 
+TLV, TLVType of 0 for Domain Specific Extension Data and TLVType of 2 for 
+Truncated IPv4 Packet.
  
 
  0                   1                   2                   3
