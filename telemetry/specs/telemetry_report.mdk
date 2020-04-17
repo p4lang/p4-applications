@@ -467,7 +467,7 @@ particular deployment.
   : Identifies the hardware subsystem within the network device that generated
     this report. For example, in a chassis with multiple linecards this could
     identify a specific linecard, or a subsystem within a linecard. The hw_id
-    is unique within the scope of a Switch id.
+    is unique within the scope of a Node id.
 
 * Sequence Number (22b): Sequence Number
   : Reflects the sequence of reports from a specific combination of
