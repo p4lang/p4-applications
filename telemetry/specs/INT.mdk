@@ -1326,12 +1326,14 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific
   Metadata is also sent to the monitoring systems.
 
-  Some instruction bits can be defined as 'source-only' metadata by the INT domain. Those metadata
+  Some metadata can be defined as 'source-only' metadata by the INT domain. Those metadata
   will be sent only by the INT source, not by INT transit or sink devices.
   In a sense, 'source-only' bits do not serve as instructions for downstream INT devices
-  to follow. The INT source sets the bits to indicate which source-only DS metadata it's sending
-  such that the monitoring system (or any consumer of the metadata) knows how to parse and use
-  the data.
+  to follow. In INT-MX mode, the source node should not set the bits corresponding to 
+  "source-only" metadata in the DS Instruction bitmap. However, the source node should ensure
+  that it sets the bits corresponding to "source-only" metadata in DSMdBits bitmap of the 
+  Telemetry Report. This is needed for the monitoring system (or any consumer of the metadata) 
+  to know how to parse and use the data.
 
   The amount of Domain Specific Metadata sent by each hop must be a multiple of 4 bytes,
   determined from the Domain Specific Instruction. 
