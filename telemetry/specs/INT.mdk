@@ -288,17 +288,14 @@ at their Flow Watchlists. No packet Modification is needed. This mode was also
 known as "Postcard" mode in the previous versions of Telemetry Report spec,
 originally inspired by [^Postcard].
 
-* **INT-MX** (eMbed instruct(X)ions): INT Source devices embed INT instructions in
-the packet header, each following Source/Transit device directly sends the metadata
-to the monitoring system by following the instructions embedded in the packets.
-INT Sink devices strip the instruction header before forwarding the packet to the
-receiver.
-Packet modification is limited to the instruction header, the packet size doesn't
+* **INT-MX** (eMbed instruct(X)ions): The INT Source device embeds INT instructions in
+the packet header, then the INT Source, each INT Transit, and the INT sink directly send 
+the metadata to the monitoring system by following the instructions embedded in the packets.
+The INT Sink device strips the instruction header before forwarding the packet to the
+receiver. Packet modification is limited to the instruction header, the packet size doesn't
 grow as the packet traverses more Transit devices.
 
-This mode is inspired by IOAM's "Direct Export" [^IOAM].
-
-A new INT type header for INT-MX will be defined in the next minor revision.
+This mode is inspired by IOAM's "Direct Export" [^IOAM-DEX].
 
 * **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
 written into the packets. This is the classic hop-by-hop INT where 1) INT Source embeds
@@ -339,6 +336,7 @@ INT Data collected along the path.
 specified otherwise.**
 
 [^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-05](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-05), March 2019.
+[^IOAM-DEX]: In-situ OAM Direct Exporting [draft-ietf-ippm-ioam-direct-export-00](https://tools.ietf.org/html/draft-ietf-ippm-ioam-direct-export-00), February 2020.
 [^IFA]: Inband Flow Analyzer, [draft-kumar-ippm-ifa-01](https://tools.ietf.org/html/draft-kumar-ippm-ifa-01), February 2019.
 
 ~ Figure { #fig-int-modes; caption: "Various modes of INT operation." }
@@ -376,21 +374,21 @@ must be unique within an INT domain.
 
 * Ingress interface identifier
   - The interface on which the INT packet was received. A packet may be received
-    on an arbitrary stack of port constructs starting with a physical port.
+    on an arbitrary stack of interface constructs starting with a physical port.
     For example, a packet may be received on a physical port that belongs to
     a link aggregation port group, which in turn is part of a Layer 3 Switched
     Virtual Interface, and at Layer 3 the packet may be received in a tunnel.
-    Although the entire port stack may be monitored in theory, this
-    specification allows for monitoring of up to two levels of ingress port
-    identifiers. First level of ingress port identifier would typically be
-    used to monitor the physical port on which
-    the packet was received, hence a 16-bit field (half of a 4-Byte metadata)
-    is deemed adequate. Second level of ingress port identifier occupies a
-    full 4-Byte metadata field, which may be used to monitor a logical port
-    on which the packet was received. A 32-bit space at the second level
-    allows for an adequately large number of logical ports at each network
-    element. The semantics of port identifiers may differ across devices,
-    each INT hop chooses the port type it reports at each of the two levels.
+    Although the entire interface stack may be monitored in theory, this
+    specification allows for monitoring of up to two levels of ingress interface
+    identifiers. First level of ingress interface identifier would typically be
+    used to monitor the physical port on which the packet was received, 
+    hence a 16-bit field (half of a 4-Byte metadata) is deemed adequate. Second 
+    level of ingress interface identifier occupies a full 4-Byte metadata field, 
+    which may be used to monitor a logical interface on which the packet was received. 
+    A 32-bit space at the second level allows for an adequately large number of 
+    logical interface at each network element. The semantics of interface identifiers 
+    may differ across devices, each INT hop chooses the interface type it reports at 
+    each of the two levels.
 
 * Ingress timestamp
   - The device local time when the INT packet was received on the ingress
@@ -399,22 +397,22 @@ must be unique within an INT domain.
 ## Egress Information
 
 * Egress interface identifier
-  - The port on which the INT packet was sent out. A packet may
-    be transmitted on an arbitrary stack of port constructs ending at a
+  - The interface on which the INT packet was sent out. A packet may
+    be transmitted on an arbitrary stack of interface constructs ending at a
     physical port. For example, a packet may be transmitted on a tunnel,
     out of a Layer 3 Switched Virtual Interface, on a Link Aggregation Group,
     out of a particular physical port belonging to the Link Aggregation Group.
-    Although the entire port stack may be monitored in theory, this
-    specification allows for monitoring of up to two levels of egress port
-    identifiers. First level of egress port identifier would typically be used
+    Although the entire interface stack may be monitored in theory, this
+    specification allows for monitoring of up to two levels of egress interface
+    identifiers. First level of egress interface identifier would typically be used
     to monitor the physical port on which
     the packet was transmitted, hence a 16-bit field (half of a 4-Byte metadata)
-    is deemed adequate. Second level of egress port identifier occupies a full
-    4-Byte metadata field, which may be used to monitor a logical port on
+    is deemed adequate. Second level of egress interface identifier occupies a full
+    4-Byte metadata field, which may be used to monitor a logical interface on
     which the packet was transmitted. A 32-bit space at the second level
-    allows for an adequately large number of logical ports at each network
-    element. The semantics of port identifiers may differ across devices,
-    each INT hop chooses the port type it reports at each of the two levels.
+    allows for an adequately large number of logical interface at each network
+    element. The semantics of interface identifiers may differ across devices,
+    each INT hop chooses the interface type it reports at each of the two levels.
 
 * Egress timestamp
   - The device local time when the INT packet was processed by the egress
@@ -423,8 +421,8 @@ physical or logical port.
 * Hop latency
   - Time taken for the INT packet to be switched within the device.
 
-* Egress port TX Link utilization
-  - Current utilization of the egress port via which the INT packet was sent
+* Egress interface TX Link utilization
+  - Current utilization of the egress interface via which the INT packet was sent
 out. Again, devices can use different mechanisms to keep track of the current
 rate, such as bin bucketing or moving average. While the latter is clearly
 superior to the former, the INT framework does not stipulate the mechanics and
@@ -459,9 +457,9 @@ are written into the packets.
 ## INT Header Types
 
 There are three types of INT Headers: MD-type, MX-type and Destination-type.
-A given INT packet may carry either of MD and MX type headers, and/or
+A given INT packet may carry either of MD or MX type headers, and/or
 a Destination-type header. When both INT Header types
-are present, the MD/MX-type header must precede the Destination-type header.
+are present, the MD type header or MX type header must precede the Destination-type header.
 
 * MD-type (**INT Header type 1**)
   - Intermediate devices (INT Transit Hops) must process this type of INT
@@ -486,11 +484,11 @@ are present, the MD/MX-type header must precede the Destination-type header.
     Header and generate reports to the monitoring system as instructed.
     The format of this header will be defined in the next minor revision.
 
-## Per-Hop Header Creation
+## Per-Hop Header Operations
 
 ### INT Source Node
 
-In the INT-MD, INT-MX model, the INT Source device in the packet forwarding 
+In the INT-MD and INT-MX modes, the INT Source device in the packet forwarding 
 path creates the INT-MD or INT-MX Header. 
 
 In INT-MD, the source node add its own INT metadata after the header. To avoid 
@@ -499,39 +497,36 @@ it is strongly recommended to limit the number of total INT metadata fields adde
 by Transit Hop devices by setting the Remaining Hop Count field in INT header 
 appropriately. 
 
-The INT-MD and INT-MX header is described in detail in the subsequent
+The INT-MD and INT-MX header are described in detail in the subsequent
 sections.
 
 ### INT Transit Hop Node
 
-In the INT-MD model, each device in the packet forwarding path creates additional
-space in the INT-MD Header on-demand to add its own INT metadata. To avoid
+In the INT-MD mode, each device in the packet forwarding path creates additional
+space in the INT-MD Header on-demand to add its own INT metadata. To avoid 
 exhausting header space in the case of a forwarding loop or any other anomalies,
-it is strongly recommended to limit the number of total INT metadata fields
-added by devices by decrementing the Remaining Hop Count field in INT header
-appropriately.
+each INT Transit Hop must decrement the Remaining Hop Count field in the INT
+header appropriately.
 
-In the INT-MX model, each device in the packet forwarding path follows the 
+In the INT-MX mode, each device in the packet forwarding path follows the 
 intructions in the INT-MX Header, gathers the device specific metadata and 
-exports the device metadata using the Telemetry Report. The devices in the 
-packet forwarding path do not modify the INT-MX header fields.
+exports the device metadata using the Telemetry Report. 
+INT Transit Hop devices do not modify the INT-MX header fields.
 
 ### INT Sink Node
 
-In the INT-MD and INT-MX model, the INT sink node device does not modify 
-or add its own INT metadata to the INT-MD/INT-MX Header. 
+In INT-MD mode, the INT Sink node removes the INT Headers and Metadata stack from 
+the packet, and decides whether to report the collected information.
 
-In INT-MD model, INT Sink node removes the INT Headers, extracts the 
-INT Headers and Metadata stack and decides on sending the collected information. 
-
-In INT-MX model, INT Sink node removes the INT-MX header, gathers the 
-device specific metadata and exports the device metadata using the 
-Telemetry Report.
-
+In INT-MX mode, INT Sink node removes the INT-MX header, gathers the 
+device specific metadata and decides whether to report that metadata.
 
 ## MTU Settings
 
-In INT-MD model, as each hop creates additional space in the INT header 
+In both INT-MX and INT-MD modes, it is possible that insertion of the INT header 
+at the INT Source node may cause the egress link MTU to be exceeded.
+
+In INT-MD mode, as each hop creates additional space in the INT header 
 to add its metadata, the packet size increases. This can potentially 
 cause egress link MTU to be exceeded at an INT switch.
 
@@ -544,7 +539,7 @@ MTUs) by an appropriate amount. Configuring an MTU differential of
 based on conservative values of total number of INT hops and Per-hop
 Metadata Length, will prevent egress MTU being exceeded due to INT metadata
 insertion at INT hops. The Fixed INT Header Length is the sum of INT metadata
-header length (8B) and the size of encapsulation-specific shim/option header
+header length (12B) and the size of encapsulation-specific shim/option header
 (4B) as defined in section [#sec-header-location].
 
 * An INT source/transit switch may optionally participate in dynamic discovery
@@ -1156,7 +1151,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit4: Ingress timestamp (8 bytes)
   - bit5: Egress timestamp (8 bytes)
   - bit6: Level 2 Ingress Interface ID + Egress Interface ID (4 bytes each)
-  - bit7: Egress port Tx utilization
+  - bit7: Egress interface Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
@@ -1284,11 +1279,11 @@ be accessed at the link below:
 
 * The fields in the INT metadata header are interpreted the following way:
   - Ver (4b): INT metadata header version. Should be 2 for this version.
-  - D   (1b): Discard Copy/Clone. Not applicable in INT-MX model. Should be set to 0 
+  - D   (1b): Discard Copy/Clone. Not applicable in INT-MX mode. Should be set to 0 
          by the INT Source.
-  - E   (1b): Max Hop Count exceeded. Not applicable in INT-MX model. Should be set to 0 
+  - E   (1b): Max Hop Count exceeded. Not applicable in INT-MX mode. Should be set to 0 
          by the INT Source.
-  - M   (1b): MTU exceeded. Not applicable in INT-MX model. Should be set to 0 
+  - M   (1b): MTU exceeded. Not applicable in INT-MX mode. Should be set to 0 
          by the INT Source.
   - R  (25b): Reserved bits. Should be set to 0 by INT Source and ignored by other devices.
       
@@ -1301,7 +1296,7 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit4: Ingress timestamp (8 bytes)
   - bit5: Egress timestamp (8 bytes)
   - bit6: Level 2 Ingress Interface ID + Egress Interface ID (4 bytes each)
-  - bit7: Egress port Tx utilization
+  - bit7: Egress interface Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
@@ -1941,29 +1936,29 @@ at the time packets were forwarded.
 
 * Ingress interface identifier
   - The interface on which the INT packet was received. A packet may be received
-    on an arbitrary stack of port constructs starting with a physical port.
+    on an arbitrary stack of interface constructs starting with a physical port.
     For example, a packet may be received on a physical port that belongs to a
     link aggregation port group, which in turn is part of a Layer 3 Switched
     Virtual Interface, and at Layer 3 the packet may be received in a tunnel.
-    Although the entire port stack may be monitored in theory, this
+    Although the entire interface stack may be monitored in theory, this
     specification allows for monitoring of up to two levels of ingress port
-    identifiers. The semantics of port identifiers may differ across devices,
-    each INT hop chooses the port type it reports at each of the two levels.
+    identifiers. The semantics of interface identifiers may differ across devices,
+    each INT hop chooses the interface type it reports at each of the two levels.
 * Ingress timestamp
   - The device local time when the INT packet was received on the **_ingress_**
 physical or logical port.
 * Ingress interface RX pkt count
   - Total # of packets received so far (since device initialization or counter
-reset) on the ingress physical or logical port where the INT packet was
+reset) on the ingress physical port or logical interface where the INT packet was
 received.
-* Ingress port RX byte count
-  - Total # of bytes received so far on the ingress physical or logical port
+* Ingress interface RX byte count
+  - Total # of bytes received so far on the ingress physical port or logical interface
 where the INT packet was received.
-* Ingress port RX drop count
-  - Total # of packet drops occurred so far on the ingress physical or logical
-port where the INT packet was received.
-* Ingress port RX utilization
-  - Current utilization of the ingress physical or logical port where the INT
+* Ingress interface RX drop count
+  - Total # of packet drops occurred so far on the ingress physical port or logical
+interface where the INT packet was received.
+* Ingress interface RX utilization
+  - Current utilization of the ingress physical port or logical interface where the INT
 packet was received. The exact mechanism (bin bucketing, moving average, etc.)
 is device specific and while the latter is clearly superior to the former, the
 INT framework leaves those decisions to device vendors.
@@ -1972,29 +1967,29 @@ INT framework leaves those decisions to device vendors.
 
 * Egress interface identifier
   - The interface on which the INT packet was sent out. A packet may be transmitted
-    on an arbitrary stack of port constructs ending at a physical port.
+    on an arbitrary stack of interface constructs ending at a physical port.
     For example, a packet may be transmitted on a tunnel, out of a Layer 3
     Switched Virtual Interface, on a Link Aggregation Group, out of a
     particular physical port belonging to the Link Aggregation Group.
-    Although the entire port stack may be monitored in theory, this
+    Although the entire interface stack may be monitored in theory, this
     specification allows for monitoring of up to two levels of egress port
-    identifiers. The semantics of port identifiers may differ across devices,
-    each INT hop chooses the port type it reports at each of the two levels.
+    identifiers. The semantics of interface identifiers may differ across devices,
+    each INT hop chooses the interface type it reports at each of the two levels.
 * Egress timestamp
   - The device local time when the INT packet was processed by the egress
-physical or logical port.
-* Egress port TX pkt count
+physical port or logical interface.
+* Egress interace TX pkt count
   - Total # of packets forwarded so far (since device initialization or counter
-reset) through the egress physical or logical port where the INT packet was also
+reset) through the egress physical port or logical interface where the INT packet was also
 forwarded.
-* Egress port TX byte count
-  - Total # of bytes forwarded so far through the egress physical or logical
-port where the INT packet was forwarded.
-* Egress port TX drop count
-  - Total # of packet drops occurred so far on the egress physical or logical
-port where the INT packet was forwarded.
-* Egress port TX utilization
-  - Current utilization of the egress port via which the INT packet was sent
+* Egress interface TX byte count
+  - Total # of bytes forwarded so far through the egress physical port or logical
+interface where the INT packet was forwarded.
+* Egress interface TX drop count
+  - Total # of packet drops occurred so far on the egress physical port or logical
+interface where the INT packet was forwarded.
+* Egress interface TX utilization
+  - Current utilization of the egress interface via which the INT packet was sent
 out.
 
 ## Buffer Information
