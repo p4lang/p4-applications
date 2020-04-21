@@ -1370,7 +1370,7 @@ values as specified in the instruction bitmap and DS instructions.
     - INT Source should set all reserved bits to zero.
     - INT Source may set the Domain-specific fields. 
   - Intermediate transit devices may set bits in the DS Flags field. Intermediate 
-    transit devices should not modify the Domain Specific ID and 
+    transit devices must not modify the Domain Specific ID and 
     DS Instruction in the INT-MX header.
   
 * The length (in bytes) of the INT metadata sent to the monitoring system 
