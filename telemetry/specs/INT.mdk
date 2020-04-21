@@ -456,8 +456,9 @@ the INT instructions (and metadata stack in case of MD modes) are written into t
 
 There are three types of INT Headers: MD-type, MX-type and Destination-type.
 A given INT packet may carry either of MD or MX type headers, and/or
-a Destination-type header. When both INT Header types
-are present, the MD type header or MX type header must precede the Destination-type header.
+a Destination-type header. When Destination-type and MD-type or MX-type 
+headers are present, the MD-type header or MX-type header must precede the Destination-type 
+header.
 
 * MD-type (**INT Header type 1**)
   - Intermediate devices (INT Transit Hops) must process this type of INT
@@ -508,8 +509,9 @@ header appropriately.
 
 In the INT-MX mode, each device in the packet forwarding path follows the 
 intructions in the INT-MX Header, gathers the device specific metadata and 
-exports the device metadata using the Telemetry Report. 
-INT Transit Hop devices do not modify the INT-MX header fields.
+exports the device metadata using the Telemetry Report.  INT Transit Hop 
+nodes may update the DS Flags field in the INT-MX header. Domian Specific ID 
+and DS Instruction fields must not be modified by Transit Hop nodes.
 
 ### INT Sink Node
 
