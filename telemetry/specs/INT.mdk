@@ -1262,7 +1262,7 @@ INT-MX Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 2|D|E|M|                  Reserved                       |
+   |Ver = 2|D|E|M|           Reserved    | Hop ML  |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |      Instruction Bitmap       |        Domain Specific ID     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1287,9 +1287,29 @@ be accessed at the link below:
     - Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
   - M (1b): MTU exceeded. 
     - Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
-  - R (25b): Reserved bits. 
+  - R (12b): Reserved bits. 
     - Should be set to 0 by INT Source and ignored by other devices.
-      
+  - Hop ML (5b): Hop Metadata Length. This is the length of metadata including the
+    Domain Specific Metadata in 4-Byte words to be sent to monitoring systems at 
+    each INT transit hop.
+    - Hop ML is set by the INT source. Transit hops and INT sink node may refer to it.
+      If an INT domain uses 'source-only' Domain Specific Metadata,
+      defined below, the length of the source-only Domain Specific Metadata
+      is *excluded* from the Hop ML.
+    - The largest value of Hop ML for baseline and domain specific
+      metadata is 31. An INT-capable device may be limited in the maximum number 
+      of instructions it can process and/or maximum length of metadata it can 
+      gather for each data packets. An INT hop that cannot process all instructions '
+      have the following alternatives:
+        - Send to the monitoring system Hop ML \* 4 bytes, with all-ones reserved 
+        value (4 or 8 bytes of 0xFF depending on the length of metadata) for the 
+        metadata corresponding to instructions it cannot process.
+        - Send to the monitoring system the metadata it can process, update the 
+        RepMdBits, DSMdBits and MD Length fields appropriately in the Telemetry 
+        Report.
+   - R (8b): Reserved bits. 
+    - Should be set to 0 by INT Source and ignored by other devices.
+    
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
 each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
