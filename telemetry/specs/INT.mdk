@@ -1092,7 +1092,7 @@ INT-MD Metadata Header and Metadata Stack:
 * The fields in the INT metadata header are interpreted the following way:
   - Ver (4b): INT metadata header version. Should be 2 for this version.
   - D (1b): Discard. 
-    - INT Sink should Discard the packet after Extracting INT-MD metadata.
+    - INT Sink must Discard the packet after Extracting INT-MD metadata.
   - E (1b): Max Hop Count exceeded.
     - This flag must be set if a device cannot prepend its own metadata due to
       the Remaining Hop Count reaching zero.
@@ -1279,7 +1279,7 @@ be accessed at the link below:
 * The fields in the INT metadata header are interpreted the following way:
   - Ver (4b): INT metadata header version. Should be 2 for this version.
   - D (1b): Discard. 
-    - INT Sink should Discard the packet after sending the metadata requested
+    - INT Sink must Discard the packet after sending the metadata requested
       in the INT-MX header to the monitoring system.
     Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
   - E (1b): Max Hop Count exceeded. 
