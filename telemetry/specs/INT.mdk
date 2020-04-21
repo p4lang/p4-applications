@@ -1283,7 +1283,6 @@ be accessed at the link below:
   - D (1b): Discard. 
     - INT Sink must Discard the packet after sending the metadata requested
       in the INT-MX header to the monitoring system.
-    Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
   - E (1b): Max Hop Count exceeded. 
     - Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
   - M (1b): MTU exceeded. 
