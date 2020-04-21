@@ -449,10 +449,8 @@ https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-d
 # INT Headers
 
 This section specifies the format and location of INT Headers.
-INT Headers and their locations are relevant for
-INT-MX, INT-MD, INT-CLONE-MD, and INT-PROBE-MD modes
-where the INT instructions (and metadata stack in case of MD modes)
-are written into the packets.
+INT Headers and their locations are relevant for INT-MX, INT-MD modes where 
+the INT instructions (and metadata stack in case of MD modes) are written into the packets.
 
 ## INT Header Types
 
