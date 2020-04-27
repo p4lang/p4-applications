@@ -451,13 +451,13 @@ particular deployment.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |RepType| InType| Report Length |   MD Length   |D|Q|F|I|  Rsvd |    
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-      |            RepMdBits          |      Domain Specific ID       |  |
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  R
-      |            DSMdBits           |          DSMdstatus           |  E                        
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
-      |          Variable Optional Baseline & DS Metadata             |  O                  
-      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  R
-      |    Truncated Packet or  Additional DS Extension Data or TLV   |  T  
+      |            RepMdBits          |      Domain Specific ID       |  R
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+      |            DSMdBits           |          DSMdstatus           |  P                        
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  O
+      |          Variable Optional Baseline & DS Metadata             |  R                  
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  T
+      |    Truncated Packet or  Additional DS Extension Data or TLV   |  | 
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
       
 * Ver (4b): Version
@@ -498,9 +498,9 @@ particular deployment.
 * Report Length (8b): Report Length
   : Indicates length of report header in multiple of 4-byte words, including the variable 
     optional baseline metadata,  DS metadata and Truncated Packet or additional Domain 
-    Specific Extension Data and excluding the 4-byte word (RepType, InType, Report
-    Length, MD Length, D, Q, F, I, Rsvd).
-    
+    Specific Extension Data, and excluding the 4-byte word (RepType, InType, Report Length, 
+    MD Length, D, Q, F, I, Rsvd).
+
 * MD Length (8b): Metadata Length
   : Indicates the length of Variable Optional Baseline Metadata and Variable Optional 
     Domain Specific Metadata in 4-byte words.
