@@ -510,7 +510,7 @@ header appropriately.
 In the INT-MX mode, each device in the packet forwarding path follows the 
 intructions in the INT-MX Header, gathers the device specific metadata and 
 exports the device metadata using the Telemetry Report.  INT Transit Hop 
-nodes may update the DS Flags field in the INT-MX header. Domian Specific ID 
+nodes may update the DS Flags field in the INT-MX header. Domain Specific ID 
 and DS Instruction fields must not be modified by Transit Hop nodes.
 
 ### INT Sink Node
@@ -1306,14 +1306,17 @@ be accessed at the link below:
     - The largest value of Hop ML for baseline and domain specific
       metadata is 31. An INT-capable device may be limited in the maximum number 
       of instructions it can process and/or maximum length of metadata it can 
-      gather for each data packets. An INT hop that cannot process all instructions '
-      have the following alternatives:
+      gather for each data packets. 
+    - An INT hop that cannot process all instructions has the following alternatives:
+    
         - Send to the monitoring system Hop ML \* 4 bytes, with all-ones reserved 
         value (4 or 8 bytes of 0xFF depending on the length of metadata) for the 
-        metadata corresponding to instructions it cannot process.
+        metadata corresponding to instructions it cannot process, or
+      
         - Send to the monitoring system the metadata it can process, update the 
         RepMdBits, DSMdBits and MD Length fields appropriately in the Telemetry 
         Report.
+        
    - R (8b): Reserved bits. 
     - Should be set to 0 by INT Source and ignored by other devices.
     
@@ -1960,11 +1963,12 @@ INT-MD over IPv4/GRE
 ## Example with INT-MX over IPv4/GRE
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source.
-It does IPv4/GRE encapsulation and inserts INT-MX header before the
-inner (original) IPv4. Switch2 processes the INT-MX header. Finally, the ToR
+The ToR switch of host1 (Switch1) acts as the INT source. It add an Ethernet 
+(L2) header, does IPv4/GRE encapsulation and inserts INT-MX header before the
+inner (original) packet. Switch2 processes the INT-MX header. Finally, the ToR
 switch of host2 (Switch3) acts as the INT sink and removes the INT-MX header
-and decapsulates outer IPv4/GRE before forwarding the packet to host2.
+and decapsulates outer L2 header, outer IPv4/GRE before forwarding the packet 
+to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
@@ -1974,6 +1978,8 @@ INT-MX over IPv4/GRE
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |                       Ethernet Header (L2)                    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    | Ver=4 | IHL=5 |    DSCP   |ECN|            Length             |  O
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
@@ -1995,7 +2001,7 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x800        |  |
+   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x6558       |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |    Reserved   |  I
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
@@ -2003,7 +2009,7 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |
+   |Ethernet + Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
