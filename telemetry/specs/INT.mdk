@@ -1321,7 +1321,7 @@ be accessed at the link below:
     - Should be set to 0 by INT Source and ignored by other devices.
     
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
-each bit corresponds to a specific standard metadata as specified in Section 3.
+  each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
   - bit1: Level 1 Ingress Interface ID (16 bits) + Egress Interface ID (16 bits)
   - bit2: Hop latency
@@ -1904,6 +1904,7 @@ INT-MX Header, followed by UDP payload:
 ## Example with INT-MD over IPv4/GRE
 
 In this scenario host1 sends an IPv4 packet to host2.
+
 The ToR switch of host1 (Switch1) acts as the INT source. It add an Ethernet 
 (L2) header, does IPv4/GRE encapsulation and inserts INT-MD headers before the
 inner (original) packet. Switch2 prepends its metadata. Finally, the ToR
@@ -1943,6 +1944,8 @@ INT-MD over IPv4/GRE
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x6558       |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
