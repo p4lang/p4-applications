@@ -449,7 +449,7 @@ https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-d
 # INT Headers
 
 This section specifies the format and location of INT Headers.
-INT Headers and their locations are relevant for INT-MX, INT-MD modes where 
+INT Headers and their locations are relevant for INT-MX and INT-MD modes where 
 the INT instructions (and metadata stack in case of MD modes) are written into the packets.
 
 ## INT Header Types
@@ -481,7 +481,7 @@ header.
 * MX-type (**INT Header type 3**)
   - Intermediate devices (INT Transit Hops) must process this type of INT
     Header and generate reports to the monitoring system as instructed.
-    The format of this header will be defined in the next minor revision.
+    The format of this header is defined in section [#sec-int-mx-metadata-header-format].
 
 ## Per-Hop Header Operations
 
@@ -560,9 +560,16 @@ INT hop.
 
 Regardless of whether or not an INT transit switch participates in Path MTU
 discovery, if it cannot insert all requested metadata because doing so will
-cause the packet length to exceed egress link MTU, it
-must not insert any metadata and set the M bit in the
-INT header, indicating that egress MTU was exceeded at an INT hop.
+cause the packet length to exceed egress link MTU, it must either:
+
+  - not insert any metadata and set the M bit in the INT header, indicating
+    that egress MTU was exceeded at an INT hop, or
+      
+  - report the metadata stack collected from previous hops (setting the 
+    Intermediate Report bit if a Telemetry Report 2.0 packet is generated) and 
+    remove the reported metadata stack from the packet, including the metadata 
+    from this transit hop in either the report or embedding in the INT-MD metadata 
+    header.
 
 An INT source inserts 12 bytes of fixed INT headers, and may also insert
 Per-hop Metadata Length\*4 bytes of its own metadata. If inserting the
@@ -1252,7 +1259,7 @@ Metadata if added by the source. The total stack length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
 from (shim header length \* 4).
 
-## INT-MX Metadata Header Format
+## INT-MX Header Format
 
 In this section, we define the format for INT-MX metadata headers,
 and the metadata itself.
@@ -1284,9 +1291,9 @@ be accessed at the link below:
     - INT Sink must Discard the packet after sending the metadata requested
       in the INT-MX header to the monitoring system.
   - E (1b): Max Hop Count exceeded. 
-    - Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
+    - Not applicable in INT-MX mode. Must be set to 0 by the INT Source.
   - M (1b): MTU exceeded. 
-    - Not applicable in INT-MX mode. Should be set to 0 by the INT Source.
+    - Not applicable in INT-MX mode. Must be set to 0 by the INT Source.
   - R (12b): Reserved bits. 
     - Should be set to 0 by INT Source and ignored by other devices.
   - Hop ML (5b): Hop Metadata Length. This is the length of metadata including the
@@ -1354,21 +1361,40 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   to know how to parse and use the data.
 
   The amount of Domain Specific Metadata sent by each hop must be a multiple of 4 bytes,
-  determined from the Domain Specific Instruction. 
+  determined from the Domain Specific Instruction or consistent with the per-hop 
+  metadata length (Hop ML) set by the INT source (see Hop ML above).
   
   If the Domain Specific ID does not match any Domain ID known to this node, then 
   the transit node is required to either:
   
-  - Send the metadata corresponding to INT Baseline Instruction, or
-      
+  - Send the metadata corresponding to INT Instruction field and ensure that the 
+    "DSMdbits" is not set in the Telemetry Report and MD Length field reflects the length 
+    of the metadata sent in the Telemetry Report, or
+  
+  - Send the metadata corresponding to INT Instruction and pad the node's INT Metadata 
+    stack with the special all-ones reserved value for a Domain Specific Metadata length, 
+    calculated by subtracting from the Hop ML a length computed from all bits in the 
+    16-bit INT Instruction field, or
+     
   - Skip INT processing altogether and not send any metadata the monitoring systems.
 
-* Each INT Transit device along the path that supports INT-MX sends its own metadata
-values as specified in the instruction bitmap and DS instructions.
-  - If a device is unable to provide a metadata value specified in the
-    instruction bitmap because its value is not available, it must ensure that the
-    corresponding bit in the "RepMdbit" and/or "DSMdbit" is not set in the Telemetry Report.
+  Details of the metadata semantics and format of the Telemetry Report can 
+  be accessed at the link below:
+    
+  https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf
   
+* Each INT Transit device along the path that supports INT-MX sends its own metadata
+  values as specified in the instruction bitmap and DS instructions.
+  
+  - If a device is unable to provide a metadata value specified in the
+    instruction bitmap because its value is not available, it must either:
+    
+      - ensure that the corresponding bit in "RepMdbits" and/or "DSMdbits" is not set 
+        in the Telemetry Report, or
+        
+      - send the all-ones reserved value (4 or 8 bytes of 0xFF depending on the length 
+        of metadata).
+    
     Details of the metadata semantics and format of the Telemetry Report can 
     be accessed at the link below:
     
@@ -1376,10 +1402,15 @@ values as specified in the instruction bitmap and DS instructions.
     
   - Reserved bits in the instruction bitmap are to be handled as described. If an
     INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
-    set by a INT source that is running a newer version), the transit hop must
-    must ensure that the corresponding reserved bits  "RepMdbit" and/or "DSMdbit" 
-    are not set in the Telemetry Report sent to the monitoring system.
-  
+    set by a INT source that is running a newer version), the transit hop must either:
+    
+      - ensure that the corresponding reserved bits in "RepMdbits" and/or "DSMdbits"
+         are not set in the Telemetry Report sent to the monitoring system, or
+         
+      - for "RepMdBits", send the all-ones reserved value (4 bytes of 0xFF);
+         for "DSMdbits", pad with the special all-ones reserved value in lieu of reserved
+         DS Metadata, out to MD Length.
+         
     Details of the metadata semantics and format of the Telemetry Report can 
     be accessed at the link below:
     
@@ -1660,10 +1691,10 @@ INT-MD Metadata Header and Metadata Stack, followed by TCP header:
 ## Example with new UDP header and INT-MX inserted before TCP
 
 As before we consider a scenario where host1 sends a TCP packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source. It adds a new UDP header,
-INT-MX header in the packet. Switch2 processes the INT-MX Header. Finally, the ToR
-switch of host2 (Switch3) acts as the INT sink and removes the UDP and
-INT-MX header before forwarding the packet to host2.
+The ToR switch of host1 (Switch1) acts as the INT source. It adds a new UDP header 
+and a new INT-MX header in the packet. Switch2 processes the INT-MX Header. 
+Finally, the ToR switch of host2 (Switch3) acts as the INT sink and removes 
+the UDP and INT-MX header before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the IPv4
 header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
@@ -1979,12 +2010,12 @@ INT-MX over IPv4/GRE
 ## Example with INT-MD over VXLAN GPE
 
 We now consider a scenario where Host1 and Host2 use VXLAN encapsulation.
-Host1 acts as VXLAN tunnel endpoint and INT source, inserts VXLAN and INT-MX
+Host1 acts as VXLAN tunnel endpoint and INT source, inserts VXLAN and INT-MD
 headers with instruction bits corresponding to the network state to be
 reported at intermediate switches. In this example, Host1 itself does
 not insert any INT metadata. Intermediate switches parse through VXLAN
 header and populate the INT metadata. Host2 acts as INT sink and VXLAN
-tunnel endpoint, removes INT-MX and VXLAN headers.
+tunnel endpoint, removes INT-MD and VXLAN headers.
 
 The packet headers received at Host 2 are as follows, starting with the VXLAN
 GPE header (encapsulating ethernet, IP and UDP headers are not shown here):
@@ -2041,7 +2072,7 @@ Host1 acts as VXLAN tunnel endpoint and INT source, inserts VXLAN and INT-MX
 header with instruction bits corresponding to the network state to be
 reported at intermediate switches. In this example, Host1 itself does
 not send any metadata to the monitoring system. Intermediate switches parse 
-through VXLAN header and and processes the INT-MX header and sends the INT 
+through VXLAN header, process the INT-MX header and send the INT 
 metadata requested to the monitoring system. Host2 acts as INT sink and 
 VXLAN tunnel endpoint, removes INT-MX and VXLAN headers.
 
@@ -2144,10 +2175,10 @@ INT-MD Metadata Header and Metadata Stack:
 
 Finally, we consider a scenario where Host1 and Host2 use Geneve encapsulation.
 Host1 acts as Geneve tunnel endpoint and INT source, inserts Geneve and INT-MX
-header with instruction bits corresponding to the network state to be
+headers with instruction bits corresponding to the network state to be
 reported at intermediate switches. In this example, Host1 does not send INT
 metadata to the monitoring system. Intermediate switches parse through Geneve
-header and processes the INT-MX header and sends the INT metadata requested
+header, process the INT-MX header and send the INT metadata requested
 to the monitoring system. Host2 acts as INT sink and Geneve
 tunnel endpoint, removes INT-MX and Geneve headers.
 
