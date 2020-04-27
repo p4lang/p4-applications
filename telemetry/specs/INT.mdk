@@ -1904,11 +1904,11 @@ INT-MX Header, followed by UDP payload:
 ## Example with INT-MD over IPv4/GRE
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source.
-It does IPv4/GRE encapsulation and inserts INT-MD headers before the
-inner (original) IPv4. Switch2 prepends its metadata. Finally, the ToR
+The ToR switch of host1 (Switch1) acts as the INT source. It add an Ethernet 
+(L2) header, does IPv4/GRE encapsulation and inserts INT-MD headers before the
+inner (original) packet. Switch2 prepends its metadata. Finally, the ToR
 switch of host2 (Switch3) acts as the INT sink and removes the INT-MD headers
-and decapsulates outer IPv4/GRE before forwarding the packet to host2.
+and decapsulates outer L2 header, outer IPv4/GRE  before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
@@ -1919,6 +1919,8 @@ INT-MD over IPv4/GRE
 `
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |                       Ethernet Header (L2)                    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    | Ver=4 | IHL=5 |    DSCP   |ECN|            Length             |  O
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
@@ -1940,7 +1942,7 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x800        |  |
+   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x6558       |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
@@ -1956,7 +1958,7 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop1                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |
+   |Ethernet + Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
