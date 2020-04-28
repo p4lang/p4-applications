@@ -510,7 +510,7 @@ header appropriately.
 In the INT-MX mode, each device in the packet forwarding path follows the 
 intructions in the INT-MX Header, gathers the device specific metadata and 
 exports the device metadata using the Telemetry Report.  INT Transit Hop 
-nodes may update the DS Flags field in the INT-MX header. Domian Specific ID 
+nodes may update the DS Flags field in the INT-MX header. Domain Specific ID 
 and DS Instruction fields must not be modified by Transit Hop nodes.
 
 ### INT Sink Node
@@ -1306,19 +1306,22 @@ be accessed at the link below:
     - The largest value of Hop ML for baseline and domain specific
       metadata is 31. An INT-capable device may be limited in the maximum number 
       of instructions it can process and/or maximum length of metadata it can 
-      gather for each data packets. An INT hop that cannot process all instructions '
-      have the following alternatives:
+      gather for each data packets. 
+    - An INT hop that cannot process all instructions has the following alternatives:
+    
         - Send to the monitoring system Hop ML \* 4 bytes, with all-ones reserved 
         value (4 or 8 bytes of 0xFF depending on the length of metadata) for the 
-        metadata corresponding to instructions it cannot process.
+        metadata corresponding to instructions it cannot process, or
+      
         - Send to the monitoring system the metadata it can process, update the 
         RepMdBits, DSMdBits and MD Length fields appropriately in the Telemetry 
         Report.
+        
    - R (8b): Reserved bits. 
     - Should be set to 0 by INT Source and ignored by other devices.
     
 * INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
-each bit corresponds to a specific standard metadata as specified in Section 3.
+  each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit0 (MSB): Switch ID
   - bit1: Level 1 Ingress Interface ID (16 bits) + Egress Interface ID (16 bits)
   - bit2: Hop latency
@@ -1898,14 +1901,14 @@ INT-MX Header, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-## Example with INT-MD over IPv4/GRE
+## Example with INT-MD over IPv4/GRE (Original packet IPv4)
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source.
-It does IPv4/GRE encapsulation and inserts INT-MD headers before the
-inner (original) IPv4. Switch2 prepends its metadata. Finally, the ToR
-switch of host2 (Switch3) acts as the INT sink and removes the INT-MD headers
-and decapsulates outer IPv4/GRE before forwarding the packet to host2.
+The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE 
+encapsulation and inserts INT-MD headers before the inner (original) IPv4. 
+Switch2 prepends its metadata. Finally, the ToR switch of host2 (Switch3) 
+acts as the INT sink and removes the INT-MD headers and decapsulates outer 
+IPv4/GRE  before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
@@ -1937,7 +1940,7 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x800        |  |
+   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x0800       |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
@@ -1953,18 +1956,18 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop1                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |
+   |          Inner IP Header + Payload + Pad (L3/ESP...)          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
-## Example with INT-MX over IPv4/GRE
+## Example with INT-MX over IPv4/GRE (Original packet IPv4)
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source.
-It does IPv4/GRE encapsulation and inserts INT-MX header before the
-inner (original) IPv4. Switch2 processes the INT-MX header. Finally, the ToR
-switch of host2 (Switch3) acts as the INT sink and removes the INT-MX header
-and decapsulates outer IPv4/GRE before forwarding the packet to host2.
+The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE 
+encapsulation and inserts INT-MX header before the inner (original) IPv4. 
+Switch2 processes the INT-MX header. Finally, the ToR switch of host2 
+(Switch3) acts as the INT sink and removes the INT-MX header and decapsulates 
+outer IPv4/GRE before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
@@ -1995,7 +1998,7 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x800        |  |
+   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x0800       |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |    Reserved   |  I
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
@@ -2003,7 +2006,124 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |      Inner IPv4 Header + Payload + Padding (L2/L3/ESP/….)     |
+   |          Inner IP Header + Payload + Pad (L3/ESP...)          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+
+## Example with INT-MD over IPv4/GRE (Original packet CE or IP)
+
+In this scenario host1 sends an IPv4 packet to host2.
+
+The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet 
+(L2) header, does IPv4/GRE encapsulation and inserts INT-MD headers before the
+inner (original) packet that starts with an Ethernet header. Switch2 prepends 
+its metadata. Finally, the ToR switch of host2 (Switch3) acts as the INT sink 
+and removes the INT-MD headers and decapsulates outer L2 header, outer IPv4/GRE  
+before forwarding the packet to host2.
+
+Below is the packet received by INT sink Switch3, starting from the
+outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
+the GRE was inserted by the INT source.
+
+
+INT-MD over IPv4/GRE
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |                       Ethernet Header (L2)                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|            Length             |  O
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
+   |        Identification         |Flags|      Fragment Offset    |  T
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+   |  Time to Live | Proto = 0x2F  |         Header Checksum       |  R
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                     (Outer) Source Address                    |  I
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
+   |                  (Outer) Destination Address                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |     Checksum (optional)       |        Offset (Optional)      |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+   |                         Key (Optional)                        |  R
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+   |                   Sequence Number (Optional)                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                        Routing (Optional)                     |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x6558       |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  I
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+   |                           sw id of hop2                       |  T
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                      queue occupancy of hop2                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                           sw id of hop1                       |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                      queue occupancy of hop1                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |  Payload (Original Packet starting with an Ethernet header)   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+`
+
+## Example with INT-MX over IPv4/GRE (Original packet CE or IP)
+
+In this scenario host1 sends an IPv4 packet to host2.
+The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet 
+(L2) header, does IPv4/GRE encapsulation and inserts INT-MX header before the
+inner (original) packet that starts with an Ethernet header. Switch2 processes 
+the INT-MX header. Finally, the ToR switch of host2 (Switch3) acts as the INT 
+sink and removes the INT-MX header and decapsulates outer L2 header, outer 
+IPv4/GRE before forwarding the packet to host2.
+
+Below is the packet received by INT sink Switch3, starting from the
+outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
+the GRE was inserted by the INT source.
+
+INT-MX over IPv4/GRE
+`
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |                       Ethernet Header (L2)                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|            Length             |  O
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  U
+   |        Identification         |Flags|      Fragment Offset    |  T
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+   |  Time to Live | Proto = 0x2F  |         Header Checksum       |  R
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                     (Outer) Source Address                    |  I
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  P
+   |                  (Outer) Destination Address                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |C|R|K|S|s|Recur|   Flags | Ver |   Protocol Type = TBD_INT     |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |     Checksum (optional)       |        Offset (Optional)      |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  G
+   |                         Key (Optional)                        |  R
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
+   |                   Sequence Number (Optional)                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                        Routing (Optional)                     |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x6558       |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |    Reserved   |  I
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  T
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
+   |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
