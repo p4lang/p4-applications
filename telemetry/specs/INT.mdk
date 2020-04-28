@@ -1904,7 +1904,6 @@ INT-MX Header, followed by UDP payload:
 ## Example with INT-MD over IPv4/GRE (Original packet IPv4)
 
 In this scenario host1 sends an IPv4 packet to host2.
-
 The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE 
 encapsulation and inserts INT-MD headers before the inner (original) IPv4. 
 Switch2 prepends its metadata. Finally, the ToR switch of host2 (Switch3) 
@@ -1941,9 +1940,7 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x6558       |  |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
+   |Type=1 |1| Rsvd|    Length=7   |       Protocol = 0x0800       |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
@@ -2001,7 +1998,7 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                        Routing (Optional)                     |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x6558       |  |
+   |Type=3 |1| Rsvd|    Length=3   |       Protocol = 0x0800       |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |    Reserved   |  I
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
@@ -2018,14 +2015,15 @@ INT-MX over IPv4/GRE
 
 In this scenario host1 sends an IPv4 packet to host2.
 
-The ToR switch of host1 (Switch1) acts as the INT source. It add an Ethernet 
+The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet 
 (L2) header, does IPv4/GRE encapsulation and inserts INT-MD headers before the
-inner (original) packet. Switch2 prepends its metadata. Finally, the ToR
-switch of host2 (Switch3) acts as the INT sink and removes the INT-MD headers
-and decapsulates outer L2 header, outer IPv4/GRE  before forwarding the packet to host2.
+inner (original) packet that starts with an Ethernet header. Switch2 prepends 
+its metadata. Finally, the ToR switch of host2 (Switch3) acts as the INT sink 
+and removes the INT-MD headers and decapsulates outer L2 header, outer IPv4/GRE  
+before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
-outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
+outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
 the GRE was inserted by the INT source.
 
 
@@ -2060,8 +2058,6 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=6|  |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  I
@@ -2074,22 +2070,22 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop1                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |                    Payload (Original Packet)                  |
+   |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
 ## Example with INT-MX over IPv4/GRE (Original packet CE or IP)
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source. It add an Ethernet 
+The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet 
 (L2) header, does IPv4/GRE encapsulation and inserts INT-MX header before the
-inner (original) packet. Switch2 processes the INT-MX header. Finally, the ToR
-switch of host2 (Switch3) acts as the INT sink and removes the INT-MX header
-and decapsulates outer L2 header, outer IPv4/GRE before forwarding the packet 
-to host2.
+inner (original) packet that starts with an Ethernet header. Switch2 processes 
+the INT-MX header. Finally, the ToR switch of host2 (Switch3) acts as the INT 
+sink and removes the INT-MX header and decapsulates outer L2 header, outer 
+IPv4/GRE before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
-outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
+outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
 the GRE was inserted by the INT source.
 
 INT-MX over IPv4/GRE
@@ -2127,7 +2123,7 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
-   |                    Payload (Original Packet)                  |
+   |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 `
 
