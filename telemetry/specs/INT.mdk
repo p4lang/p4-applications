@@ -1025,7 +1025,7 @@ the INT Header will have a next protocol value other than INT Header indicating
 the payload following the INT Header - typically Ethernet. If there are multiple
 INT Headers in the VXLAN GPE stack (for example if both MD and
 destination type INT headers are being carried), then all VXLAN GPE shim
-headers for the INT Headers other than the last one will carry 0x80 for
+headers for the INT Headers other than the last one will carry 0x82 for
 their next protocol values, and the VXLAN GPE header for the last INT Header
 will carry next protocol value of the original VXLAN payload (e.g., Ethernet).
 
@@ -2202,7 +2202,7 @@ VXLAN GPE Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x80|
+   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x82|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2261,7 +2261,7 @@ VXLAN GPE Header:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x80|
+   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x82|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
