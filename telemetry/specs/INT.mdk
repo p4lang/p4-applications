@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-04-30
+Title Footer: 2020-05-12
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -1097,10 +1097,10 @@ Geneve header for INT.
 * Users may or may not use INT with Geneve along with VNI (network
 virtualization), though using INT with Geneve without network virtualization
 would be a bit wasteful.
-* Specific values of Option Class and Type have not been reserved for INT yet.
-Deployments using INT over Geneve must use configurable values for Option
-Class and Type to be able to migrate to different values as and when specific
-values are defined for INT.
+* The Geneve **Option Class** codepoint 0x0103 has been tentatively assigned for
+  INT [^IANA-Geneve].
+* The Geneve Option **Type** field indicates the type of INT Header in the
+  Geneve Option. The Type values are defined in Section [#sec-int-header-types].
 * The variable length option data following the Geneve Option Header carries
 the actual INT metadata header and metadata.
 * The Length field of the Geneve Option header is 5-bits long, which
@@ -1108,6 +1108,8 @@ limits a single Geneve option instance to no more than 124 bytes long (31 * 4).
 *Remaining Hop Count* in INT-MD type header has to be set accordingly at the
 INT source to ensure that the Geneve option does not overflow. The entire
 INT-MD header must fit in a single Geneve option.
+
+[^IANA-Geneve]: [IANA Network Virtualization Overlay (NVO3), Geneve Option Class](https://www.iana.org/assignments/nvo3/nvo3.xhtml)
 
 ## INT-MD Metadata Header Format
 
@@ -2318,7 +2320,7 @@ Geneve Option for INT-MD type:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Option Class=0x00AB      |     Type=1    |R|R|R|  Len=9  |
+   |      Option Class=0x0103      |     Type=1    |R|R|R|  Len=9  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -2378,7 +2380,7 @@ Geneve Option for INT-MX type:
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Option Class=0x00AB      |     Type=3    |R|R|R|  Len=3  |
+   |      Option Class=0x0103      |     Type=3    |R|R|R|  Len=3  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -2595,8 +2597,6 @@ specification and implementation of this spec.
 * Bapi Vinnakota
 
 
-[]{tex-cmd: "\newpage"}
-
 # Change log
 
 * 2015-09-28
@@ -2708,4 +2708,6 @@ assumptions in section [#sec-examples]
 * 2020-04-30
   - Added INT-MD alternative MTU processing, generating 'Intermediate Report'
   - Changed 'switch id' terminology to 'node id'
+* 2020-05-12
+  - Changed Geneve Option Class codepoint to value assigned by IANA
   - **Tag V2.1 spec**
