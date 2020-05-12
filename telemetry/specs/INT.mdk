@@ -191,6 +191,8 @@ violation of certain data-plane invariances), the traffic sinks[^Transit] could 
 immediate actions to respond to the network events, forming a feedback control
 loop either in a centralized or a fully decentralized fashion (a la TCP).
 
+[]{tex-cmd: "\newpage"}
+
 The INT architectural model is intended to be generic and enables a
 number of interesting high level applications, such as:
 
@@ -225,10 +227,17 @@ of Little Minions paper [^Minions].
 * **INT Packet**:
   : A packet containing an INT Header.
 
+* **INT Node**:
+  : An INT-capable network device that participates in the INT data plane by
+    regularly carrying out at least one of the following: inserting, adding to,
+    removing, or processing instructions from INT Headers in INT packets.
+    Depending on deployment scenarios, examples of INT Nodes may include devices
+    such as routers, switches, and NICs.
+
 * **INT Instruction**:
   : Instructions indicating which INT Metadata (defined below) to collect at
-    each INT device. The instructions are either configured at each INT-capable
-    device's Flow Watchlist or written into the INT Header.
+    each INT node. The instructions are either configured at each INT-capable
+    node's Flow Watchlist or written into the INT Header.
 
 * **Flow Watchlist**:
   : A dataplane table that matches on packet headers and inserts or applies
@@ -248,27 +257,27 @@ of Little Minions paper [^Minions].
     decide to send the collected information to the monitoring system.
 
 * **INT Transit Hop**:
-  : A networking device that collects metadata from the data plane by following
+  : A trusted entity that collects metadata from the data plane by following
     the INT Instructions. Based on the instructions, the data may be directly
     exported to the telemetry monitoring system or embedded into the INT Header
     of the packet.
 
 Note that one physical device
 may play multiple roles -- INT Source, Transit, Sink -- at the same time
-for the same or different flows. For example, an INT Source device may
+for the same or different flows. For example, an INT Source node may
 embed its own metadata into the packet, playing the roles of INT Transit as well.
 
 * **INT Metadata**:
-  : Information that an INT Source or an INT Transit Hop device inserts into the
+  : Information that an INT Source or an INT Transit Hop node inserts into the
     INT Header, or into a telemetry report. Examples of metadata are described
     in section [#sec-what-to-monitor].
 
 * **INT Domain**:
-  : A set of inter-connected INT devices under the same administration. This
+  : A set of inter-connected INT nodes under the same administration. This
     specification defines the behavior and packet header formats for
-    interoperability between INT devices from different vendors in an INT
-    domain. The INT devices within the same domain must be configured in a
-    onsistent way to ensure interoperability between the devices. Operators of
+    interoperability between INT nodes from different vendors in an INT
+    domain. The INT nodes within the same domain must be configured in a
+    consistent way to ensure interoperability between the nodes. Operators of
     an INT domain should deploy INT Sink capability at domain edges to prevent
     INT information from leaking out of the domain.
 
@@ -290,20 +299,20 @@ Original data packets are monitored and may be modified
 to carry INT instructions and metadata.
 There are three variations based on the level of packet modifications.
 
-* **INT-XD** (eXport Data): Network devices directly export metadata from their
+* **INT-XD** (eXport Data): INT nodes directly export metadata from their
   dataplane to the monitoring system based on the INT instructions configured
   at their Flow Watchlists. No packet Modification is needed.
 
   This mode was also known as "Postcard" mode in the previous versions of
   the Telemetry Report spec, originally inspired by [^Postcard].
 
-* **INT-MX** (eMbed instruct(X)ions): The INT Source device embeds INT
+* **INT-MX** (eMbed instruct(X)ions): The INT Source node embeds INT
   instructions in the packet header, then the INT Source, each INT Transit, and
   the INT sink directly send the metadata to the monitoring system by following
-  the instructions embedded in the packets. The INT Sink device strips the
+  the instructions embedded in the packets. The INT Sink node strips the
   instruction header before forwarding the packet to the receiver. Packet
   modification is limited to the instruction header, the packet size doesn't
-  grow as the packet traverses more Transit devices.
+  grow as the packet traverses more Transit nodes.
 
   This mode is inspired by IOAM's "Direct Export" [^IOAM] [^IOAM-DEX].
 
@@ -313,7 +322,7 @@ There are three variations based on the level of packet modifications.
   Sink strips the instructions and aggregated metadata out of the packet and
   (selectively) sends the data to the monitoring system.
   The packet is modified the most in this mode while it minimizes the overhead
-  at the monitoring system to collate reports from multiple devices.
+  at the monitoring system to collate reports from multiple INT nodes.
 
   Since v2.0, INT-MD mode supports 'source-only' metadata as part of Domain
   Specific Instructions. This allows the INT Source to embed additional
@@ -332,7 +341,7 @@ specified otherwise.**
 
 ## INT Applied to Synthetic Traffic
 
-INT Source devices may generate INT-marked synthetic traffic either by
+INT Source nodes may generate INT-marked synthetic traffic either by
 cloning original data packets or by generating special probe packets.
 INT is applied to this traffic by transit nodes in exactly the same way
 as all traffic.
@@ -377,7 +386,7 @@ the entities interpreting/analyzing the reported data in an out-of-band fashion.
 ## Device-level Information
 
 * Node id
-  : The unique ID of a network device (such as routers, switches, NICs, etc).
+  : The unique ID of an INT node.
     This is generally administratively assigned. Node IDs must be unique
     within an INT domain.
 
@@ -457,6 +466,8 @@ the entities interpreting/analyzing the reported data in an out-of-band fashion.
 Details of the metadata semantics YANG model can be accessed at the link below:\
 [https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang](https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang)
 
+[]{tex-cmd: "\newpage"}
+
 # INT Headers
 
 This section specifies the format and location of INT Headers.
@@ -472,15 +483,13 @@ a Destination-type header. When Destination-type and MD-type or MX-type
 headers are present, the MD-type header or MX-type header must precede the
 Destination-type header.
 
-[]{tex-cmd: "\newpage"}
-
 * MD-type (**INT Header type 1**)
-  - Intermediate devices (INT Transit Hops) must process this type of INT
+  - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header. The format of this header is defined in section
     [#sec-int-md-metadata-header-format].
 * Destination-type (**INT Header type 2**)
   - Destination headers must only be consumed by the INT Sink. Intermediate
-    devices must ignore Destination headers.
+    nodes must ignore Destination headers.
   - Destination headers can be used to enable Edge-to-Edge communication between
     the INT Source and INT Sink. For example:
       - INT Source can add a sequence number to detect loss of INT packets.
@@ -493,7 +502,7 @@ Destination-type header.
     revision. Note some Edge-to-Edge INT use cases can be supported by 'source-only'
     metadata, part of Domain Specific Instructions in the MD-type header.
 * MX-type (**INT Header type 3**)
-  - Intermediate devices (INT Transit Hops) must process this type of INT
+  - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header and generate reports to the monitoring system as instructed.
     The format of this header is defined in section [#sec-int-mx-header-format].
 
@@ -501,13 +510,13 @@ Destination-type header.
 
 ### INT Source Node
 
-In the INT-MD and INT-MX modes, the INT Source device in the packet forwarding
+In the INT-MD and INT-MX modes, the INT Source node in the packet forwarding
 path creates the INT-MD or INT-MX Header.
 
 In INT-MD, the source node add its own INT metadata after the header. To avoid
 exhausting header space in the case of a forwarding loop or any other anomalies,
 it is strongly recommended to limit the number of total INT metadata fields added
-by Transit Hop devices by setting the *Remaining Hop Count* field in INT header
+by Transit Hop nodes by setting the *Remaining Hop Count* field in INT header
 appropriately.
 
 The INT-MD and INT-MX headers are described in detail in the subsequent
@@ -515,13 +524,13 @@ sections.
 
 ### INT Transit Hop Node
 
-In the INT-MD mode, each device in the packet forwarding path creates additional
+In the INT-MD mode, each node in the packet forwarding path creates additional
 space in the INT-MD Header on-demand to add its own INT metadata. To avoid
 exhausting header space in the case of a forwarding loop or any other anomalies,
 each INT Transit Hop must decrement the *Remaining Hop Count* field in the INT
 header appropriately.
 
-In the INT-MX mode, each device in the packet forwarding path follows the
+In the INT-MX mode, each node in the packet forwarding path follows the
 intructions in the INT-MX Header, gathers the device specific metadata and
 exports the device metadata using the Telemetry Report.
 
@@ -544,7 +553,7 @@ at the INT Source node may cause the egress link MTU to be exceeded.
 
 In INT-MD mode, as each hop creates additional space in the INT header
 to add its metadata, the packet size increases. This can potentially
-cause egress link MTU to be exceeded at an INT device.
+cause egress link MTU to be exceeded at an INT node.
 
 This may be addressed in the following ways -
 
@@ -624,6 +633,8 @@ if better suited to their needs and environment.
 * INT over UDP (as payload)
 * INT over GRE (as a shim between GRE header and encapsulated payload)
 
+[]{tex-cmd: "\newpage"}
+
 ## Checksum Update
 
 As described above in section [#sec-int-over-any-encapsulation], INT
@@ -637,7 +648,7 @@ zero checksum, causing the receiver to ignore the value of the checksum field
 (as defined in RFC 768). For UDP over IPv6, there are specific use cases in
 which it is possible to assign a zero Checksum (as defined in RFC 6936).
 
-INT source, transit and sink devices must comply with IETF standards
+INT source, transit and sink nodes must comply with IETF standards
 for Layer 4 transport protocols with respect to whether or not Layer 4
 checksum is to be updated upon modification of Layer 4 payload.
 For example, if an INT source/transit/sink hop receives
@@ -685,6 +696,8 @@ checksum validation. If full checksum computation is performed at an INT
 node, it should be preceded by checksum validation so as to not mask out any
 corruption at preceding hops.
 
+[]{tex-cmd: "\newpage"}
+
 ## Header Location
 
 We describe four encapsulation formats in this specification, covering
@@ -731,6 +744,8 @@ of the INT domain should remove the GRE encapsulation along with removing
 the INT Metadata Header and the Metadata stack before forwarding the packet
 to the destination.
 
+
+[]{tex-cmd: "\newpage"}
 
 IPv4 GRE Option format for carrying INT Header and
 Metadata:
@@ -844,6 +859,8 @@ INT header exists after the TCP/UDP header. We propose three options.
   restore the original destination port number from the shim header
   into the UDP header and strip the INT headers.
 
+[]{tex-cmd: "\newpage"}
+
 2. IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
 INT header into a packet, it sets the reserved value in the field or sets the
@@ -896,12 +913,14 @@ low, but cannot be completely eliminated. To further reduce the chance of
 conflict, a deployment could choose to also examine TCP/UDP port numbers
 to validate INT probe marker.
 
+[]{tex-cmd: "\newpage"}
+
 Any of the above options may be used in an INT domain, provided that the INT
-transit and sink devices in the INT domain comply with the mechanism chosen
+transit and sink nodes in the INT domain comply with the mechanism chosen
 at the INT sources, and are able to correctly identify the presence and location
 of INT headers. The above approaches are not intended to interoperate in a
 mixed environment, for example it would be incorrect to mark a packet for INT
-using both DSCP and probe marker, as INT devices that only understand
+using both DSCP and probe marker, as INT nodes that only understand
 DSCP marking and do not recognize probe markers may incorrectly interpret the
 first four bytes of the probe marker as INT shim header.
 It is strongly recommended that only one option be used within an INT domain.
@@ -976,8 +995,6 @@ Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe[^VXLAN-GPE] proposes
 changes to the VXLAN header to allow for multi-protocol encapsulation. We use
 this VXLAN generic protocol extension draft and propose a new
 “Next Protocol” field value for INT.
-
-[]{tex-cmd: "\newpage"}
 
 VXLAN GPE Header:
 ```
@@ -1127,13 +1144,13 @@ INT-MD Metadata Header and Metadata Stack:
 * **D (1b):** Discard.
     - INT Sink must Discard the packet after Extracting INT-MD metadata.
 * **E (1b):** Max Hop Count exceeded.
-    - This flag must be set if a device cannot prepend its own metadata due to
+    - This flag must be set if a node cannot prepend its own metadata due to
       the *Remaining Hop Count* reaching zero.
     - E bit must be set to 0 by INT source
 * **M (1b):** MTU exceeded
-    - This flag must be set if a device cannot add all of the requested metadata
+    - This flag must be set if a node cannot add all of the requested metadata
       because doing so will cause the packet length to exceed egress link MTU.
-      In this case, the device must not add any metadata to the packet, and set
+      In this case, the node must not add any metadata to the packet, and set
       the M bit in the INT header. Note that it is possible for egress MTU
       limitation to prevent INT metadata insertion at multiple hops along a
       path. The M bit simply serves as an indication that INT metadata was not
@@ -1147,7 +1164,7 @@ INT-MD Metadata Header and Metadata Stack:
       and "Node ID, Ingress interface ID, Egress interface ID" tuples in the INT
       metadata stack.
 * **R (12b):** Reserved bits, should be set to 0 by the INT source and ignored
-  by other devices.
+  by other nodes.
 * **Hop ML (5b):** Per-hop Metadata Length. This is the length of metadata
   including the Domain Specific Metadata in 4-Byte words to be inserted at
   each INT transit hop.
@@ -1157,7 +1174,7 @@ INT-MD Metadata Header and Metadata Stack:
       is *excluded* from the *Hop ML*.
     - The largest value of *Hop ML* for baseline and domain specific
       metadata is 31.
-    - An INT-capable device may be limited in the maximum number
+    - An INT-capable node may be limited in the maximum number
       of instructions it can process and/or maximum length of metadata it can
       insert in data packets. An INT hop that cannot process all instructions
       must still insert *Hop ML* \* 4 bytes, with all-ones
@@ -1169,13 +1186,13 @@ INT-MD Metadata Header and Metadata Stack:
     add their metadata to the packet.
     - Upon creation of an INT metadata header, the INT Source must set this
       value to the maximum number of hops that are allowed to add metadata
-      instance(s) to the packet. Each INT-capable device on the path, including
+      instance(s) to the packet. Each INT node on the path, including
       the INT Source as well as INT Transit Hops, must decrement the
       *Remaining Hop Count* if and when it pushes its local metadata onto the
       stack.
     - When a packet is received with the *Remaining Hop Count* equal to 0, the
-      device must ignore the INT instructions in the *Instruction Bitmap* and
-      *DS Instruction*, pushing no new metadata onto the stack, and the device
+      node must ignore the INT instructions in the *Instruction Bitmap* and
+      *DS Instruction*, pushing no new metadata onto the stack, and the node
       must set the E bit.
 
 * **Instruction Bitmap:** Each bit corresponds to a specific standard metadata
@@ -1215,8 +1232,8 @@ INT-MD Metadata Header and Metadata Stack:
   Checksum Complement is inserted.
 
   Some instruction bits can be defined as 'source-only' metadata by the INT domain. Those metadata
-  will be inserted only by the INT source, not by INT transit or sink devices.
-  In a sense, 'source-only' bits do not serve as instructions for downstream INT devices
+  will be inserted only by the INT source, not by INT transit or sink nodes.
+  In a sense, 'source-only' bits do not serve as instructions for downstream INT nodes
   to follow. The INT source sets the bits to indicate which source-only DS metadata it's adding
   such that the monitoring system (or any consumer of the metadata) knows how to parse and use
   the data.
@@ -1239,23 +1256,23 @@ INT-MD Metadata Header and Metadata Stack:
 
   - Skip INT processing altogether and not insert any metadata into the packet.
 
-* Each INT Transit device along the path that supports INT adds its own metadata
+* Each INT Transit node along the path that supports INT adds its own metadata
   values as specified in the *Instruction Bitmap* and *DS Instruction*
   immediately after the INT metadata header.
-  - When adding a new metadata, each device must prepend its metadata in
-    front of the metadata that are already added by the upstream devices.
+  - When adding a new metadata, each node must prepend its metadata in
+    front of the metadata that are already added by the upstream nodes.
     This is similar to the push operation on a stack data structure.
     Hence, the most recently
-    added metadata appears at the top of the stack. The device must add
+    added metadata appears at the top of the stack. The node must add
     metadata in the order of bits set in the instruction bitmap.
-  - If a device is unable to provide a metadata value specified in the
+  - If a node is unable to provide a metadata value specified in the
     instruction bitmap because its value is not available, it must add a
     special all-ones reserved value indicating "invalid" (4 or 8 bytes of 0xFF
     depending on metadata length).
-  - If a device cannot add all the metadata required by the instruction bitmap
+  - If a node cannot add all the metadata required by the instruction bitmap
     (irrespective of the availability of the metadata values that are asked
     for), it must skip processing that particular INT packet entirely. This
-    ensures that each INT Transit device adds either zero bytes or
+    ensures that each INT Transit node adds either zero bytes or
     *Hop ML* \* 4 bytes to the packet.
   - Reserved bits in the *Instruction Bitmap* are to be handled similarly. If an
     INT transit hop receives a reserved bit set in the *Instruction Bitmap* (e.g.
@@ -1280,9 +1297,9 @@ INT-MD Metadata Header and Metadata Stack:
       and *Instruction Bitmap*.
     - INT Source should set all reserved bits to zero.
     - INT Source may set the Domain-specific fields.
-  - Intermediate transit devices can set the following fields:
+  - Intermediate transit nodes can set the following fields:
     - *E*, *M*, *Remaining Hop Count*, and *DS Flags* fields.
-    - Intermediate transit devices must not modify the *Hop ML*, *Instruction
+    - Intermediate transit nodes must not modify the *Hop ML*, *Instruction
       Bitmap*, *Domain Specific ID* and *DS Instruction* in the INT-MD header.
 * The length (in bytes) of the INT metadata stack must always
 be a multiple of (*Hop ML* \* 4), plus the size of 'source-only' Domain Specific
@@ -1309,7 +1326,7 @@ INT-MX Header:
 
 * The INT-MX header is 12 bytes long. Each metadata requested in the
   INT-MX Header instruction is either 4 bytes or 8 bytes in length. Each INT
-  capable device in the forwarding path will send the requested metadata to the
+  node in the forwarding path will send the requested metadata to the
   monitoring system in the Telemetry Report.
 
   Details of the metadata semantics and format of the Telemetry Report can
@@ -1325,7 +1342,7 @@ be accessed at the link below:\
 * **M (1b):** MTU exceeded.
     - Not applicable in INT-MX mode. Must be set to 0 by the INT Source.
 * **R (12b):** Reserved bits.
-    - Should be set to 0 by INT Source and ignored by other devices.
+    - Should be set to 0 by INT Source and ignored by other nodes.
 * **Hop ML (5b):** Hop Metadata Length. This is the length of metadata including
   the Domain Specific Metadata in 4-Byte words to be sent to monitoring systems
   at each INT transit hop.
@@ -1335,7 +1352,7 @@ be accessed at the link below:\
       is *excluded* from the *Hop ML*.
     - The largest value of *Hop ML* for baseline and domain specific
       metadata is 31.
-    - An INT-capable device may be limited in the maximum number
+    - An INT node may be limited in the maximum number
       of instructions it can process and/or maximum length of metadata it can
       gather for each data packet. An INT hop that cannot process all
       instructions has the following alternatives:
@@ -1346,7 +1363,7 @@ be accessed at the link below:\
         *RepMdBits*, *DSMdBits* and *MD Length* fields appropriately in the
         Telemetry Report.
 * **R (8b):** Reserved bits.
-    - Should be set to 0 by INT Source and ignored by other devices.
+    - Should be set to 0 by INT Source and ignored by other nodes.
 
 * **Instruction Bitmap:** Each bit corresponds to a specific standard metadata
   as specified in Section 3.
@@ -1382,8 +1399,8 @@ be accessed at the link below:\
   metadata be sent to the monitoring system.
 
   Some metadata can be defined as 'source-only' metadata by the INT domain. Those metadata
-  will be sent only by the INT source, not by INT transit or sink devices.
-  In a sense, 'source-only' bits do not serve as instructions for downstream INT devices
+  will be sent only by the INT source, not by INT transit or sink nodes.
+  In a sense, 'source-only' bits do not serve as instructions for downstream INT nodes
   to follow. In INT-MX mode, the source node must not set the bits corresponding to
   "source-only" metadata in the *DS Instruction* bitmap. However, the source node must ensure
   that it sets the bits corresponding to "source-only" metadata in *DSMdBits* bitmap of the
@@ -1413,10 +1430,12 @@ be accessed at the link below:\
 
   [https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf)
 
-* Each INT Transit device along the path that supports INT-MX sends its own metadata
+[]{tex-cmd: "\newpage"}
+
+* Each INT Transit node along the path that supports INT-MX sends its own metadata
   values as specified in the *Instruction Bitmap* and *DS Instruction*.
 
-  - If a device is unable to provide a metadata value specified in the
+  - If a node is unable to provide a metadata value specified in the
     instruction bitmap because its value is not available, it must either:
 
       - ensure that the corresponding bit in *RepMdbits* and/or *DSMdbits* is not set
@@ -1451,8 +1470,8 @@ be accessed at the link below:\
     - *Ver*, *D* and *Instruction Bitmap*.
     - INT Source should set all reserved bits to zero.
     - INT Source may set the Domain-specific fields.
-  - Intermediate transit devices may set bits in the *DS Flags* field.
-    Intermediate transit devices must not modify the *Hop ML*,
+  - Intermediate transit nodes may set bits in the *DS Flags* field.
+    Intermediate transit nodes must not modify the *Hop ML*,
     *Instruction Bitmap*, *Domain Specific ID* and *DS Instruction* in the
     INT-MX header.
 
@@ -1460,10 +1479,12 @@ be accessed at the link below:\
 must always be a multiple of 4B.
 
 
+[]{tex-cmd: "\newpage"}
+
 # Examples
 
 This section shows example INT Headers with two hosts (Host1 and Host2),
-communicating over a network path composed of three network devices
+communicating over a network path composed of three network switches
 (Switch1, Switch2 and Switch3) as shown below.
 
 `
@@ -1478,7 +1499,7 @@ Detailed assumptions made for this example are as follows
 being inserted at each hop. Queue IDs are typically defined per port, hence
 in a real use-case queue occupancy is likely to be collected along with egress
 interface ID)
-* There are three devices (hops) on the path, and all the devices expose
+* There are three INT nodes (hops) on the path, and all the nodes expose
   both metadata (node ID and queue occupancy).
 * The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
@@ -1548,8 +1569,6 @@ NPT (Next Protocol Type) is zero:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-[]{tex-cmd: "\newpage"}
-
 INT-MD Metadata Header and Metadata Stack, followed by TCP payload:
 ```
     0                   1                   2                   3
@@ -1600,8 +1619,6 @@ IP Header:
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
-
-[]{tex-cmd: "\newpage"}
 
 TCP Header:
 ```
@@ -1735,6 +1752,8 @@ Below is the packet received by INT sink Switch3, starting from the IPv4
 header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
 
+[]{tex-cmd: "\newpage"}
+
 IP Header:
 ```
     0                   1                   2                   3
@@ -1762,8 +1781,6 @@ UDP Header:
    |           Length              |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
-
-[]{tex-cmd: "\newpage"}
 
 INT Shim Header for UDP, INT type is INT-MX (3) and
 NPT (Next Protocol Type) is 2 indicating another L4 header follows INT.
@@ -1822,8 +1839,6 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-[]{tex-cmd: "\newpage"}
-
 UDP Header:
 ```
     0                   1                   2                   3
@@ -1845,6 +1860,8 @@ The original port number XYZ is stored in the shim header:
    |Type=1 | 1 |R R|   Length=7    |        UDP port = XYZ         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
+
+[]{tex-cmd: "\newpage"}
 
 INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
 ```
@@ -1899,6 +1916,8 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+[]{tex-cmd: "\newpage"}
+
 UDP Header:
 ```
     0                   1                   2                   3
@@ -1948,6 +1967,8 @@ IPv4/GRE  before forwarding the packet to host2.
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
 GRE was inserted by the INT source.
+
+[]{tex-cmd: "\newpage"}
 
 ```
     0                   1                   2                   3
@@ -2053,6 +2074,8 @@ its metadata. Finally, the ToR switch of host2 (Switch3) acts as the INT sink
 and removes the INT-MD headers and decapsulates outer L2 header, outer IPv4/GRE
 before forwarding the packet to host2.
 
+[]{tex-cmd: "\newpage"}
+
 Below is the packet received by INT sink Switch3, starting from the
 outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
 GRE was inserted by the INT source.
@@ -2102,6 +2125,8 @@ GRE was inserted by the INT source.
    |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
+
+[]{tex-cmd: "\newpage"}
 
 ## Example with INT-MX over IPv4/GRE (Original packet CE or IP)
 
@@ -2154,6 +2179,8 @@ GRE was inserted by the INT source.
    |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
+
+[]{tex-cmd: "\newpage"}
 
 ## Example with INT-MD over VXLAN GPE
 
@@ -2260,6 +2287,8 @@ INT-MX Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+[]{tex-cmd: "\newpage"}
+
 ## Example with INT-MD over Geneve
 
 Finally, we consider a scenario where Host1 and Host2 use Geneve encapsulation.
@@ -2283,7 +2312,6 @@ Geneve Header:
    |        Virtual Network Identifier (VNI)       |    Reserved   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
-
 
 Geneve Option for INT-MD type:
 ```
@@ -2367,8 +2395,6 @@ INT-MX Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-[]{tex-cmd: "\newpage"}
-
 # Appendix: An extensive (but not exhaustive) set of Metadata {@h1:"A"}
 
 Here we list a set of exemplary metadata that future versions of the spec may
@@ -2377,7 +2403,7 @@ support as well as those are supported in the current spec.
 ## Node-level
 
 * Node id
-  : The unique ID of a network device (such as routers, switches, NICs, etc).
+  : The unique ID of an INT node.
     This is generally administratively assigned. Node IDs must be unique
     within an INT domain.
 * Control plane state version number
@@ -2432,6 +2458,9 @@ support as well as those are supported in the current spec.
 * Egress timestamp
   : The device local time when the INT packet was processed by the egress
     physical port or logical interface.
+
+[]{tex-cmd: "\newpage"}
+
 * Egress interface TX pkt count
   : Total # of packets forwarded so far (since device initialization or counter
     reset) through the egress physical port or logical interface where the INT
@@ -2499,10 +2528,10 @@ of Host1.  Intermediate switches populate the INT metadata while preserving
 the source-only domain specific metadata. This example can work with any of
 the above encapsulation methods such as UDP encapsulation.
 
-The MAC address from host1 is copied from the source device on the Ethernet frame.
+The MAC address from host1 is copied from the source address in the Ethernet frame.
 The MAC is a 6 byte id.  Since the INT metadata header is measured in blocks of 4 bytes,
-the last 2 bytes are reserved.  For example a source device's MAC address is
-"a6:1a:f6:b1:64:7d" the device ID would be 0xA61AF6B1647d0000.
+the last 2 bytes are reserved.  For example if a source device's MAC address is
+"a6:1a:f6:b1:64:7d", the source-only INT metadata would be 0xA61AF6B1647d0000.
 
 Following is the INT-MD Header attached to the packet transmitted by
 the hop2 switch.
@@ -2536,11 +2565,14 @@ to indicate that this was set by the gateway:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+[]{tex-cmd: "\newpage"}
+
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
 specification and implementation of this spec.
 
+* Daniel Alvarez
 * Parag Bhide
 * Dennis Cai
 * Dan Daly
@@ -2553,16 +2585,17 @@ specification and implementation of this spec.
 * Raja Jayakumar
 * Changhoon Kim
 * Jeongkeun Lee
+* Randy Levensalor
 * Tal Mizrahi
 * Masoud Moshref
 * Michael Orr
-* Heidi OU
+* Heidi Ou
+* Ramesh Sivakolundu
 * Mickey Spiegel
 * Bapi Vinnakota
-* Ramesh Sivakolundu
-* Daniel Alvarez
-* Randy Levensalor
 
+
+[]{tex-cmd: "\newpage"}
 
 # Change log
 
