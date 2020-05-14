@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-05-12
+Title Footer: 2020-05-13
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -332,7 +332,7 @@ There are three variations based on the level of packet modifications.
 specified otherwise.**
 
 [^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-09](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-09), March 2020.
-[^IOAM-DEX]: In-situ OAM Direct Exporting [draft-ietf-ippm-ioam-direct-export-00](https://tools.ietf.org/html/draft-ietf-ippm-ioam-direct-export-00), February 2020.
+[^IOAM-DEX]: In-situ OAM Direct Exporting, [draft-ietf-ippm-ioam-direct-export-00](https://tools.ietf.org/html/draft-ietf-ippm-ioam-direct-export-00), February 2020.
 
 ~ Figure { #fig-int-modes; caption: "Various modes of INT operation." }
 ![int-modes]
@@ -463,8 +463,10 @@ the entities interpreting/analyzing the reported data in an out-of-band fashion.
     model shall describe the format and units of this metadata field in the
     metadata stack.
 
-Details of the metadata semantics YANG model can be accessed at the link below:\
-[https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang](https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang)
+A metadata semantics YANG model [^metadata-yang] is being developed that allows
+nodes to report details of the metadata format, units, and semantics.
+
+[^metadata-yang]: p4-dtel-metadata-semantics, [https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang](https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang)
 
 []{tex-cmd: "\newpage"}
 
@@ -592,10 +594,10 @@ cause the packet length to exceed egress link MTU, it must either:
     that egress MTU was exceeded at an INT hop, or
 
   - report the metadata stack collected from previous hops (setting the
-    Intermediate Report bit if a Telemetry Report 2.0 packet is generated) and
-    remove the reported metadata stack from the packet, including the metadata
-    from this transit hop in either the report or embedding in the INT-MD metadata
-    header.
+    Intermediate Report bit if a Telemetry Report 2.0 [^telem-report] packet is
+    generated) and remove the reported metadata stack from the packet, including
+    the metadata from this transit hop in either the report or embedding in the
+    INT-MD metadata header.
 
 An INT source inserts 12 bytes of fixed INT headers, and may also insert
 Per-hop Metadata Length\*4 bytes of its own metadata. If inserting the
@@ -991,7 +993,7 @@ VXLAN header and the encapsulated payload.
 
 The VXLAN header as defined in RFC 7348 does not specify the protocol being
 encapsulated and assumes that the payload following the VXLAN header is an
-Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe[^VXLAN-GPE] proposes
+Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe [^VXLAN-GPE] proposes
 changes to the VXLAN header to allow for multi-protocol encapsulation. We use
 this VXLAN generic protocol extension draft and propose a new
 “Next Protocol” field value for INT.
@@ -1213,10 +1215,7 @@ INT-MD Metadata Header and Metadata Stack:
 
   Semantics of Queue occupancy and Buffer occupancy is the default semantics of
   those two metadata. Additional semantics as needed for different implementation
-  can be defined in the metadata semantics YANG model.
-
-  Details of the metadata semantics YANG model can be accessed at the link below:\
-  [https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang](https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang)
+  can be defined in the metadata semantics YANG model [^metadata-yang].
 
   Bits 0 - 14 are Baseline INT Instructions. Each instruction bit that is set
   requests 4 bytes of metadata to be inserted at each hop, except for bits 4-6,
@@ -1332,8 +1331,9 @@ INT-MX Header:
   monitoring system in the Telemetry Report.
 
   Details of the metadata semantics and format of the Telemetry Report can
-be accessed at the link below:\
-  [https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf)
+  be accessed in the Telemetry Report Format Specification [^telem-report].
+
+[^telem-report]: [Telemetry Report Format Specification Version 2.0](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf), May 2020.
 
 * **Ver (4b):** INT-MX header version. Should be 2 for this version.
 * **D (1b):** Discard.
@@ -1363,7 +1363,7 @@ be accessed at the link below:\
         metadata corresponding to instructions it cannot process, or
       - Send to the monitoring system the metadata it can process, update the
         *RepMdBits*, *DSMdBits* and *MD Length* fields appropriately in the
-        Telemetry Report.
+        Telemetry Report [^telem-report].
 * **R (8b):** Reserved bits.
     - Should be set to 0 by INT Source and ignored by other nodes.
 
@@ -1382,10 +1382,7 @@ be accessed at the link below:\
 
   Semantics of Queue occupancy and Buffer occupancy is the default semantics of
   those two metadata. Additional semantics as needed for different implementation
-  can be defined in the metadata semantics YANG model.
-
-  Details of the metadata semantics YANG model can be accessed at the link below:
-  [https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang](https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang)
+  can be defined in the metadata semantics YANG model [^metadata-yang].
 
   Bits 0 - 14 are Baseline INT Instructions. Each instruction bit that is set
   requests 4 bytes of metadata be sent to monitoring system at each hop,
@@ -1418,7 +1415,7 @@ be accessed at the link below:\
 
   - Send the metadata corresponding to *Instruction Bitmap* and ensure that
     *DSMdbits* is not set in the Telemetry Report and *MD Length* field reflects the length
-    of the metadata sent in the Telemetry Report, or
+    of the metadata sent in the Telemetry Report [^telem-report], or
 
   - Send the metadata corresponding to *Instruction Bitmap* and pad the node's INT Metadata
     with the special all-ones reserved value for a Domain Specific Metadata length,
@@ -1426,11 +1423,6 @@ be accessed at the link below:\
     16-bit *Instruction Bitmap*, or
 
   - Skip INT processing altogether and not send any metadata the monitoring systems.
-
-  Details of the metadata semantics and format of the Telemetry Report can
-  be accessed at the link below:
-
-  [https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf)
 
 []{tex-cmd: "\newpage"}
 
@@ -1441,15 +1433,10 @@ be accessed at the link below:\
     instruction bitmap because its value is not available, it must either:
 
       - ensure that the corresponding bit in *RepMdbits* and/or *DSMdbits* is not set
-        in the Telemetry Report, or
+        in the Telemetry Report [^telem-report], or
 
       - send the all-ones reserved value (4 or 8 bytes of 0xFF depending on the length
         of metadata).
-
-    Details of the metadata semantics and format of the Telemetry Report can
-    be accessed at the link below:
-
-    [https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf)
 
   - Reserved bits in the instruction bitmap are to be handled as described. If an
     INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
@@ -1461,11 +1448,6 @@ be accessed at the link below:\
       - for *RepMdBits*, send the all-ones reserved value (4 bytes of 0xFF);
         for *DSMdbits*, pad with the special all-ones reserved value in lieu of
         reserved DS Metadata, out to *MD Length*.
-
-    Details of the metadata semantics and format of the Telemetry Report can
-    be accessed at the link below:
-
-    [https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf)
 
 * Summary of the field usage
   - The INT Source must set the following fields:
@@ -2538,8 +2520,11 @@ the last 2 bytes are reserved.  For example if a source device's MAC address is
 Following is the INT-MD Header attached to the packet transmitted by
 the hop2 switch.
 
-Details of the Transparent Security domain specific model can be accessed at the link below:\
-[https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md](https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md)
+Details of the Transparent Security domain specific model can be accessed
+in the Transparent Security INT header reference definition
+[^transparent-security-INT].
+
+[^transparent-security-INT]: Transparent Security INT header reference definition, [https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md](https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md)
 
 INT Metadata Header and Metadata Stack. The *Domain
 Specific ID* is 0x5453 ('TS' in ascii), bit 0 is set in the domain bitmap to
