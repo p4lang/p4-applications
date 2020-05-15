@@ -1227,6 +1227,12 @@ INT-MD Metadata Header and Metadata Stack:
   additional processing of the Domain Specific Flags (*DS Flags*) and Domain
   Specific Instruction (*DS Instruction*) is required.
 
+  The *Domain Specific ID* value 0x0000 is the default, known to all INT nodes.
+  For this value, all *DS Instruction* bits are treated as reserved. Operators
+  can assign values in the range 0x0001 to 0xFFFF.
+
+[]{tex-cmd: "\newpage"}
+
 * **DS Instruction (16b):** Instruction bitmap specific to the INT domain
   identified by the *Domain Specific ID*. Each bit that is set requests that
   Domain Specific Metadata be appended to the Baseline Metadata before the
@@ -1367,6 +1373,8 @@ INT-MX Header:
 * **R (8b):** Reserved bits.
     - Should be set to 0 by INT Source and ignored by other nodes.
 
+[]{tex-cmd: "\newpage"}
+
 * **Instruction Bitmap:** Each bit corresponds to a specific standard metadata
   as specified in Section 3.
   - bit0 (MSB): Node ID
@@ -1393,6 +1401,10 @@ INT-MX Header:
   additional processing of the Domain Specific Flags (*DS Flags*) and Domain
   Specific Instruction (*DS Instruction*) is required.
 
+  The *Domain Specific ID* value 0x0000 is the default, known to all INT nodes.
+  For this value, all *DS Instruction* bits are treated as reserved. Operators
+  can assign values in the range 0x0001 to 0xFFFF.
+
 * **DS Instruction (16b):** Instruction bitmap specific to the INT domain
   identified by the *Domain Specific ID*. Each bit that is set requests that
   metadata be sent to the monitoring system.
@@ -1410,6 +1422,8 @@ INT-MX Header:
   either determined from the *DS Instruction* or consistent with the
   per-hop metadata length (*Hop ML*) set by the INT source (see *Hop ML* above).
 
+  []{tex-cmd: "\newpage"}
+
   If the *Domain Specific ID* does not match any Domain ID known to this node, then
   the transit node is required to either:
 
@@ -1423,8 +1437,6 @@ INT-MX Header:
     16-bit *Instruction Bitmap*, or
 
   - Skip INT processing altogether and not send any metadata the monitoring systems.
-
-[]{tex-cmd: "\newpage"}
 
 * Each INT Transit node along the path that supports INT-MX sends its own metadata
   values as specified in the *Instruction Bitmap* and *DS Instruction*.
