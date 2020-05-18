@@ -414,6 +414,22 @@ expectation is that either:
 
   - domain specific flow identification metadata will be included.
 
+Tunneled packets such as VXLAN packets raise the question whether flow
+identification should be based on outer or inner headers. The answer may
+vary depending on the goals of tracked flow monitoring, deployment aspects,
+operational issues, and the capabilities of the distributed telemetry
+monitoring system. Note that it is possible to identify flows based on
+inner packet headers even when using an INT encapsulation based on outer
+headers such as INT over TCP/DUP.
+
+When using INT-MD and flow identification based on inner headers is
+desired, the distributed telemetry monitoring system should parse the
+truncated packet fragment all the way down past any embedded telemetry
+metadata (if present), even when the Individual Report includes optional
+metadata such as drop reason. It may also want to process the embedded
+telemetry metadata, for example to recognize the case where a path change
+directs traffic to a congested node where packets are being dropped.
+
 # Telemetry Report Format { #report-format }
 
 This section specifies the packet format for telemetry reports.
@@ -741,10 +757,37 @@ Report Header.
     domain specific data, not associated with *DSMdBits*.
     Presence of this field is indicated by *TLVType* codepoint 0.
 
+## Embedded Telemetry Metadata In Stacked Reports { #embedded }
+
+There may still be further telemetry metadata embedded within a truncated
+packet fragment. For example, this is typically the case when there is
+stacked telemetry metadata from hops prior to the node generating the
+report. The telemetry metadata will typically be encoded using a defined
+data plane format such as INT-MD or IOAM.
+
+A node generating a telemetry report may include its local telemetry
+metadata in any of the following:
+
+* the embedded telemetry metadata in a truncated packet fragment,
+* the stacked telemetry metadata in domain specific extension data,
+* the *Telemetry Report Contents* in the same Individual Report Header that
+  contains the stacked telemetry metadata from previous hops in either a
+  truncated packet fragment or in domain specific extension data, or
+* the *Telemetry Report Contents* in a separate report from the stacked
+  telemetry metadata from previous hops. Note that in this case the
+  ingress timestamp will be the same in both telemetry reports.
+
+If the *Tracked Flow Association (F)* bit is set to 0, then there will not
+be any embedded telemetry metadata in the report.
+
+If the *Tracked Flow Association (F)* bit is set to 1, there may or may not
+be any embedded telemetry metadata in the report.
+
 
 # Examples of Telemetry Reports
 
 This section shows examples of Telemetry Reports.
+These examples are not intended to be complete or exclusive.
 
 ## Example with Baseline Metadata and Truncated IPv4
 
@@ -806,105 +849,14 @@ Data* and *TLVType* of 2 for Truncated IPv4 Packet.
 ```
 
 
-# Embedded Telemetry Metadata In Stacked Reports { #embedded }
+## Example with Embedded INT-MD Telemetry Metadata in a TCP Packet
 
-There may still be further telemetry metadata embedded within a truncated
-packet fragment. For example, this is typically the case
-when there is stacked telemetry metadata from hops prior to the node
-generating the report. The telemetry metadata will typically be encoded
-using a defined data plane format such as INT-MD or IOAM.
+TBD
 
-A node generating a telemetry report may include its local
-telemetry metadata in any of the following:
+## Example with Embedded INT-MD Telemetry Metadata using UDP Encap in a VXLAN Packet
 
-* the embedded telemetry metadata in a truncated packet fragment,
-* the stacked telemetry metadata in domain specific extension data,
-* the *Telemetry Report Contents* in the same Individual Report Header that
-  contains the stacked telemetry metadata from previous hops in either a
-  truncated packet fragment or in domain specific extension data, or
-* the *Telemetry Report Contents* in a separate report from the stacked
-  telemetry metadata from previous hops. Note that in this case the
-  ingress timestamp will be the same in both telemetry reports.
+TBD
 
-If the Tracked Flow Association bit is set to 0, then there will not be any
-embedded telemetry metadata in the report.
-
-If the Tracked Flow Association bit is set to 1, there may or may not be
-any embedded telemetry metadata in the report. See Section [#parsing] for
-parsing considerations.
-
-
-~ Figure { #fig-outer-encap; caption: \
-           "Telemetry Report Outer Encapsulation Format" }
-![outer-encap]
-~
-[outer-encap]: images/telemetry_report_outer_encap.jpg { width: 3.4in }
-
-~ Figure { #fig-flat-packet; caption: \
-           "Remaining Packet Format - Flat Packet" }
-![flat-packet]
-~
-[flat-packet]: images/telemetry_report_flat_packet.jpg { width: 4.4in }
-
-
-## Parsing Considerations { #parsing }
-
-When a telemetry report is received by the distributed telemetry monitoring
-system, it must parse the packet to retrieve the telemetry metadata and to
-identify the flow. Figure [#fig-outer-encap] shows which headers will be
-present at the beginning of the packet, assuming a simple Ethernet/IP
-transport of the telemetry report packet.
-
-The packet format after this point can vary depending on the format of the
-original packet, and whether embedded telemetry metadata is present. The
-following figures show a few examples of the remaining packet format. These
-examples are not intended to be complete or exclusive.
-
-Figure [#fig-flat-packet] shows the remaining packet format when the
-original packet is a simple flat packet and there is no embedded telemetry
-metadata.
-
-Figure [#fig-int-over-l4] shows the remaining packet format when the
-original packet is a simple flat packet and there is embedded INT-MD over
-TCP/UDP telemetry metadata.
-
-~ Figure { #fig-int-over-l4; caption: "Remaining Packet Format - \
-           Flat Packet with INT-MD over TCP/UDP" }
-![int-over-l4]
-~
-[int-over-l4]: images/telemetry_report_int_over_l4.jpg { width: 4.5in }
-
-
-~ Figure { #fig-int-over-l4-vxlan; caption: \
-           "Remaining Packet Format - VXLAN Packet with INT-MD over TCP/UDP" }
-![int-over-l4-vxlan]
-~
-[int-over-l4-vxlan]: images/telemetry_report_int_over_l4_vxlan.jpg { width: 3.5in }
-
-~ Figure { #fig-ioam-vxlan; caption: \
-           "Remaining Packet Format - VXLAN Packet with IOAM Trace" }
-![ioam-vxlan]
-~
-[ioam-vxlan]: images/telemetry_report_ioam_vxlan.jpg { width: 3.5in }
-
-Even when using INT over TCP/UDP, the original packet may be an
-encapsulated packet such as a VXLAN packet. When processing a telemetry
-report for an encapsulated packet, the distributed telemetry monitoring
-system may desire to categorize flows based on inner headers. In this case,
-it should parse the truncated packet fragment all the way down past any embedded
-telemetry metadata (if present), even when the Telemetry Report Header
-includes optional metadata such as drop reason. It may also want to process
-the embedded telemetry metadata, for example to recognize the case where a
-path change directs traffic to a congested node where packets are being
-dropped.
-
-Figure [#fig-int-over-l4-vxlan] shows the remaining packet format when the
-original packet is a VXLAN packet and there is embedded INT-MD over
-TCP/UDP telemetry metadata.
-
-Figure [#fig-ioam-vxlan] shows the remaining packet format when the
-original packet is a VXLAN packet and there is embedded IOAM Trace
-telemetry metadata. See IOAM drafts [^IOAM][^IOAM_VXLAN_GPE] for further details.
 
 # Acknowledgements {@h1:"A"}
 
