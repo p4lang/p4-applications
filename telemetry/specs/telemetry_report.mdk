@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : Version 2.0
-Title Footer : 2018-05-22
+Title Footer : 2018-05-25
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *CableLabs, Cisco Systems, Intel, VMware, Xilinx*
 Heading depth : 5
@@ -744,6 +744,8 @@ Header with the length in the UDP header.
   : The metadata corresponding to *DSMdBits*, 4 octets or a multiple of
     4 octets for each bit.
 
+[]{tex-cmd: "\newpage"}
+
 ### Individual Report Inner Contents for *InType* 1 (*TLV*) (4+ octets) { #tlv }
 
 One or more TLVs, each following the format defined in this section.
@@ -801,6 +803,8 @@ Report Header.
     For *RepType* codepoint 1 *INT*, this is additional domain specific data
     that is not associated with *DSMdBits*.
 
+[]{tex-cmd: "\newpage"}
+
 ## Embedded Telemetry Metadata In Stacked Reports { #embedded }
 
 There may still be further telemetry metadata embedded within a truncated
@@ -828,6 +832,8 @@ If the *Tracked Flow Association (F)* bit is set to 1, there may or may not
 be any embedded telemetry metadata in the report.
 
 
+[]{tex-cmd: "\newpage"}
+
 # Examples of Telemetry Reports
 
 This section shows examples of Telemetry Reports.
@@ -835,61 +841,99 @@ These examples are not intended to be complete or exclusive.
 
 ## Example with Baseline Metadata and Truncated IPv4
 
-*InType* codepoint of 4 for Truncated IPv4.
+This example shows a telemetry report with baseline metadata consisting of
+level 1 interface IDs and queue occupancy, and a truncated IPv4 packet.
+
+The values of Telemetry Report header fields in this example are as follows:
+
+  - *Ver* = 2
+  - *RepType* = 1 (*INT*)
+  - *InType* = 4 (*IPv4*)
+  - *MD Length* = 2 for level 1 interface IDs and queue occupancy
+  - *Report Length* = 2 (individual report fixed size) + 2 (*MD Length*)
+    \+ 5 (original IP header) + 5 (original TCP) \
+    = 14 (assuming truncated packet fragment ends after the original TCP header)
+  - *D* = 0 since the packet is not dropped
+  - *Q* = 0 since the packet does not experience congestion at Switch3
+  - *F* = 1
+  - *I* = 0
+  - *Domain Specific ID*, *DsMdBits* and *DSMdstatus* are all 0
+
+Below is the telemetry report packet starting from the
+Telemetry Report Group Header.
 
 ```
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|Ver = 2|   hw_id   |           Sequence Number                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                           Node ID                             |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|0 0 0 1|0 1 0 0| Report Length |   MD Length   |D|Q|F|I|  Rsvd |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|            RepMdBits          |     Domain Specific ID        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|              Variable Optional Baseline Metadata              |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                     Truncated IPv4 Packet                     |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Ver = 2|   hw_id   |           Sequence Number                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Node ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 1|0 1 0 0|  RepLength=14 | MD Length = 2 |0|0|1|0|  Rsvd |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Ingress Interface ID      |      Egress Interface ID      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Queue Occupancy                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                     Truncated IPv4 Packet                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
 
 ## Example with Baseline Metadata, Domain Specific Metadata, DS Extension Data and Truncated IPv4
 
-*InType* codepoint of 1 for TLV, *TLVType* of 0 for *Domain Specific Extension
-Data* and *TLVType* of 2 for Truncated IPv4 Packet.
+This example shows a telemetry report with baseline metadata consisting of
+level 1 interface IDs and queue occupancy, one domain specific metadata that
+is 4 bytes long, domain specific extension data and a truncated IPv4 packet.
 
+The values of Telemetry Report header fields in this example are as follows:
+
+  - *Ver* = 2
+  - *RepType* = 1 (*INT*)
+  - *InType* = 1 (*TLV*)
+  - *MD Length* = 2 for level 1 interface IDs and queue occupancy
+  - *D* = 0 since the packet is not dropped
+  - *Q* = 0 since the packet does not experience congestion at Switch3
+  - *F* = 1
+  - *I* = 0
+  - The domain specific metadata that is included is represented by the first
+    bit (MSB) of *DsMdBits*
+  - The first TLV uses *TLVType* = 0 (*Domain Specific Extension Data*)
+  - The second TLV uses *TLVType* = 2 (*IPv4*)
 
 ```
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|Ver = 2|   hw_id   |           Sequence Number                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                           Node ID                             |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|0 0 0 1|0 0 0 1| Report Length |   MD Length   |D|Q|F|I|  Rsvd |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|            RepMdBits          |      Domain Specific ID       |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|            DSMdBits           |          DSMdstatus           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|              Variable Optional Baseline Metadata              |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                 Variable Optional DS MetaData                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|0 0 0 0|  Rsvd |   TLVLength   |       TLV Data Template       |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|       Variable TLV Data (Domain Specific Extension Data)      |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|0 0 1 0|  Rsvd |   TLVLength   |           Reserved            |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|           Variable TLV Data (Truncated IPv4 Packet)           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Ver = 2|   hw_id   |           Sequence Number                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Node ID                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 1|0 0 0 1| Report Length | MD Length = 2 |0|0|1|0|  Rsvd |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0|      Domain Specific ID       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|          DSMdstatus           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Ingress Interface ID      |      Egress Interface ID      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Queue Occupancy                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Domain Specific Metadata                   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0|  Rsvd |   TLVLength   |       TLV Data Template       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       Variable TLV Data (Domain Specific Extension Data)      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 1 0|  Rsvd |   TLVLength   |           Reserved            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Variable TLV Data (Truncated IPv4 Packet)           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
 
@@ -898,14 +942,13 @@ Data* and *TLVType* of 2 for Truncated IPv4 Packet.
 This example shows one possibility for the telemetry report corresponding
 to the INT packet in Section 6.3 of the INT 2.1 specification [^INT].
 
-Two hosts (Host1 and Host2), communicate over a network path composed of
+Two hosts (Host1 and Host2) communicate over a network path composed of
 three network switches (Switch1, Switch2 and Switch3) as shown below.
 ```
                  ==> packet P travels from Host1 to Host2 ==>
 Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
 ```
 
-* Host1 sends a TCP packet to host2.
 * The ToR switch of host1 (Switch1) acts as the INT source. It adds a new
   UDP header, INT-MD headers and its own metadata in the packet. It requests
   each INT hop to insert node ID and queue occupancy (For the sake of
@@ -913,7 +956,6 @@ Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
   at each hop. Queue IDs are typically defined per port, hence in a real
   use-case queue occupancy is likely to be collected along with egress
   interface ID.)
-* The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
   - *Ver* = 2
   - *D* = 0 (Packet is not a clone/copy, hence the Sink must not Discard)
@@ -922,14 +964,12 @@ Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
   - Per-hop Metadata Length = 2 (for node id & queue occupancy)
   - *Remaining Hop Count* starts at 8, decremented by 1 at each hop
     that inserts INT metadata
-* Switch2 prepends its node ID and the queue occupancy that the packet
-  experiences into the metadata stack.
+* Switch2 prepends its node ID and queue occupancy into the metadata stack.
 * The ToR switch of host2 (Switch3) acts as the INT sink, removing the UDP
   and INT-MD headers before forwarding the packet to host2. It generates a
   Telemetry Report packet with a single individual report. It inserts its
-  node ID and the queue occupancy that the packet experiences into the
-  Individual Report Header rather than the embedded INT stack in the
-  truncated packet. The latter contains the metadata from the first two hops.
+  node ID and queue occupancy into the Individual Report Header rather than
+  the embedded INT stack in the truncated packet.
 * The values of Telemetry Report header fields in this example are as follows:
   - *Ver* = 2
   - *RepType* = 1 (*INT*)
@@ -937,19 +977,16 @@ Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
   - *MD Length* = 1 for queue occupancy
   - *Report Length* = 2 (individual report fixed size) + 1 (*MD Length*)
     \+ 5 (original IP header) + 2 (UDP header for embedded INT) + 1 (INT shim)
-    \+ 3 (INT fixed) + 4 (INT metadata stack) + 5 (original TCP)
-
+    \+ 3 (INT fixed) + 4 (INT metadata stack) + 5 (original TCP) \
     = 23 (assuming truncated packet fragment ends after the original TCP header)
   - *D* = 0 since the packet is not dropped
   - *Q* = 0 since the packet does not experience congestion at Switch3
   - *F* = 1
-  - *I* = 0 since the report is being generated by the INT sink, including
-    the metadata for all hops
+  - *I* = 0 since the report includes the metadata for all hops
   - *Domain Specific ID*, *DsMdBits* and *DSMdstatus* are all 0
 
-Below is the telemetry report packet generated by INT sink Switch3, starting
-from the Telemetry Report Group Header. We use INT_TBD for UDP.Destination_Port
-to indicate the existence of INT headers.
+Below is the telemetry report packet generated by sink Switch3, starting
+from the Telemetry Report Group Header.
 
 ```
     0                   1                   2                   3
@@ -1004,8 +1041,141 @@ to indicate the existence of INT headers.
 
 ## Example with Embedded INT-MD over UDP in a VXLAN Packet
 
-TBD
+Two hosts (Host1 and Host2) communicate over a network path composed of
+three network switches (Switch1, Switch2 and Switch3) as shown below.
+```
+                 ==> packet P travels from Host1 to Host2 ==>
+Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
+```
 
+In this example, the two hosts use VXLAN encapsulation. Host1 acts as the
+VXLAN tunnel endpoint and INT source, inserts VXLAN and INT-MD over UDP
+headers with instruction bits corresponding to the network state to be
+reported at intermediate switches. In this example, Host1 and Host2 do not
+insert any INT metadata. Intermediate switches process the INT-MD header
+and populate the INT metadata. Host2 acts as INT sink and VXLAN tunnel
+endpoint, removes the INT-MD and VXLAN headers.
+
+* Host1 sends a VXLAN packet to host2 with inner source IP address 10.10.1.1
+  (identifying the source workload), inner destination IP address 10.10.2.2
+  (identifying the destination workload), outer source IP address 192.168.1.1
+  (identifying host1), outer destination IP address 192.168.2.2 (identifying
+  host2), UDP source port 56789, and UDP checksum 0.
+* Host1 acts as the INT source. It inserts INT-MD headers between the outer
+  UDP header and the VXLAN header. It requests each INT hop to insert node ID
+  and level 1 ingress and egress interface IDs.
+* The values of INT metadata header fields in this example are as follows:
+  - *Ver* = 2
+  - *D* = 0 (Packet is not a clone/copy, hence the Sink must not Discard)
+  - *E* = 0 (Max Hop Count not exceeded)
+  - *M* = 0 (MTU not exceeded at any node)
+  - Per-hop Metadata Length = 2 (for node id & level 1 interface IDs)
+  - *Remaining Hop Count* starts at 8, decremented by 1 at each hop
+    that inserts INT metadata
+* Switch1, Switch2, and Switch3 each prepend their node ID and the relevant
+  ingress and egress interface IDs in the metadata stack.
+* Host2 acts as the INT sink and VXLAN tunnel endpoint, removes the INT-MD
+  and VXLAN headers. It generates a Telemetry Report packet with a single
+  individual report. Since it is not adding any of its own metadata, it uses
+  *RepType* value *Inner Only* and *InType* value *IPv4* with the embedded
+  INT stack in the truncated packet.
+* The values of Telemetry Report header fields in this example are as follows:
+  - *Ver* = 2
+  - *RepType* = 0 (*Inner Only*)
+  - *InType* = 4 (*IPv4*)
+  - *MD Length* = 0
+  - *Report Length* = 5 (original outer IP header) + 2 (UDP header)
+    \+ 1 (INT shim) + 3 (INT fixed) + 6 (INT metadata stack) + 2 (VXLAN)
+    \+ 4 (inner Ethernet header) + 5 (inner IP header) + 5 (original TCP) \
+    = 31 (assuming truncated packet fragment ends after the original TCP header)
+  - *D* = 0 since the packet is not dropped
+  - *Q* = 0 since the packet does not experience congestion at Switch3
+  - *F* = 1
+  - *I* = 0 since the report is being generated by the INT sink, including
+    the metadata for all hops
+  - *Domain Specific ID*, *DsMdBits* and *DSMdstatus* are all 0
+
+Below is the telemetry report packet generated by Host2, starting
+from the Telemetry Report Group Header. We use INT_TBD for UDP.Destination_Port
+to indicate the existence of INT headers.
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |Ver = 2|   hw_id   |           Sequence Number                 | Telemetry
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ Report
+   |                      Node ID of Switch3                       | Group
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |0 0 0 0|0 1 0 0|  RepLength=31 | MD Length = 0 |0|0|1|0|  Rsvd | Indiv Report
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |         Identification        |Flags|      Fragment Offset    |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ IP
+   |  Time to Live |   Proto = 17   |        Header Checksum       | (outer)
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                 Source Address = 192.168.1.1                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |               Destination Address = 192.168.2.2               |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |      Source Port = 56789      |  Destination Port = INT_TBD   |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ UDP
+   |           Length              |         Checksum = 0          |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |Type=1 | 1 |R R|   Length=7    |  Destination UDP port = 4789  | INT Shim
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |RemainingHopC=5|  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0| INT
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |                       Node ID of hop3                         |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   | Ingress Interface ID of hop3  |  Egress Interface ID of hop3  | INT
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ metadata
+   |                       Node ID of hop2                         | stack
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+```
+
+[]{tex-cmd: "\newpage"}
+
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   | Ingress Interface ID of hop2  |  Egress Interface ID of hop2  | INT
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ metadata
+   |                       Node ID of hop1                         | stack
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ (cont'd)
+   | Ingress Interface ID of hop1  |  Egress Interface ID of hop1  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |R|R|R|R|I|R|R|R|                     Reserved                  |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ VXLAN
+   |                VXLAN Network Identifier (VNI) |   Reserved    |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |                 Inner Destination MAC Address                 |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   | Inner Destination MAC Address |   Inner Source MAC Address    | Ethernet
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ (inner)
+   |                   Inner Source MAC Address                    |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |      Ethertype = 0x0800       |                                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |         Identification        |Flags|      Fragment Offset    |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ IP
+   |  Time to Live |   Proto = 17   |        Header Checksum       | (inner)
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                  Source Address = 10.10.1.1                   |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
+   |                Destination Address = 10.10.2.2                |  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+   |                          TCP header                           | TCP
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
+```
 
 # Acknowledgements {@h1:"A"}
 
@@ -1064,8 +1234,8 @@ specification.
   - Changed 'switch' and 'device' to 'node' where appropriate
   - Reserved Domain Specific ID value 0x0000 as default well known ID
   - Added RepType codepoint for 'Inner Only'
-* 2020-05-22
-  - Added example of telemetry report with embedded telemetry metadata
+* 2020-05-25
+  - Added 2 examples of telemetry reports with embedded telemetry metadata
   - **Tag v2.0 spec**
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
