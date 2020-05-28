@@ -1089,7 +1089,7 @@ endpoint, removes the INT-MD and VXLAN headers.
   - *Report Length* = 5 (original outer IP header) + 2 (UDP header)
     \+ 1 (INT shim) + 3 (INT fixed) + 6 (INT metadata stack) + 2 (VXLAN)
     \+ 4 (inner Ethernet header) + 5 (inner IP header) + 5 (original TCP) \
-    = 31 (assuming truncated packet fragment ends after the original TCP header)
+    = 33 (assuming truncated packet fragment ends after the original TCP header)
   - *D* = 0 since the packet is not dropped
   - *Q* = 0 since the packet does not experience congestion at Switch3
   - *F* = 1
@@ -1109,7 +1109,7 @@ to indicate the existence of INT headers.
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ Report
    |                      Node ID of Switch3                       | Group
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
-   |0 0 0 0|0 1 0 0|  RepLength=31 | MD Length = 0 |0|0|1|0|  Rsvd | Indiv Report
+   |0 0 0 0|0 1 0 0|  RepLength=33 | MD Length = 0 |0|0|1|0|  Rsvd | Indiv Report
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--+
    | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
