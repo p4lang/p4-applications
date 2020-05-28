@@ -758,12 +758,14 @@ Report Header.
 ```
    0                   1                   2                   3
    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+---+
-  |TLVType|  Rsvd |   TLVLength   |        TLV Data Template      |   |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ May be
-  |          Variable TLV Data as identified by TLVType           | repeated
-  |      (Truncated Packet or Domain Specific Extension Data)     |   |
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+---+
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<----------+
+  |TLVType|  Rsvd |   TLVLength   |        TLV Data Template      |           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<--+       |
+  |                                                               |   |     May be
+  |          Variable TLV Data as identified by TLVType           | TLV     repeated
+  |      (Truncated Packet or Domain Specific Extension Data)     | Length    |
+  |                                                               |   |       |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<--+<------+
 ```
 
 * TLVType (4b): TLV data type
@@ -778,7 +780,9 @@ Report Header.
   : Should be set to zero upon transmission and ignored upon reception.
 
 * TLVLength (8b)
-  : Indicates the length, in 4-byte words, of *Variable TLV Data* as identified by *TLVType*.
+  : Indicates the length, in 4-byte words, of *Variable TLV Data* as identified
+    by *TLVType*. Note that this does not include the length of the first
+    4-byte word (*TLVType, Rsvd, TLVLength, TLV Data Template*).
 
 * TLV Data Template (16b)
   : Specifies the format of the *Variable TLV Data*.
