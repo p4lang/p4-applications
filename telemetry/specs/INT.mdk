@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-05-13
+Title Footer: 2020-05-28
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -1339,7 +1339,7 @@ INT-MX Header:
   Details of the metadata semantics and format of the Telemetry Report can
   be accessed in the Telemetry Report Format Specification [^telem-report].
 
-[^telem-report]: [Telemetry Report Format Specification Version 2.0](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf), May 2020.
+[^telem-report]: [Telemetry Report Format Specification Version 2.0](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2_0.pdf), May 2020.
 
 * **Ver (4b):** INT-MX header version. Should be 2 for this version.
 * **D (1b):** Discard.
