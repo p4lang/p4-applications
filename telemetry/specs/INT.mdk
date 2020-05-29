@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
-Title Note : This is a working draft towards v2.1. Consider using tagged versions for implementation.
-Title Footer: 2020-02-14
+Title Note : Version 2.1
+Title Footer: 2020-05-13
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -156,7 +156,7 @@ intervention or work by the control plane in collecting and delivering
 the state from the data plane. In the INT architectural model,
 packets may contain header fields that are interpreted as “telemetry
 instructions” by network devices.
-INT traffic sources  (applications, end-host networking stacks,
+INT traffic sources (applications, end-host networking stacks,
 hypervisors, NICs, send-side ToRs, etc.) can embed the instructions either in
 normal data packets, cloned copies of the data packets or in special probe packets.
 Alternatively, the instructions may be
@@ -191,6 +191,8 @@ violation of certain data-plane invariances), the traffic sinks[^Transit] could 
 immediate actions to respond to the network events, forming a feedback control
 loop either in a centralized or a fully decentralized fashion (a la TCP).
 
+[]{tex-cmd: "\newpage"}
+
 The INT architectural model is intended to be generic and enables a
 number of interesting high level applications, such as:
 
@@ -209,145 +211,163 @@ of Little Minions paper [^Minions].
 [^HULA]: HULA: Scalable Load Balancing Using Programmable Data Planes, ACM SOSR 2016
 [^CLOVE]: CLOVE: Congestion-Aware Load Balancing at the Virtual Edge, ACM CoNEXT 2017
 [^Minions]: Millions of Little Minions: Using Packets for Low Latency Network Programming and Visibility, ACM SIGCOMM 2014.
+
 # Terminology
 
-* **Monitoring System**: A system that collects telemetry data sent from
-different network devices. The monitoring system components may be physically
-distributed but logically centrallized.
+* **Monitoring System**:
+  : A system that collects telemetry data sent from different network devices.
+    The monitoring system components may be physically distributed but logically
+    centralized.
 
-* **INT Header**: A packet header that carries INT information. There are three
-types of INT Headers -- *eMbed data (MD-type)*, *eMbed instruction (MX-type)* and
-*Destination-type* (See Section [#sec-int-header-types]).
+* **INT Header**:
+  : A packet header that carries INT information. There are three types of INT
+    Headers -- *eMbed data (MD-type)*, *eMbed instruction (MX-type)* and
+    *Destination-type* (See Section [#sec-int-header-types]).
 
-* **INT Packet**: A packet containing an INT Header.
+* **INT Packet**:
+  : A packet containing an INT Header.
 
-* **INT Instruction**: Instructions indicating which
-INT Metadata (defined below) to collect at each INT switch. The instructions
-are either configured at each INT-capable device's Flow Watchlist
-or written into the INT Header.
+* **INT Node**:
+  : An INT-capable network device that participates in the INT data plane by
+    regularly carrying out at least one of the following: inserting, adding to,
+    removing, or processing instructions from INT Headers in INT packets.
+    Depending on deployment scenarios, examples of INT Nodes may include devices
+    such as routers, switches, and NICs.
 
-* **Flow Watchlist**: A dataplane table that matches on packet headers
-and insert or apply INT instructions on each matched flow. A flow is a set of
-packets having the same values on the selected header fields.
+* **INT Instruction**:
+  : Instructions indicating which INT Metadata (defined below) to collect at
+    each INT node. The instructions are either configured at each INT-capable
+    node's Flow Watchlist or written into the INT Header.
 
-* **INT Source**: A trusted entity that creates and inserts INT Headers into the
-packets it sends. A Flow Watchlist is configured to select the flows in which
-INT headers are to be inserted.
+* **Flow Watchlist**:
+  : A dataplane table that matches on packet headers and inserts or applies
+    INT instructions on each matched flow. A flow is a set of packets having the
+    same values on the selected header fields.
 
-* **INT Sink**: A trusted entity that extracts the INT Headers and collects the
-path state contained in the INT Headers. The INT Sink is responsible for
-removing INT Headers so as to make INT transparent to upper layers. (Note that
-this does not preclude having nested or hierarchical INT domains.) The INT Sink
-can decide to send the collected information to the monitoring system.
+* **INT Source**:
+  : A trusted entity that creates and inserts INT Headers into the packets it
+    sends. A Flow Watchlist is configured to select the flows in which INT
+    headers are to be inserted.
 
-* **INT Transit Hop**: A networking device that collects metadata from the data plane
-by following the INT Instructions. Based on the instruction, the data may be
-directly exported to the telemetry monitoring system
-or embedded into the INT Header of the packet.
+* **INT Sink**:
+  : A trusted entity that extracts the INT Headers and collects the path state
+    contained in the INT Headers. The INT Sink is responsible for removing INT
+    Headers so as to make INT transparent to upper layers. (Note that this does
+    not preclude having nested or hierarchical INT domains.) The INT Sink can
+    decide to send the collected information to the monitoring system.
+
+* **INT Transit Hop**:
+  : A trusted entity that collects metadata from the data plane by following
+    the INT Instructions. Based on the instructions, the data may be directly
+    exported to the telemetry monitoring system or embedded into the INT Header
+    of the packet.
 
 Note that one physical device
 may play multiple roles -- INT Source, Transit, Sink -- at the same time
-for the same or different flows. For example, an INT Source device may
+for the same or different flows. For example, an INT Source node may
 embed its own metadata into the packet, playing the roles of INT Transit as well.
 
-* **INT Metadata**: Information that an INT Source or an INT Transit Hop device
-inserts into the INT Header. Examples of metadata are described in section
-[#sec-what-to-monitor].
+* **INT Metadata**:
+  : Information that an INT Source or an INT Transit Hop node inserts into the
+    INT Header, or into a telemetry report. Examples of metadata are described
+    in section [#sec-what-to-monitor].
 
-* **INT Domain**: A set of inter-connected INT devices under the same
-administration. This specification defines the behavior and packet header
-formats for interoperability between INT switches from different vendors in
-an INT domain. The INT devices within the same domain must be configured in
-a consistent way to ensure interoperability between the devices.
-Operators of an INT domain should deploy INT Sink capability at domain edges to
-prevent INT information from leaking out of the domain.
+* **INT Domain**:
+  : A set of inter-connected INT nodes under the same administration. This
+    specification defines the behavior and packet header formats for
+    interoperability between INT nodes from different vendors in an INT
+    domain. The INT nodes within the same domain must be configured in a
+    consistent way to ensure interoperability between the nodes. Operators of
+    an INT domain should deploy INT Sink capability at domain edges to prevent
+    INT information from leaking out of the domain.
 
 # INT Modes of Operation
 Since INT was first introduced at P4.org in 2015, a number of variations of INT
 have been evolved and discussed in IETF and industry communities.
-Also the term 'INT' has been used to broadly indicate data plane
-telemetry in general, not limited to the original classic INT where both instructions
-and metadata are embedeed in the data packets. Hence we define different modes of
-INT operations based on the following criteria:
+Also the term 'INT' has been used to broadly indicate data plane telemetry in
+general, not limited to the original classic INT where both instructions and
+metadata are embedded in the data packets. Hence we define different modes of
+INT operation based on the degree of packet modifications, i.e., what to
+embed in the packets.
 
-* whether INT is applied to real data packets vs synthetic (clone or probe) packets.
-* the degree of packet modifications, i.e., what to embed in the packets.
-
-The different modes of operations are described in detail below, and summarized
+The different modes of operation are described in detail below, and summarized
 in Figure [#fig-int-modes].
 
-## INT Application Modes 
+## INT Application Modes
 
 Original data packets are monitored and may be modified
 to carry INT instructions and metadata.
 There are three variations based on the level of packet modifications.
 
-* **INT-XD** (eXport Data): network devices directly export metadata from
-their dataplane to the monitoring system based on the INT instructions configured
-at their Flow Watchlists. No packet Modification is needed. This mode was also
-known as "Postcard" mode in the previous versions of Telemetry Report spec,
-originally inspired by [^Postcard].
+* **INT-XD** (eXport Data): INT nodes directly export metadata from their
+  dataplane to the monitoring system based on the INT instructions configured
+  at their Flow Watchlists. No packet Modification is needed.
 
-* **INT-MX** (eMbed instruct(X)ions): The INT Source device embeds INT instructions in
-the packet header, then the INT Source, each INT Transit, and the INT sink directly send 
-the metadata to the monitoring system by following the instructions embedded in the packets.
-The INT Sink device strips the instruction header before forwarding the packet to the
-receiver. Packet modification is limited to the instruction header, the packet size doesn't
-grow as the packet traverses more Transit devices.
+  This mode was also known as "Postcard" mode in the previous versions of
+  the Telemetry Report spec, originally inspired by [^Postcard].
 
-This mode is inspired by IOAM's "Direct Export" [^IOAM-DEX].
+* **INT-MX** (eMbed instruct(X)ions): The INT Source node embeds INT
+  instructions in the packet header, then the INT Source, each INT Transit, and
+  the INT sink directly send the metadata to the monitoring system by following
+  the instructions embedded in the packets. The INT Sink node strips the
+  instruction header before forwarding the packet to the receiver. Packet
+  modification is limited to the instruction header, the packet size doesn't
+  grow as the packet traverses more Transit nodes.
 
-* **INT-MD** (eMbed Data): in this mode both INT instructions and metadata are
-written into the packets. This is the classic hop-by-hop INT where 1) INT Source embeds
-instructions, 2) INT Source & Transit embed metadata, and 3) INT Sink strips
-the instructions and aggregated metadata out of the packet and
-(selectivly) send the data to the monitoring system.
-Packet is modified the most in this mode while it minimizes the overhead
-at the monitoring system to collate reports from multiple devices.
+  This mode is inspired by IOAM's "Direct Export" [^IOAM] [^IOAM-DEX].
 
-Since v2.0, INT-MD mode supports 'source-only' metadata as part of Domain Specific
-Instructions. This allows INT Source to embed additional metadata for INT Sink
-or the monitoring system to consume.
+* **INT-MD** (eMbed Data): In this mode both INT instructions and metadata are
+  written into the packets. This is the classic hop-by-hop INT where 1) INT
+  Source embeds instructions, 2) INT Source & Transit embed metadata, and 3) INT
+  Sink strips the instructions and aggregated metadata out of the packet and
+  (selectively) sends the data to the monitoring system.
+  The packet is modified the most in this mode while it minimizes the overhead
+  at the monitoring system to collate reports from multiple INT nodes.
 
-## INT Applied to Synthetic Traffic
-
-INT Source devices may generate INT-marked synthetic traffic either by
-cloning  original data packets or by generating special probe packets.
-INT is applied to this traffic by transit nodes in exactly the same way 
-as all traffic. 
-
-The only difference between live traffic and Synthetic traffic is that 
-INT-Sink nodes may need to discard synthetic traffic after extracting 
-the collected INT data as opposed to forwading the traffic. This is 
-indicated by using the 'D' bit of the INT-Header to mark relevant packets
-as being copies/clones, to be 'D'iscarded at the INT-Sink.
-
-All INT modes may be used on these synthetic/probe packets, as decided by the INT-Source node. 
-Specifically the **INT-MD** (eMbed Data) mode applied to Synthetic or probe packets allows 
-functionality similar to **IFA**[^IFA] 
-
-It is likely that synthetic traffic created by cloning would be discarded at the Sink,
-while Probe packets might be marked for forwarding or discarding, depending on the
-use-case. It is the responsibility of the INT-Source node to mark packets correctly 
-to determine if the INT-Sink will forward or discard packets after extracting the 
-INT Data collected along the path. 
+  Since v2.0, INT-MD mode supports 'source-only' metadata as part of Domain
+  Specific Instructions. This allows the INT Source to embed additional
+  metadata for the INT Sink or the monitoring system to consume.
 
 **NOTE: the rest of the spec is assuming INT-MD as the default mode, unless
 specified otherwise.**
 
-[^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-05](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-05), March 2019.
-[^IOAM-DEX]: In-situ OAM Direct Exporting [draft-ietf-ippm-ioam-direct-export-00](https://tools.ietf.org/html/draft-ietf-ippm-ioam-direct-export-00), February 2020.
-[^IFA]: Inband Flow Analyzer, [draft-kumar-ippm-ifa-01](https://tools.ietf.org/html/draft-kumar-ippm-ifa-01), February 2019.
+[^IOAM]: Data Fields for In-situ OAM, [draft-ietf-ippm-ioam-data-09](https://tools.ietf.org/html/draft-ietf-ippm-ioam-data-09), March 2020.
+[^IOAM-DEX]: In-situ OAM Direct Exporting, [draft-ietf-ippm-ioam-direct-export-00](https://tools.ietf.org/html/draft-ietf-ippm-ioam-direct-export-00), February 2020.
 
 ~ Figure { #fig-int-modes; caption: "Various modes of INT operation." }
 ![int-modes]
 ~
 [int-modes]: images/INT_modes.pdf { width: 5.5in }
 
+## INT Applied to Synthetic Traffic
+
+INT Source nodes may generate INT-marked synthetic traffic either by
+cloning original data packets or by generating special probe packets.
+INT is applied to this traffic by transit nodes in exactly the same way
+as all traffic.
+
+The only difference between live traffic and Synthetic traffic is that
+INT-Sink nodes may need to discard synthetic traffic after extracting
+the collected INT data as opposed to forwarding the traffic. This is
+indicated by using the 'D' bit of the INT-Header to mark relevant packets
+as being copies/clones or probes, to be 'D'iscarded at the INT-Sink.
+
+All INT modes may be used on these synthetic/probe packets, as decided by the INT-Source node.
+Specifically the **INT-MD** (eMbed Data) mode applied to Synthetic or probe packets allows
+functionality similar to **IFA**[^IFA].
+
+It is likely that synthetic traffic created by cloning would be discarded at the Sink,
+while Probe packets might be marked for forwarding or discarding, depending on the
+use-case. It is the responsibility of the INT-Source node to mark packets correctly
+to determine if the INT-Sink will forward or discard packets after extracting the
+INT Data collected along the path.
+
+[^IFA]: Inband Flow Analyzer, [draft-kumar-ippm-ifa-02](https://tools.ietf.org/html/draft-kumar-ippm-ifa-02), April 2020.
+
 
 # What To Monitor
 
-In theory, one may be able to define and collect any switch-internal
+In theory, one may be able to define and collect any device-internal
 information using the INT approach. In practice, however, it seems useful to
 define a small baseline set of metadata that can be made available on a wide
 variety of devices:  the metadata listed in this section comprises such a set.
@@ -355,118 +375,123 @@ As the INT specification evolves, we expect to add more metadata to this
 INT specification.
 
 The exact meaning of the following metadata (e.g., the unit of timestamp
-values, the precise definition of hop latency, queue occupancy or buffer 
-occupancy) can vary from one device to another for any number of reasons, 
-including the heterogeneity of device architecture, feature sets, 
-
-resource limits, etc. Thus, defining the exact meaning of each metadata is 
-beyond the scope of this document. Instead we assume that the semantics of 
-metadata for each device model used in a deployment is communicated with 
+values, the precise definition of hop latency, queue occupancy or buffer
+occupancy) can vary from one device to another for any number of reasons,
+including the heterogeneity of device architecture, feature sets,
+resource limits, etc. Thus, defining the exact meaning of each metadata is
+beyond the scope of this document. Instead we assume that the semantics of
+metadata for each device model used in a deployment is communicated with
 the entities interpreting/analyzing the reported data in an out-of-band fashion.
 
-## Switch-level Information
+## Device-level Information
 
-* Switch id
-  - The unique ID of a switch (generally administratively assigned). Switch IDs
-must be unique within an INT domain.
+* Node id
+  : The unique ID of an INT node.
+    This is generally administratively assigned. Node IDs must be unique
+    within an INT domain.
 
 ## Ingress Information
 
 * Ingress interface identifier
-  - The interface on which the INT packet was received. A packet may be received
+  : The interface on which the INT packet was received. A packet may be received
     on an arbitrary stack of interface constructs starting with a physical port.
     For example, a packet may be received on a physical port that belongs to
     a link aggregation port group, which in turn is part of a Layer 3 Switched
     Virtual Interface, and at Layer 3 the packet may be received in a tunnel.
     Although the entire interface stack may be monitored in theory, this
     specification allows for monitoring of up to two levels of ingress interface
-    identifiers. First level of ingress interface identifier would typically be
-    used to monitor the physical port on which the packet was received, 
-    hence a 16-bit field (half of a 4-Byte metadata) is deemed adequate. Second 
-    level of ingress interface identifier occupies a full 4-Byte metadata field, 
-    which may be used to monitor a logical interface on which the packet was received. 
-    A 32-bit space at the second level allows for an adequately large number of 
-    logical interface at each network element. The semantics of interface identifiers 
-    may differ across devices, each INT hop chooses the interface type it reports at 
-    each of the two levels.
+    identifiers. The first level of ingress interface identifier would typically
+    be used to monitor the physical port on which the packet was received, hence
+    a 16-bit field (half of a 4-Byte metadata) is deemed adequate. The second
+    level of ingress interface identifier occupies a full 4-Byte metadata field,
+    which may be used to monitor a logical interface on which the packet was
+    received.  A 32-bit space at the second level allows for an adequately large
+    number of logical interfaces at each network element. The semantics of
+    interface identifiers may differ across devices, each INT hop chooses the
+    interface type it reports at each of the two levels.
 
 * Ingress timestamp
-  - The device local time when the INT packet was received on the ingress
+  : The device local time when the INT packet was received on the ingress
     physical or logical port.
 
 ## Egress Information
 
 * Egress interface identifier
-  - The interface on which the INT packet was sent out. A packet may
+  : The interface on which the INT packet was sent out. A packet may
     be transmitted on an arbitrary stack of interface constructs ending at a
     physical port. For example, a packet may be transmitted on a tunnel,
     out of a Layer 3 Switched Virtual Interface, on a Link Aggregation Group,
     out of a particular physical port belonging to the Link Aggregation Group.
     Although the entire interface stack may be monitored in theory, this
     specification allows for monitoring of up to two levels of egress interface
-    identifiers. First level of egress interface identifier would typically be used
-    to monitor the physical port on which
-    the packet was transmitted, hence a 16-bit field (half of a 4-Byte metadata)
-    is deemed adequate. Second level of egress interface identifier occupies a full
+    identifiers. The first level of egress interface identifier would typically
+    be used to monitor the physical port on which the packet was transmitted,
+    hence a 16-bit field (half of a 4-Byte metadata) is deemed adequate.
+    The second level of egress interface identifier occupies a full
     4-Byte metadata field, which may be used to monitor a logical interface on
     which the packet was transmitted. A 32-bit space at the second level
-    allows for an adequately large number of logical interface at each network
+    allows for an adequately large number of logical interfaces at each network
     element. The semantics of interface identifiers may differ across devices,
     each INT hop chooses the interface type it reports at each of the two levels.
 
 * Egress timestamp
-  - The device local time when the INT packet was processed by the egress
-physical or logical port.
+  : The device local time when the INT packet was processed by the egress
+    physical or logical port.
 
 * Hop latency
-  - Time taken for the INT packet to be switched within the device.
+  : Time taken for the INT packet to be switched within the device.
 
 * Egress interface TX Link utilization
-  - Current utilization of the egress interface via which the INT packet was sent
-out. Again, devices can use different mechanisms to keep track of the current
-rate, such as bin bucketing or moving average. While the latter is clearly
-superior to the former, the INT framework does not stipulate the mechanics and
-simply leaves those decisions to device vendors.
+  : Current utilization of the egress interface via which the INT packet was
+    sent out. Again, devices can use different mechanisms to keep track of the
+    current rate, such as bin bucketing or moving average. While the latter is
+    clearly superior to the former, the INT framework does not stipulate the
+    mechanics and simply leaves those decisions to device vendors.
 
 * Queue occupancy
-  - The build-up of traffic in the queue (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded. The format of this 4-octet 
-metadata field is switch implementation specific and the metadata semantics YANG 
-model shall describe the format and units of this metadata field in the 
-metadata stack.
+  ~ The build-up of traffic in the queue (in bytes, cells, or packets) that the
+    INT packet observes in the device while being forwarded. The format of this
+    4-octet metadata field is implementation specific and the metadata semantics
+    YANG model shall describe the format and units of this metadata field in the
+    metadata stack.
 
 * Buffer occupancy
-  - The build-up of traffic in the buffer (in bytes, cells, or packets) that the
-INT packet observes in the device while being forwarded. Use case is when the buffer 
-is shared between multiple queues. The format of this 4-octet metadata field is switch 
-implementation specific and the metadata semantics YANG model shall describe the format 
-and units of this metadata field in the metadata stack.
+  : The build-up of traffic in the buffer (in bytes, cells, or packets) that the
+    INT packet observes in the device while being forwarded. Use case is when
+    the buffer is shared between multiple queues. The format of this 4-octet
+    metadata field is implementation specific and the metadata semantics YANG
+    model shall describe the format and units of this metadata field in the
+    metadata stack.
 
-Details of the metadata semantics YANG model can be accessed at the link below:
+A metadata semantics YANG model [^metadata-yang] is being developed that allows
+nodes to report details of the metadata format, units, and semantics.
 
-https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
+[^metadata-yang]: p4-dtel-metadata-semantics, [https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang](https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang)
+
+[]{tex-cmd: "\newpage"}
 
 # INT Headers
 
 This section specifies the format and location of INT Headers.
-INT Headers and their locations are relevant for INT-MX and INT-MD modes where 
-the INT instructions (and metadata stack in case of MD modes) are written into the packets.
+INT Headers and their locations are relevant for INT-MX and INT-MD modes where
+the INT instructions (and metadata stack in case of MD mode) are written into
+the packets.
 
 ## INT Header Types
 
 There are three types of INT Headers: MD-type, MX-type and Destination-type.
 A given INT packet may carry either of MD or MX type headers, and/or
-a Destination-type header. When Destination-type and MD-type or MX-type 
-headers are present, the MD-type header or MX-type header must precede the Destination-type 
-header.
+a Destination-type header. When Destination-type and MD-type or MX-type
+headers are present, the MD-type header or MX-type header must precede the
+Destination-type header.
 
 * MD-type (**INT Header type 1**)
-  - Intermediate devices (INT Transit Hops) must process this type of INT
+  - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header. The format of this header is defined in section
-    [#sec-int-md-metadata-header-format]
+    [#sec-int-md-metadata-header-format].
 * Destination-type (**INT Header type 2**)
   - Destination headers must only be consumed by the INT Sink. Intermediate
-    devices must ignore Destination headers.
+    nodes must ignore Destination headers.
   - Destination headers can be used to enable Edge-to-Edge communication between
     the INT Source and INT Sink. For example:
       - INT Source can add a sequence number to detect loss of INT packets.
@@ -479,76 +504,79 @@ header.
     revision. Note some Edge-to-Edge INT use cases can be supported by 'source-only'
     metadata, part of Domain Specific Instructions in the MD-type header.
 * MX-type (**INT Header type 3**)
-  - Intermediate devices (INT Transit Hops) must process this type of INT
+  - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header and generate reports to the monitoring system as instructed.
-    The format of this header is defined in section [#sec-int-mx-metadata-header-format].
+    The format of this header is defined in section [#sec-int-mx-header-format].
 
 ## Per-Hop Header Operations
 
 ### INT Source Node
 
-In the INT-MD and INT-MX modes, the INT Source device in the packet forwarding 
-path creates the INT-MD or INT-MX Header. 
+In the INT-MD and INT-MX modes, the INT Source node in the packet forwarding
+path creates the INT-MD or INT-MX Header.
 
-In INT-MD, the source node add its own INT metadata after the header. To avoid 
-exhausting header space in the case of a forwarding loop or any other anomalies, 
-it is strongly recommended to limit the number of total INT metadata fields added 
-by Transit Hop devices by setting the Remaining Hop Count field in INT header 
-appropriately. 
+In INT-MD, the source node add its own INT metadata after the header. To avoid
+exhausting header space in the case of a forwarding loop or any other anomalies,
+it is strongly recommended to limit the number of total INT metadata fields added
+by Transit Hop nodes by setting the *Remaining Hop Count* field in INT header
+appropriately.
 
 The INT-MD and INT-MX headers are described in detail in the subsequent
 sections.
 
 ### INT Transit Hop Node
 
-In the INT-MD mode, each device in the packet forwarding path creates additional 
-space in the INT-MD Header on-demand to add its own INT metadata. To avoid 
-exhausting header space in the case of a forwarding loop or any other anomalies, 
-each INT Transit Hop must decrement the Remaining Hop Count field in the INT 
+In the INT-MD mode, each node in the packet forwarding path creates additional
+space in the INT-MD Header on-demand to add its own INT metadata. To avoid
+exhausting header space in the case of a forwarding loop or any other anomalies,
+each INT Transit Hop must decrement the *Remaining Hop Count* field in the INT
 header appropriately.
 
-In the INT-MX mode, each device in the packet forwarding path follows the 
-intructions in the INT-MX Header, gathers the device specific metadata and 
-exports the device metadata using the Telemetry Report.  INT Transit Hop 
-nodes may update the DS Flags field in the INT-MX header. Domain Specific ID 
-and DS Instruction fields must not be modified by Transit Hop nodes.
+In the INT-MX mode, each node in the packet forwarding path follows the
+intructions in the INT-MX Header, gathers the device specific metadata and
+exports the device metadata using the Telemetry Report.
+
+INT Transit Hop nodes may update the *DS Flags* field in the INT-MD or INT-MX
+header. The *Hop ML*, *Instruction Bitmap*, *Domain Specific ID* and
+*DS Instruction* fields must not be modified by Transit Hop nodes.
 
 ### INT Sink Node
 
-In INT-MD mode, the INT Sink node removes the INT Headers and Metadata stack from 
+In INT-MD mode, the INT Sink node removes the INT Headers and Metadata stack from
 the packet, and decides whether to report the collected information.
 
-In INT-MX mode, INT Sink node removes the INT-MX header, gathers the 
+In INT-MX mode, the INT Sink node removes the INT-MX header, gathers the
 device specific metadata and decides whether to report that metadata.
 
 ## MTU Settings
 
-In both INT-MX and INT-MD modes, it is possible that insertion of the INT header 
+In both INT-MX and INT-MD modes, it is possible that insertion of the INT header
 at the INT Source node may cause the egress link MTU to be exceeded.
 
-In INT-MD mode, as each hop creates additional space in the INT header 
-to add its metadata, the packet size increases. This can potentially 
-cause egress link MTU to be exceeded at an INT switch.
+In INT-MD mode, as each hop creates additional space in the INT header
+to add its metadata, the packet size increases. This can potentially
+cause egress link MTU to be exceeded at an INT node.
 
 This may be addressed in the following ways -
 
 * It is recommended that the MTU of links between INT sources and sinks be
 configured to a value higher than the MTU of preceding links (server/VM NIC
 MTUs) by an appropriate amount. Configuring an MTU differential of
-[Per-hop Metadata Length\*4\*INT Hop Count + Fixed INT Header Length] bytes,
+[Per-hop Metadata Length\*4\*INT Hop Count + Fixed INT Header Length] bytes
+(just [Fixed INT Header Length] for INT-MX mode),
 based on conservative values of total number of INT hops and Per-hop
 Metadata Length, will prevent egress MTU being exceeded due to INT metadata
 insertion at INT hops. The Fixed INT Header Length is the sum of INT metadata
 header length (12B) and the size of encapsulation-specific shim/option header
 (4B) as defined in section [#sec-header-location].
 
-* An INT source/transit switch may optionally participate in dynamic discovery
+* An INT source/transit node may optionally participate in dynamic discovery
 of Path MTU for flows being monitored by INT by transmitting ICMP message to
 the traffic source as per Path MTU Discovery mechanisms of the corresponding
 L3 protocol (RFC 1191 for IPv4, RFC 1981 for IPv6). An INT source or transit
-switch may report a conservative MTU in the ICMP message, assuming that the
-packet will go through the maximum number of allowed INT hops (i.e. Remaining
-Hop Count will decrement to zero), accounting for cumulative metadata
+node may report a conservative MTU in the ICMP message, assuming that the
+packet will go through the maximum number of allowed INT hops (i.e. *Remaining
+Hop Count* will decrement to zero), accounting for cumulative metadata
 insertion at all INT hops, and assuming that the egress MTU at all downstream
 INT hops is the same as its own egress link MTU. This will help the path
 MTU discovery source to converge to a path MTU estimate
@@ -558,18 +586,18 @@ it inserts. This would enable the path MTU discovery source converge to a
 precise path MTU, at the cost of receiving more ICMP messages, one from each
 INT hop.
 
-Regardless of whether or not an INT transit switch participates in Path MTU
+Regardless of whether or not an INT transit node participates in Path MTU
 discovery, if it cannot insert all requested metadata because doing so will
 cause the packet length to exceed egress link MTU, it must either:
 
   - not insert any metadata and set the M bit in the INT header, indicating
     that egress MTU was exceeded at an INT hop, or
-      
-  - report the metadata stack collected from previous hops (setting the 
-    Intermediate Report bit if a Telemetry Report 2.0 packet is generated) and 
-    remove the reported metadata stack from the packet, including the metadata 
-    from this transit hop in either the report or embedding in the INT-MD metadata 
-    header.
+
+  - report the metadata stack collected from previous hops (setting the
+    Intermediate Report bit if a Telemetry Report 2.0 [^telem-report] packet is
+    generated) and remove the reported metadata stack from the packet, including
+    the metadata from this transit hop in either the report or embedding in the
+    INT-MD metadata header.
 
 An INT source inserts 12 bytes of fixed INT headers, and may also insert
 Per-hop Metadata Length\*4 bytes of its own metadata. If inserting the
@@ -579,14 +607,14 @@ its own INT metadata, and there is enough room in a packet to insert fixed INT
 headers, but no additional room for its INT metadata, the source must
 initiate INT and set the M bit in the INT header.
 
-In theory, an INT transit switch can perform IPv4 fragmentation to overcome
+In theory, an INT transit node can perform IPv4 fragmentation to overcome
 egress MTU limitation when inserting its metadata. However, IPv4 fragmentation
 can have adverse impact on applications. Moreover, IPv6 packets cannot be
 fragmented at intermediate hops. Also, fragmenting packets at INT transit hops,
 with or without copying preceding INT metadata into fragments imposes
 extra complexity of correlating fragments in the INT monitoring engine.
 Considering all these factors, this specification requires that an INT
-switch must not fragment packets in order to append INT information to
+node must not fragment packets in order to append INT information to
 the packet.
 
 ## INT over any encapsulation
@@ -594,7 +622,7 @@ the packet.
 The specific location for INT Headers is intentionally not specified:
 an INT Header can be inserted as an option or payload of any encapsulation
 type. The only requirements are that the encapsulation header provides
-sufficient space to carry the INT information and that all INT switches
+sufficient space to carry the INT information and that all INT nodes
 (Sources, transit hops and Sinks) agree on the location of the INT Headers.
 The following choices are potential encapsulations using common protocol
 stacks, although a deployment may choose a different encapsulation format
@@ -607,20 +635,22 @@ if better suited to their needs and environment.
 * INT over UDP (as payload)
 * INT over GRE (as a shim between GRE header and encapsulated payload)
 
+[]{tex-cmd: "\newpage"}
+
 ## Checksum Update
 
 As described above in section [#sec-int-over-any-encapsulation], INT
 headers and metadata may be carried in an L4 protocol such as TCP or UDP,
 or in an encapsulation header that includes an L4 header, such as VXLAN.
 The checksum field in the TCP or UDP L4 header needs
-to be updated as INT switches modify the L4 payload via insertion/removal of
+to be updated as INT nodes modify the L4 payload via insertion/removal of
 INT headers and metadata. However, there are certain exceptions.
 For example, when UDP is transported over IPv4, it is possible to assign a
 zero checksum, causing the receiver to ignore the value of the checksum field
 (as defined in RFC 768). For UDP over IPv6, there are specific use cases in
 which it is possible to assign a zero Checksum (as defined in RFC 6936).
 
-INT source, transit and sink devices must comply with IETF standards
+INT source, transit and sink nodes must comply with IETF standards
 for Layer 4 transport protocols with respect to whether or not Layer 4
 checksum is to be updated upon modification of Layer 4 payload.
 For example, if an INT source/transit/sink hop receives
@@ -628,7 +658,7 @@ UDP traffic with zero L4 checksum, it must not update the L4 checksum
 in conformance with the behavior defined in relevant IETF standards
 such as RFC 768 and RFC 6936.
 
-When L4 checksum update is required, an INT source/transit switch may update
+When L4 checksum update is required, an INT source/transit node may update
 the checksum in one of two ways:
 
 * Update the L4 Checksum field such that the new value is equal to the checksum
@@ -637,7 +667,7 @@ field updates), or
 
 * If the INT source indicates that Checksum-neutral updates are allowed by
 setting an instruction bit corresponding to the Checksum Complement metadata,
-then the INT source/transit switches may assign a value to the Checksum
+then the INT source/transit nodes may assign a value to the Checksum
 Complement metadata which guarantees that the existing L4 Checksum is the
 correct value of the packet after the INT-related updates.
 
@@ -648,7 +678,7 @@ modified. Therefore, the Checksum Complement metadata, if present, is the last
 metadata field in the stack.
 
 Note that when the Checksum Complement metadata is present source/transit
-switches may choose to update the L4 Checksum field instead of using the
+nodes may choose to update the L4 Checksum field instead of using the
 Checksum Complement metadata. In this case the Checksum Complement metadata
 must be assigned the reserved value 0xFFFFFFFF. A host that verifies the
 L4 Checksum will be unaffected by whether some or all of the nodes chose
@@ -665,15 +695,17 @@ checksum field or via use of Checksum Complement metadata, performing the
 update based on an incremental checksum calculation (as is typically done)
 will ensure that any potential corruption is detected at the point of
 checksum validation. If full checksum computation is performed at an INT
-switch, it should be preceded by checksum validation so as to not mask out any
+node, it should be preceded by checksum validation so as to not mask out any
 corruption at preceding hops.
+
+[]{tex-cmd: "\newpage"}
 
 ## Header Location
 
 We describe four encapsulation formats in this specification, covering
 different deployment scenarios, with and without network virtualization:
 
-1. *INT over IPv4/GRE* - INT headers are carried between the GRE header and the 
+1. *INT over IPv4/GRE* - INT headers are carried between the GRE header and the
 encapsulated GRE payload.
 2. *INT over TCP/UDP* - A shim header is inserted following TCP/UDP
 header. INT Headers are carried between this shim header and TCP/UDP payload.
@@ -681,21 +713,23 @@ Since v2.0, the spec also supports an option to insert a new UDP header
 (followed by INT headers) before the existing L4 header.
 This approach doesn’t rely on any tunneling/virtualization mechanism and is
 versatile to apply INT to both native and virtualized traffic.
-3. *INT over VXLAN* - VXLAN generic protocol extensions
-(draft-ietf-nvo3-vxlan-gpe) are used to carry INT Headers between
-the VXLAN header and the encapsulated VXLAN payload.
+3. *INT over VXLAN* - VXLAN generic protocol extensions [^VXLAN-GPE] are used
+to carry INT Headers between the VXLAN header and the encapsulated VXLAN
+payload.
 4. *INT over Geneve* - Geneve is an extensible tunneling framework, allowing
 Geneve options to be defined for INT Headers.
+
+[^VXLAN-GPE]: Generic Protocol Extension for VXLAN, [draft-ietf-nvo3-vxlan-gpe-09](https://tools.ietf.org/html/draft-ietf-nvo3-vxlan-gpe-09), December 2019.
 
 ### INT over IPv4/GRE
 
 In case the traffic being monitored is not encapsulated by any virtualization
-header, INT over VXLAN or INT over Geneve is not helpful. Instead, 
-a GRE encapsulation as defined in [^RFC2784] can be utilized. The INT metadata
-header and INT metadata follows the GRE header. In an administrative domain 
-where INT is used, insertion of the INT metadata header and metadata in 
-GRE is enabled at the INT source and deletion of INT metadata header 
-and metadata is enabled at the INT sink by means of configuration. 
+header, INT over VXLAN or INT over Geneve is not helpful. Instead, a GRE
+encapsulation as defined in RFC 2784 [^RFC2784] can be utilized. The INT
+metadata header and INT metadata follows the GRE header. In an administrative
+domain where INT is used, insertion of the INT metadata header and metadata in
+GRE is enabled at the INT source and deletion of INT metadata header
+and metadata is enabled at the INT sink by means of configuration.
 
 There are two scenarios when utilizing GRE encapsulation to support INT:
 
@@ -706,14 +740,16 @@ should remove the INT Metadata Header and Metadata stack before forwarding
 the GRE encapsulated packet to the destination.
 
 2. If the incoming packet at the source node of the INT domain is not GRE
-encapsulated, then the source node should add a GRE encapsulation and insert 
-the INT Metadata Header and Metadata following the GRE header. The sink node 
-of the INT domain should remove the GRE encapsulation along with removing 
-the INT Metadata Header and the Metadata stack before forwarding the packet 
+encapsulated, then the source node should add a GRE encapsulation and insert
+the INT Metadata Header and Metadata following the GRE header. The sink node
+of the INT domain should remove the GRE encapsulation along with removing
+the INT Metadata Header and the Metadata stack before forwarding the packet
 to the destination.
 
 
-IPv4 GRE Option format for carrying INT Header and 
+[]{tex-cmd: "\newpage"}
+
+IPv4 GRE Option format for carrying INT Header and
 Metadata:
 
 `
@@ -728,37 +764,38 @@ Metadata:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  E
 |                   Sequence Number (Optional)                  |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-|                        Routing (Optional)                     |  |     
+|                        Routing (Optional)                     |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
 | Type  |G| Rsvd|     Length    |        Next Protocol          |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  I
 |                                                               |  N
-|  Variable Option Data (INT Metadata Headers and Metadata]     |  T                     
+|  Variable Option Data (INT Metadata Headers and Metadata)     |  T
 |                                                               |  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
 `
 
-The GRE header and fields are defined in [RFC2784].  The GRE Protocol Type 
-value is TBD_INT.
+The GRE header and fields are defined in RFC 2784 [^RFC2784]. The GRE Protocol
+Type value is TBD_INT.
 
 The INT Shim header for GRE option is defined as follows:
 
-* Type (4b): This field indicates the type of INT Header following the shim header.
-  The Type values are defined in Section [#sec-int-header-types].
-* G (1b): Indicates whether the GRE headers were inserted to transport INT
+* **Type (4b):** This field indicates the type of INT Header following the shim
+  header. The Type values are defined in Section [#sec-int-header-types].
+* **G (1b):** Indicates whether the GRE headers were inserted to transport INT
   by the INT source.
-  - 0: Original packet (before insertion of INT headers and metadata) had
+  - **0:** Original packet (before insertion of INT headers and metadata) had
     GRE encapsulation.
-  - 1: Original packet had no GRE encapsulation, hence the INT source inserted GRE.
+  - **1:** Original packet had no GRE encapsulation, hence the INT source
+    inserted GRE.
   - This is a hint that helps the INT sink (when it is not the GRE tunnel endpoint)
     determine whether to remove the GRE headers part of INT decapsulation (if G=1).
-* Rsvd (3b): reserved for future use, set to zero upon transmission and ignored
-  upon reception.
-* Length (8b): This is the total length of INT metadata header, INT stack excluding the
-  shim header in 4-byte words. A non-INT device may read this field
-  and skip over INT headers.
-* Next Protocol (16b): this field contains an EtherType value (defined in the
-  IANA registry [^ETYPES])
+* **Rsvd (3b):** reserved for future use, set to zero upon transmission and
+  ignored upon reception.
+* **Length (8b):** This is the total length of INT metadata header, INT stack
+  excluding the shim header in 4-byte words. A non-INT device may read this
+  field and skip over INT headers.
+* **Next Protocol (16b):** this field contains an EtherType value (defined in
+  the IANA registry [^ETYPES])
   indicating the type of the protocol following the INT stack. An implementation
   receiving a packet containing a type value which is not listed in the registry
   should discard the packet.
@@ -786,9 +823,9 @@ considered interfering with each other.
 A field in Ethernet, IP, or TCP/UDP should indicate if the
 INT header exists after the TCP/UDP header. We propose three options.
 
-* UDP destination port field: a new UDP port number (INT_TBD) will be assigned
-by IANA to indicate the existence of INT after UDP. This option supports two
-cases:
+1. UDP destination port field: a new UDP port number (INT_TBD) will be assigned
+   by IANA to indicate the existence of INT after UDP. This option supports two
+   cases:
   - The original packet already has UDP header either as user application
     protocol or as part of another UDP-based encapsulation such as VXLAN,
     GENEVE, RoCEv2. INT is inserted after the UDP header with the UDP
@@ -811,20 +848,22 @@ cases:
     using the encapsulating IPv6 header fields, thus offering some protection
     against IPv6 header corruption.
 
-In both cases, traffic with INT headers is likely to be hashed
-to a different path in the network as the new UDP
-destination port (INT_TBD) becomes part of the outer 5 tuple used by ECMP.
+  In both cases, traffic with INT headers is likely to be hashed
+  to a different path in the network as the new UDP
+  destination port (INT_TBD) becomes part of the outer 5 tuple used by ECMP.
 
-The INT shim header for UDP has a field NPT (Next Protocol Type) that indicates
-which of the two cases are applied to a given INT packet. In case a new UDP
-header was inserted,
-INT sink must copy the original IP protocol number from the shim header
-to IP header, and strip the newly added UDP header with all INT headers.
-For the case that original packet already had UDP header, INT sink must
-restore the original destination port number from the shim header
-into the UDP header and strip the INT headers.
+  The INT shim header for UDP has a field NPT (Next Protocol Type) that
+  indicates which of the two cases are applied to a given INT packet. In case
+  a new UDP header was inserted,
+  INT sink must copy the original IP protocol number from the shim header
+  to IP header, and strip the newly added UDP header with all INT headers.
+  For the case that original packet already had UDP header, INT sink must
+  restore the original destination port number from the shim header
+  into the UDP header and strip the INT headers.
 
-* IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
+[]{tex-cmd: "\newpage"}
+
+2. IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
 INT header into a packet, it sets the reserved value in the field or sets the
 bit. The INT source may write the original DSCP value in the INT headers so
@@ -845,22 +884,22 @@ is optional.
     number of QoS rules but will allow the co-existence of DSCP-based QoS and
     INT even when a single DSCP bit is not available for INT.
   - Within an INT domain, DSCP values used for INT must exclusively be used
-    for INT. INT transit and switches must not receive non-INT packets
-    marked with DSCP values used for INT. Any time a switch forwards a packet
+    for INT. INT transit and sink nodes must not receive non-INT packets
+    marked with DSCP values used for INT. Any time a node forwards a packet
     into the INT domain and there is no INT header present, it must ensure that
     the DSCP/Traffic class value is not the same as any of the values used
     to indicate INT.
 
-* Probe Marker fields: If DSCP field or values cannot be reserved for INT,
+3. Probe Marker fields: If DSCP field or values cannot be reserved for INT,
 probe marker option could be used. A specific 64-bit value can be inserted
 after the TCP/UDP header to indicate the existence of INT after TCP/UDP.
 These fields must be
 interpreted as unsigned integer values in network byte order. This approach is
 a variation of an early IETF draft with existing implementation[^DPP].
-[^DPP]: Data-plane probe for in-band telemetry collection, https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01
+[^DPP]: Data-plane probe for in-band telemetry collection, [draft-lapukhov-dataplane-probe-01](https://tools.ietf.org/html/draft-lapukhov-dataplane-probe-01), June 2016.
 
-INT probe marker for TCP/UDP:
-`
+   INT probe marker for TCP/UDP:
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -868,20 +907,22 @@ INT probe marker for TCP/UDP:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                         Probe Marker (2)                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
-With arbitrary values being inserted after TCP/UDP header as probe markers,
+   With arbitrary values being inserted after TCP/UDP header as probe markers,
 the likelihood of conflicting with user traffic in a data center is
 low, but cannot be completely eliminated. To further reduce the chance of
 conflict, a deployment could choose to also examine TCP/UDP port numbers
 to validate INT probe marker.
 
+[]{tex-cmd: "\newpage"}
+
 Any of the above options may be used in an INT domain, provided that the INT
-transit and sink devices in the INT domain comply with the mechanism chosen
+transit and sink nodes in the INT domain comply with the mechanism chosen
 at the INT sources, and are able to correctly identify the presence and location
 of INT headers. The above approaches are not intended to interoperate in a
 mixed environment, for example it would be incorrect to mark a packet for INT
-using both DSCP and probe marker, as INT devices that only understand
+using both DSCP and probe marker, as INT nodes that only understand
 DSCP marking and do not recognize probe markers may incorrectly interpret the
 first four bytes of the probe marker as INT shim header.
 It is strongly recommended that only one option be used within an INT domain.
@@ -891,36 +932,39 @@ metadata header and INT metadata stack will be encapsulated between
 the shim header and the TCP/UDP payload.
 
 INT shim header for TCP/UDP:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Type  |NPT|R|R|     Length    |  UDP port, IP Proto, or DSCP  |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    | Type  |NPT|R|R|     Length    |  UDP port, IP Proto, or DSCP  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-* Type (4b): This field indicates the type of INT Header following the shim header.
+* **Type (4b):** This field indicates the type of INT Header following the shim
+  header.
   The Type values are defined in Section [#sec-int-header-types].
-* NPT (Next Protocol Type, 2b): This field is meaningful only when the UDP destination
+* **NPT (Next Protocol Type, 2b):** This field is meaningful only when the UDP destination
   port number (INT_TBD) is used to indicate the existence of INT. In the other cases,
   this field must be zero. When UDP destination port is INT_TBD, this field may have
   one of the two values:
-  - one (1) indicates that the original UDP payload follows the INT stack,
+
+  - **one (1):** indicates that the original UDP payload follows the INT stack,
     and the last two bytes of the shim header carry the original UDP destination port.
-  - two (2) indicates that another (the original) L4 header follows
+  - **two (2):** indicates that another (the original) L4 header follows
     the INT stack, and the last byte of the shim header carries the IP protocol
     value for the L4 layer.
-* Length (8b): This is the total length of INT metadata header and INT stack
+* **Length (8b):** This is the total length of INT metadata header and INT stack
   in 4-byte words. The length of the shim header (1 word) is NOT counted
   since INT version 2.0.
   A non-INT device may read this field and skip over INT headers.
-* UDP port, IP proto, or DSCP (16b): The contents of this field differ depending on the
-  value of NPT.
-  - NPT=0: The first byte and the last two bits of this 16b field are reserved,
+* **UDP port, IP proto, or DSCP (16b):** The contents of this field differ
+  depending on the value of NPT.
+
+  - **NPT=0:** The first byte and the last two bits of this 16b field are reserved,
     set to zero upon transmission and ignored upon reception. The first 6 bits of
     the second byte may optionally carry the original DSCP value.
-  - NPT=1: The original UDP destination port value.
-  - NPT=2: The first byte is reserved, set to zero upon transmission and ignored
+  - **NPT=1:** The original UDP destination port value.
+  - **NPT=2:** The first byte is reserved, set to zero upon transmission and ignored
     upon reception. The second byte carries the original IP protocol value.
 
 The other bits in the shim header are reserved (R) for future use,
@@ -933,15 +977,15 @@ by most software virtual switches and hardware network elements. The VXLAN
 header as defined in RFC 7348 is a fixed 8-byte header as shown below.
 
 VXLAN Header:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|I|P|B|O|                     Reserved                  |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                VXLAN Network Identifier (VNI) |   Reserved    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |R|R|Ver|I|P|B|O|                     Reserved                  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                VXLAN Network Identifier (VNI) |   Reserved    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 The amount of free space in the VXLAN header allows for carrying minimal network
 state information. Hence, we embed INT metadata in a shim header between the
@@ -949,43 +993,41 @@ VXLAN header and the encapsulated payload.
 
 The VXLAN header as defined in RFC 7348 does not specify the protocol being
 encapsulated and assumes that the payload following the VXLAN header is an
-Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe proposes
+Ethernet payload. Internet draft draft-ietf-nvo3-vxlan-gpe [^VXLAN-GPE] proposes
 changes to the VXLAN header to allow for multi-protocol encapsulation. We use
 this VXLAN generic protocol extension draft and propose a new
 “Next Protocol” field value for INT.
 
-
 VXLAN GPE Header:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|I|P|B|O|           Reserved            | Next Protocol |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                VXLAN Network Identifier (VNI) |   Reserved    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |R|R|Ver|I|P|B|O|           Reserved            | Next Protocol |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                VXLAN Network Identifier (VNI) |   Reserved    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-P bit: Flag bit 5 is defined as the Next Protocol bit. The P bit MUST be set to
-1 to indicate the presence of the 8-bit next protocol field.
+* **P bit:** Flag bit 5 is defined as the Next Protocol bit. The P bit MUST be
+  set to 1 to indicate the presence of the 8-bit next protocol field.
 
-Next Protocol Values:
-
-* 0x01: IPv4
-* 0x02: IPv6
-* 0x03: Ethernet
-* 0x04: Network Service Header (NSH)
-* 0x05 to 0x7F: Unassigned
-* 0x80 to 0xFF: Unassigned (shim headers)
-* 0x80: In-band Network Telemetry Header (This value has not been reserved by
-VXLAN GPE specification yet, and is hence subject to change)
+* **Next Protocol Values:**
+  * 0x01: IPv4
+  * 0x02: IPv6
+  * 0x03: Ethernet
+  * 0x04: Network Service Header (NSH)
+  * 0x05 to 0x7F: Unassigned
+  * 0x80 to 0xFF: Unassigned (shim headers)
+  * **0x82:** In-band Network Telemetry Header (This value has not been reserved
+    by VXLAN GPE specification yet, and is hence subject to change)
 
 When there is one INT Header in the VXLAN GPE stack, the VXLAN GPE header for
 the INT Header will have a next protocol value other than INT Header indicating
 the payload following the INT Header - typically Ethernet. If there are multiple
 INT Headers in the VXLAN GPE stack (for example if both MD and
 destination type INT headers are being carried), then all VXLAN GPE shim
-headers for the INT Headers other than the last one will carry 0x80 for
+headers for the INT Headers other than the last one will carry 0x82 for
 their next protocol values, and the VXLAN GPE header for the last INT Header
 will carry next protocol value of the original VXLAN payload (e.g., Ethernet).
 
@@ -994,27 +1036,28 @@ introduce the INT shim header. This header follows each VXLAN GPE header for
 INT.
 
 INT shim header for VXLAN GPE encapsulation:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Type  | Rsvd  |    Length     |G|  Reserved   | Next Protocol |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |   Variable Option Data (INT Metadata Headers and Metadata)    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    | Type  | Rsvd  |    Length     |G|  Reserved   | Next Protocol |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Variable Option Data (INT Metadata Headers and Metadata)    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-* Type (4b): This field indicates the type of INT Header following the shim header.
+* **Type (4b):** This field indicates the type of INT Header following the shim
+  header.
   The Type values are defined in Section [#sec-int-header-types].
-* Rsvd (4b): These 4 bits must be set to zero in order to allign with the
+* **Rsvd (4b):** These 4 bits must be set to zero in order to allign with the
   shim header format recommended by Internet draft draft-ietf-nvo3-vxlan-gpe,
   which allocates 8 bits for the Type field.
-* Length: This is the total length of the variable INT option data,
+* **Length:** This is the total length of the variable INT option data,
   not including the shim header, in 4-byte words.
-* G: Indicates whether the original packet (before insertion of INT headers
+* **G:** Indicates whether the original packet (before insertion of INT headers
   and metadata) used a VXLAN or VXLAN GPE encapsulation.
-  - 0: Original packet used VXLAN GPE encapsulation.
-  - 1: Original packet used VXLAN encapsulation.
+  - **0:** Original packet used VXLAN GPE encapsulation.
+  - **1:** Original packet used VXLAN encapsulation.
   - This may be used as a hint that helps the INT sink (when it is not the VTEP)
     determine whether to progress the packet using a VXLAN GPE encapsulation,
     or whether to convert the VXLAN GPE encapsulation back to a VXLAN (without
@@ -1026,28 +1069,28 @@ Geneve is a generic and extensible tunneling framework, allowing for INT
 metadata to be carried in TLV format as “Option headers” in the tunnel header.
 
 Geneve Header:
-`
-   0                   1                   2                   3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver|  Opt Len  |O|C|    Rsvd.  |          Protocol Type        |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |        Virtual Network Identifier (VNI)       |    Reserved   |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                    Variable Length Options                    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |Ver|  Opt Len  |O|C|    Rsvd.  |          Protocol Type        |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |        Virtual Network Identifier (VNI)       |    Reserved   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                    Variable Length Options                    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 Geneve Option for INT:
-`
-   0                   1                   2                   3
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |          Option Class         |      Type     |R|R|R| Length  |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |   Variable Option Data (INT Metadata Headers and Metadata)    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |          Option Class         |      Type     |R|R|R| Length  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Variable Option Data (INT Metadata Headers and Metadata)    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 Note:
 
@@ -1056,103 +1099,109 @@ Geneve header for INT.
 * Users may or may not use INT with Geneve along with VNI (network
 virtualization), though using INT with Geneve without network virtualization
 would be a bit wasteful.
-* Specific values of Option Class and Type have not been reserved for INT yet.
-Deployments using INT over Geneve must use configurable values for Option
-Class and Type to be able to migrate to different values as and when specific
-values are defined for INT.
+* The Geneve **Option Class** codepoint 0x0103 has been tentatively assigned for
+  INT [^IANA-Geneve].
+* The Geneve Option **Type** field indicates the type of INT Header in the
+  Geneve Option. The Type values are defined in Section [#sec-int-header-types].
 * The variable length option data following the Geneve Option Header carries
 the actual INT metadata header and metadata.
 * The Length field of the Geneve Option header is 5-bits long, which
 limits a single Geneve option instance to no more than 124 bytes long (31 * 4).
-Remaining Hop Count in INT-MD type header has to be set accordingly at the
+*Remaining Hop Count* in INT-MD type header has to be set accordingly at the
 INT source to ensure that the Geneve option does not overflow. The entire
 INT-MD header must fit in a single Geneve option.
 
+[^IANA-Geneve]: [IANA Network Virtualization Overlay (NVO3), Geneve Option Class](https://www.iana.org/assignments/nvo3/nvo3.xhtml)
+
 ## INT-MD Metadata Header Format
 
-In this section, we define the format for INT-MD metadata headers,
+In this section, we define the format of the INT-MD metadata header,
 and the metadata itself.
 
 INT-MD Metadata Header and Metadata Stack:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 2|D|E|M|       Reserved        | Hop ML  |RemainingHopCnt|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Instruction Bitmap       |        Domain Specific ID     |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |         DS Instruction        |            DS Flags           |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                              . . .                            |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                         Last INT metadata                     |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |Ver = 2|D|E|M|       Reserved        | Hop ML  |RemainingHopCnt|
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |      Instruction Bitmap       |        Domain Specific ID     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |         DS Instruction        |            DS Flags           |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    | INT Metadata Stack (Each hop inserts Hop ML * 4B of metadata) |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                              . . .                            |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                         Last INT metadata                     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-* INT metadata header is 12 bytes long followed by a stack of INT metadata.
+* INT-MD metadata header is 12 bytes long followed by a stack of INT metadata.
   Each metadata is either 4 bytes or 8 bytes in length. Each INT hop adds
-  the same length of metadata. The total length of the metadata stack is
+  the same length of metadata, except for the source node if there is any
+  'source-only' metadata. The total length of the metadata stack is
   variable as different packets may traverse different paths and hence
   different number of INT hops.
 
-* The fields in the INT metadata header are interpreted the following way:
-  - Ver (4b): INT metadata header version. Should be 2 for this version.
-  - D (1b): Discard. 
+* **Ver (4b):** INT metadata header version. Should be 2 for this version.
+* **D (1b):** Discard.
     - INT Sink must Discard the packet after Extracting INT-MD metadata.
-  - E (1b): Max Hop Count exceeded.
-    - This flag must be set if a device cannot prepend its own metadata due to
-      the Remaining Hop Count reaching zero.
+* **E (1b):** Max Hop Count exceeded.
+    - This flag must be set if a node cannot prepend its own metadata due to
+      the *Remaining Hop Count* reaching zero.
     - E bit must be set to 0 by INT source
-  - M (1b): MTU exceeded
-    - This flag must be set if a device cannot add all of the requested metadata
+* **M (1b):** MTU exceeded
+    - This flag must be set if a node cannot add all of the requested metadata
       because doing so will cause the packet length to exceed egress link MTU.
-      In this case, the device must not add any metadata to the packet, and set
+      In this case, the node must not add any metadata to the packet, and set
       the M bit in the INT header. Note that it is possible for egress MTU
       limitation to prevent INT metadata insertion at multiple hops along a
       path. The M bit simply serves as an indication that INT metadata was not
       inserted at one or more hops and corrective action such as reconfiguring
-      MTU at some links may be needed, particularly when INT switches are not
+      MTU at some links may be needed, particularly when INT nodes are not
       participating in path MTU discovery. The M bit is not aimed at readily
-      identifying which switch(es) did not insert INT metadata due to egress MTU
+      identifying which node(s) did not insert INT metadata due to egress MTU
       limitation. In theory, if this does not occur at consecutive hops,
       it may be possible for the monitoring system to derive which
-      switch(es) set the M bit based on knowledge of the network topology
-      and "Switch ID, Ingress interface ID, Egress interface ID" tuples in the INT
+      node(s) set the M bit based on knowledge of the network topology
+      and "Node ID, Ingress interface ID, Egress interface ID" tuples in the INT
       metadata stack.
-  - R (12b): Reserved bits.
-  - Hop ML (5b): Per-hop Metadata Length. This is the length of metadata including the
-    Domain Specific Metadata in 4-Byte words to be inserted at each INT transit hop.
-    - Hop ML is set by the INT source for transit and sink hops to abide by.
+* **R (12b):** Reserved bits, should be set to 0 by the INT source and ignored
+  by other nodes.
+* **Hop ML (5b):** Per-hop Metadata Length. This is the length of metadata
+  including the Domain Specific Metadata in 4-Byte words to be inserted at
+  each INT transit hop.
+    - *Hop ML* is set by the INT source for transit and sink hops to abide by.
       If an INT domain uses 'source-only' Domain Specific Metadata,
       defined below, the length of the source-only Domain Specific Metadata
-      is *excluded* from the Hop ML.
-    - The largest value of Hop ML for baseline and domain specific
-      metadata is 31. An INT-capable device may be limited in the maximum number 
-      of instructions it can process and/or maximum length of metadata it can 
-      insert in data packets. An INT hop that cannot process all instructions 
-      must still insert Hop ML \* 4 bytes, with all-ones
-      reserved value (4 or 8 bytes of 0xFF depending on the length of metadata) 
-      for the metadata corresponding to instructions it cannot process. An 
-      INT hop that cannot insert Per-hop Metadata Length \* 4 bytes must skip INT
-      processing altogether and not insert any metadata in the packet.
-  - Remaining Hop Count (8b): The remaining number of hops that are allowed to
+      is *excluded* from the *Hop ML*.
+    - The largest value of *Hop ML* for baseline and domain specific
+      metadata is 31.
+    - An INT-capable node may be limited in the maximum number
+      of instructions it can process and/or maximum length of metadata it can
+      insert in data packets. An INT hop that cannot process all instructions
+      must still insert *Hop ML* \* 4 bytes, with all-ones
+      reserved value (4 or 8 bytes of 0xFF depending on the length of metadata)
+      for the metadata corresponding to instructions it cannot process. An
+      INT hop that cannot insert Per-hop Metadata Length \* 4 bytes must skip
+      INT processing altogether and not insert any metadata in the packet.
+* **Remaining Hop Count (8b):** The remaining number of hops that are allowed to
     add their metadata to the packet.
     - Upon creation of an INT metadata header, the INT Source must set this
       value to the maximum number of hops that are allowed to add metadata
-      instance(s) to the packet. Each INT-capable device on the path, including
+      instance(s) to the packet. Each INT node on the path, including
       the INT Source as well as INT Transit Hops, must decrement the
-      Remaining Hop Count if and when it pushes its local metadata onto the
+      *Remaining Hop Count* if and when it pushes its local metadata onto the
       stack.
-    - When a packet is received with the Remaining Hop Count equal to 0, the
-      device must ignore the INT instruction, pushing no new metadata onto
-      the stack, and the device must set the E bit.
-      
-* INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
-each bit corresponds to a specific standard metadata as specified in Section 3.
-  - bit0 (MSB): Switch ID
+    - When a packet is received with the *Remaining Hop Count* equal to 0, the
+      node must ignore the INT instructions in the *Instruction Bitmap* and
+      *DS Instruction*, pushing no new metadata onto the stack, and the node
+      must set the E bit.
+
+* **Instruction Bitmap:** Each bit corresponds to a specific standard metadata
+  as specified in Section 3.
+  - bit0 (MSB): Node ID
   - bit1: Level 1 Ingress Interface ID (16 bits) + Egress Interface ID (16 bits)
   - bit2: Hop latency
   - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
@@ -1163,73 +1212,77 @@ each bit corresponds to a specific standard metadata as specified in Section 3.
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
   - bit15: Checksum Complement
   - The remaining bits are reserved.
-  
+
   Semantics of Queue occupancy and Buffer occupancy is the default semantics of
   those two metadata. Additional semantics as needed for different implementation
-  can be defined in the metadata semantics YANG model. 
-  
-  Details of the metadata semantics YANG model can be accessed at the link below:
-  https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
-  
+  can be defined in the metadata semantics YANG model [^metadata-yang].
+
   Bits 0 - 14 are Baseline INT Instructions. Each instruction bit that is set
   requests 4 bytes of metadata to be inserted at each hop, except for bits 4-6,
-  each requires 8 bytes of metadata. Per-hop metadata length (Hop ML) is set accordingly
-  at the INT source.
-  
-* Domain Specific ID (16b): the unique ID of the INT Domain.
-  
-* DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
-  Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
-  processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
-  If the Domain Specific ID matches any Domain ID known to this node, then additional processing
-  of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific
-  Metadata is appended to the Baseline Metadata before Checksum Complement is inserted.
+  each requires 8 bytes of metadata. Per-hop metadata length (*Hop ML*) is set
+  accordingly at the INT source.
+
+* **Domain Specific ID (16b):** The unique ID of the INT Domain.
+  If the *Domain Specific ID* matches any Domain ID known to this node, then
+  additional processing of the Domain Specific Flags (*DS Flags*) and Domain
+  Specific Instruction (*DS Instruction*) is required.
+
+  The *Domain Specific ID* value 0x0000 is the default, known to all INT nodes.
+  For this value, all *DS Instruction* bits are treated as reserved. Operators
+  can assign values in the range 0x0001 to 0xFFFF.
+
+[]{tex-cmd: "\newpage"}
+
+* **DS Instruction (16b):** Instruction bitmap specific to the INT domain
+  identified by the *Domain Specific ID*. Each bit that is set requests that
+  Domain Specific Metadata be appended to the Baseline Metadata before the
+  Checksum Complement is inserted.
 
   Some instruction bits can be defined as 'source-only' metadata by the INT domain. Those metadata
-  will be inserted only by the INT source, not by INT transit or sink devices.
-  In a sense, 'source-only' bits do not serve as instructions for downstream INT devices
+  will be inserted only by the INT source, not by INT transit or sink nodes.
+  In a sense, 'source-only' bits do not serve as instructions for downstream INT nodes
   to follow. The INT source sets the bits to indicate which source-only DS metadata it's adding
   such that the monitoring system (or any consumer of the metadata) knows how to parse and use
   the data.
 
   The amount of Domain Specific Metadata added by each hop must be a multiple of 4 bytes,
-  determined from the Domain Specific Instruction. In case of INT transit, the amount
-  must be consistent with the per-hop metadata length (Hop ML) set by the INT source.
+  determined from the *DS Instruction*. In case of INT transit, the amount
+  must be consistent with the per-hop metadata length (*Hop ML*) set by the INT source.
   The amount of Domain Specific Metadata added by the INT source can be larger than
   the amount added by a transit hop and
   the delta must match the total size of 'source-only' Domain Specific Metadata.
-  Although the delta is excluded in Hop ML, it must be counted in the INT length field of
+  Although the delta is excluded in *Hop ML*, it must be counted in the INT length field of
   the INT shim header.
-  
-  If the Domain Specific ID does not match any Domain ID known to this node, then 
+
+  If the *Domain Specific ID* does not match any Domain ID known to this node, then
   the transit node is required to either:
-  
+
   - Pad the node's INT Metadata stack with the special all-ones reserved value for a
-    Domain Specific Metadata length, calculated by subtracting from the Hop ML a length
-    computed from all bits in the 16-bit INT Instruction field, or
-      
+    Domain Specific Metadata length, calculated by subtracting from the *Hop ML* a length
+    computed from all bits in the 16-bit *Instruction Bitmap*, or
+
   - Skip INT processing altogether and not insert any metadata into the packet.
 
-* Each INT Transit device along the path that supports INT adds its own metadata
-values as specified in the instruction bitmap and DS instructions immediately after
-the INT metadata header.
-  - When adding a new metadata, each device must prepend its metadata in
-    front of the metadata that are already added by the upstream devices.
+* Each INT Transit node along the path that supports INT adds its own metadata
+  values as specified in the *Instruction Bitmap* and *DS Instruction*
+  immediately after the INT metadata header.
+  - When adding a new metadata, each node must prepend its metadata in
+    front of the metadata that are already added by the upstream nodes.
     This is similar to the push operation on a stack data structure.
     Hence, the most recently
-    added metadata appears at the top of the stack. The device must add
+    added metadata appears at the top of the stack. The node must add
     metadata in the order of bits set in the instruction bitmap.
-  - If a device is unable to provide a metadata value specified in the
-    instruction bitmap because its value is not available, it must add a special
-    all-ones reserved value indicating "invalid" (4 or 8 bytes of 0xFF
+  - If a node is unable to provide a metadata value specified in the
+    instruction bitmap because its value is not available, it must add a
+    special all-ones reserved value indicating "invalid" (4 or 8 bytes of 0xFF
     depending on metadata length).
-  - If a device cannot add all the metadata required by the instruction bitmap
+  - If a node cannot add all the metadata required by the instruction bitmap
     (irrespective of the availability of the metadata values that are asked
     for), it must skip processing that particular INT packet entirely. This
-    ensures that each INT Transit device adds either zero bytes or
-    Hop ML \* 4 bytes to the packet.
-  - Reserved bits in the instruction bitmap are to be handled similarly. If an
-    INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
+    ensures that each INT Transit node adds either zero bytes or
+    *Hop ML* \* 4 bytes to the packet.
+  - Reserved bits in the *Instruction Bitmap* are to be handled similarly. If an
+    INT transit hop receives a reserved bit set in the *Instruction Bitmap* (e.g.
     set by a INT source that is running a newer version), the transit hop must
     either add corresponding metadata filled with the reserved value 0xFFFFFFFF
     or must not add any INT metadata to the packet. This means that an
@@ -1238,91 +1291,93 @@ the INT metadata header.
     backward compatible with this specification. However, an instruction bit
     marked reserved in this specification may be used for a 8B metadata only
     in the next major version, breaking backward compatibility and requiring all
-    INT switches to be upgraded to the new major version. For example
-    a version 2.0 INT switch cannot operate alongside version 3.0 INT switches
+    INT nodes to be upgraded to the new major version. For example
+    a version 2.0 INT node cannot operate alongside version 3.0 INT nodes
     if a new 8B metadata is introduced in version 3.0, as the version 2.0
-    INT switch could insert 0xFFFFFFFF reserved value for a 8B metadata field.
+    INT node could insert 0xFFFFFFFF reserved value for a 8B metadata field.
   - If an INT transit hop does not add metadata to a packet due to any of the
-    above reasons, it must not decrement the remaining INT hop count in the INT
+    above reasons, it must not decrement the *Remaining Hop Count* in the INT
     metadata header.
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, D, M, Hop ML, Remaining Hop Count,
-      and Instruction Bitmap.
+    - *Ver*, *D*, *M*, *Hop ML*, *Remaining Hop Count*,
+      and *Instruction Bitmap*.
     - INT Source should set all reserved bits to zero.
-    - INT Source may set the Domain-specific fields. 
-  - Intermediate transit devices can set the following fields:
-    - E, M, Remaining Hop Count, Domain-specific fields
+    - INT Source may set the Domain-specific fields.
+  - Intermediate transit nodes can set the following fields:
+    - *E*, *M*, *Remaining Hop Count*, and *DS Flags* fields.
+    - Intermediate transit nodes must not modify the *Hop ML*, *Instruction
+      Bitmap*, *Domain Specific ID* and *DS Instruction* in the INT-MD header.
 * The length (in bytes) of the INT metadata stack must always
-be a multiple of (Hop ML \* 4), plus the size of 'source-only' Domain Specific
+be a multiple of (*Hop ML* \* 4), plus the size of 'source-only' Domain Specific
 Metadata if added by the source. The total stack length can be determined
 by subtracting the total INT fixed header sizes (12 bytes)
 from (shim header length \* 4).
 
 ## INT-MX Header Format
 
-In this section, we define the format for INT-MX metadata headers,
-and the metadata itself.
+In this section, we define the format of the INT-MX header.
 
 INT-MX Header:
-`
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Ver = 2|D|E|M|           Reserved    | Hop ML  |   Reserved    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Instruction Bitmap       |        Domain Specific ID     |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |         DS Instruction        |            DS Flags           |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
-* INT metadata header is 12 bytes long. Each metadata requested in the 
-INT Header instruction is either 4 bytes or 8 bytes in length. Each INT 
-capable device in the forwarding path will send the requested metadata
-monitoring system in the Telemetry Report.
+```
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |Ver = 2|D|E|M|           Reserved    | Hop ML  |   Reserved    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |      Instruction Bitmap       |        Domain Specific ID     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |         DS Instruction        |            DS Flags           |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
-Details of the metadata semantics and format of the Telemetry Report can 
-be accessed at the link below:
-  https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf
+* The INT-MX header is 12 bytes long. Each metadata requested in the
+  INT-MX Header instruction is either 4 bytes or 8 bytes in length. Each INT
+  node in the forwarding path will send the requested metadata to the
+  monitoring system in the Telemetry Report.
 
-* The fields in the INT metadata header are interpreted the following way:
-  - Ver (4b): INT metadata header version. Should be 2 for this version.
-  - D (1b): Discard. 
+  Details of the metadata semantics and format of the Telemetry Report can
+  be accessed in the Telemetry Report Format Specification [^telem-report].
+
+[^telem-report]: [Telemetry Report Format Specification Version 2.0](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf), May 2020.
+
+* **Ver (4b):** INT-MX header version. Should be 2 for this version.
+* **D (1b):** Discard.
     - INT Sink must Discard the packet after sending the metadata requested
       in the INT-MX header to the monitoring system.
-  - E (1b): Max Hop Count exceeded. 
+* **E (1b):** Max Hop Count exceeded.
     - Not applicable in INT-MX mode. Must be set to 0 by the INT Source.
-  - M (1b): MTU exceeded. 
+* **M (1b):** MTU exceeded.
     - Not applicable in INT-MX mode. Must be set to 0 by the INT Source.
-  - R (12b): Reserved bits. 
-    - Should be set to 0 by INT Source and ignored by other devices.
-  - Hop ML (5b): Hop Metadata Length. This is the length of metadata including the
-    Domain Specific Metadata in 4-Byte words to be sent to monitoring systems at 
-    each INT transit hop.
-    - Hop ML is set by the INT source. Transit hops and INT sink node may refer to it.
+* **R (12b):** Reserved bits.
+    - Should be set to 0 by INT Source and ignored by other nodes.
+* **Hop ML (5b):** Hop Metadata Length. This is the length of metadata including
+  the Domain Specific Metadata in 4-Byte words to be sent to monitoring systems
+  at each INT transit hop.
+    - *Hop ML* is set by the INT source. Transit hops and INT sink node may refer to it.
       If an INT domain uses 'source-only' Domain Specific Metadata,
       defined below, the length of the source-only Domain Specific Metadata
-      is *excluded* from the Hop ML.
-    - The largest value of Hop ML for baseline and domain specific
-      metadata is 31. An INT-capable device may be limited in the maximum number 
-      of instructions it can process and/or maximum length of metadata it can 
-      gather for each data packets. 
-    - An INT hop that cannot process all instructions has the following alternatives:
-    
-        - Send to the monitoring system Hop ML \* 4 bytes, with all-ones reserved 
-        value (4 or 8 bytes of 0xFF depending on the length of metadata) for the 
+      is *excluded* from the *Hop ML*.
+    - The largest value of *Hop ML* for baseline and domain specific
+      metadata is 31.
+    - An INT node may be limited in the maximum number
+      of instructions it can process and/or maximum length of metadata it can
+      gather for each data packet. An INT hop that cannot process all
+      instructions has the following alternatives:
+      - Send to the monitoring system *Hop ML* \* 4 bytes, with all-ones reserved
+        value (4 or 8 bytes of 0xFF depending on the length of metadata) for the
         metadata corresponding to instructions it cannot process, or
-      
-        - Send to the monitoring system the metadata it can process, update the 
-        RepMdBits, DSMdBits and MD Length fields appropriately in the Telemetry 
-        Report.
-        
-   - R (8b): Reserved bits. 
-    - Should be set to 0 by INT Source and ignored by other devices.
-    
-* INT instructions are encoded as a bitmap in the 16-bit INT Instruction field:
-  each bit corresponds to a specific standard metadata as specified in Section 3.
-  - bit0 (MSB): Switch ID
+      - Send to the monitoring system the metadata it can process, update the
+        *RepMdBits*, *DSMdBits* and *MD Length* fields appropriately in the
+        Telemetry Report [^telem-report].
+* **R (8b):** Reserved bits.
+    - Should be set to 0 by INT Source and ignored by other nodes.
+
+[]{tex-cmd: "\newpage"}
+
+* **Instruction Bitmap:** Each bit corresponds to a specific standard metadata
+  as specified in Section 3.
+  - bit0 (MSB): Node ID
   - bit1: Level 1 Ingress Interface ID (16 bits) + Egress Interface ID (16 bits)
   - bit2: Hop latency
   - bit3: Queue ID (8 bits) + Queue occupancy (24 bits)
@@ -1331,111 +1386,101 @@ be accessed at the link below:
   - bit6: Level 2 Ingress Interface ID + Egress Interface ID (4 bytes each)
   - bit7: Egress interface Tx utilization
   - bit8: Buffer ID (8 bits) + Buffer occupancy (24 bits)
-  - bit15: Checksum Complement
   - The remaining bits are reserved.
-  
+
   Semantics of Queue occupancy and Buffer occupancy is the default semantics of
   those two metadata. Additional semantics as needed for different implementation
-  can be defined in the metadata semantics YANG model. 
-  
-  Details of the metadata semantics YANG model can be accessed at the link below:
-  https://github.com/p4lang/p4-applications/blob/master/telemetry/code/models/p4-dtel-metadata-semantics.yang
-  
+  can be defined in the metadata semantics YANG model [^metadata-yang].
+
   Bits 0 - 14 are Baseline INT Instructions. Each instruction bit that is set
-  requests 4 bytes of metadata be sent to monitoring system at each hop, 
-  except for bits 4-6, each requires 8 bytes of metadata. 
-  
-* Domain Specific ID (16b): the unique ID of the INT Domain.
-  
-* DS Instruction (16b): Instruction bit map specific to the INT domain identified by the 
-  Domain Specific ID. Domain Specific Instruction is an instruction that requires additional 
-  processing of Domain Specific Flags (DS Flags) for the INT Domain identified by Domain Specific ID. 
-  If the Domain Specific ID matches any Domain ID known to this node, then additional processing
-  of the Domain Specific Flags and Domain Specific Instruction is required and Domain Specific
-  Metadata is also sent to the monitoring systems.
+  requests 4 bytes of metadata be sent to monitoring system at each hop,
+  except for bits 4-6, each requires 8 bytes of metadata.
+
+* **Domain Specific ID (16b):** The unique ID of the INT Domain.
+  If the *Domain Specific ID* matches any Domain ID known to this node, then
+  additional processing of the Domain Specific Flags (*DS Flags*) and Domain
+  Specific Instruction (*DS Instruction*) is required.
+
+  The *Domain Specific ID* value 0x0000 is the default, known to all INT nodes.
+  For this value, all *DS Instruction* bits are treated as reserved. Operators
+  can assign values in the range 0x0001 to 0xFFFF.
+
+* **DS Instruction (16b):** Instruction bitmap specific to the INT domain
+  identified by the *Domain Specific ID*. Each bit that is set requests that
+  metadata be sent to the monitoring system.
 
   Some metadata can be defined as 'source-only' metadata by the INT domain. Those metadata
-  will be sent only by the INT source, not by INT transit or sink devices.
-  In a sense, 'source-only' bits do not serve as instructions for downstream INT devices
-  to follow. In INT-MX mode, the source node must not set the bits corresponding to 
-  "source-only" metadata in the DS Instruction bitmap. However, the source node must ensure
-  that it sets the bits corresponding to "source-only" metadata in DSMdBits bitmap of the 
-  Telemetry Report. This is needed for the monitoring system (or any consumer of the metadata) 
+  will be sent only by the INT source, not by INT transit or sink nodes.
+  In a sense, 'source-only' bits do not serve as instructions for downstream INT nodes
+  to follow. In INT-MX mode, the source node must not set the bits corresponding to
+  "source-only" metadata in the *DS Instruction* bitmap. However, the source node must ensure
+  that it sets the bits corresponding to "source-only" metadata in *DSMdBits* bitmap of the
+  Telemetry Report. This is needed for the monitoring system (or any consumer of the metadata)
   to know how to parse and use the data.
 
   The amount of Domain Specific Metadata sent by each hop must be a multiple of 4 bytes,
-  determined from the Domain Specific Instruction or consistent with the per-hop 
-  metadata length (Hop ML) set by the INT source (see Hop ML above).
-  
-  If the Domain Specific ID does not match any Domain ID known to this node, then 
+  either determined from the *DS Instruction* or consistent with the
+  per-hop metadata length (*Hop ML*) set by the INT source (see *Hop ML* above).
+
+  []{tex-cmd: "\newpage"}
+
+  If the *Domain Specific ID* does not match any Domain ID known to this node, then
   the transit node is required to either:
-  
-  - Send the metadata corresponding to INT Instruction field and ensure that the 
-    "DSMdbits" is not set in the Telemetry Report and MD Length field reflects the length 
-    of the metadata sent in the Telemetry Report, or
-  
-  - Send the metadata corresponding to INT Instruction and pad the node's INT Metadata 
-    stack with the special all-ones reserved value for a Domain Specific Metadata length, 
-    calculated by subtracting from the Hop ML a length computed from all bits in the 
-    16-bit INT Instruction field, or
-     
+
+  - Send the metadata corresponding to *Instruction Bitmap* and ensure that
+    *DSMdbits* is not set in the Telemetry Report and *MD Length* field reflects the length
+    of the metadata sent in the Telemetry Report [^telem-report], or
+
+  - Send the metadata corresponding to *Instruction Bitmap* and pad the node's INT Metadata
+    with the special all-ones reserved value for a Domain Specific Metadata length,
+    calculated by subtracting from the *Hop ML* a length computed from all bits in the
+    16-bit *Instruction Bitmap*, or
+
   - Skip INT processing altogether and not send any metadata the monitoring systems.
 
-  Details of the metadata semantics and format of the Telemetry Report can 
-  be accessed at the link below:
-    
-  https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf
-  
-* Each INT Transit device along the path that supports INT-MX sends its own metadata
-  values as specified in the instruction bitmap and DS instructions.
-  
-  - If a device is unable to provide a metadata value specified in the
+* Each INT Transit node along the path that supports INT-MX sends its own metadata
+  values as specified in the *Instruction Bitmap* and *DS Instruction*.
+
+  - If a node is unable to provide a metadata value specified in the
     instruction bitmap because its value is not available, it must either:
-    
-      - ensure that the corresponding bit in "RepMdbits" and/or "DSMdbits" is not set 
-        in the Telemetry Report, or
-        
-      - send the all-ones reserved value (4 or 8 bytes of 0xFF depending on the length 
+
+      - ensure that the corresponding bit in *RepMdbits* and/or *DSMdbits* is not set
+        in the Telemetry Report [^telem-report], or
+
+      - send the all-ones reserved value (4 or 8 bytes of 0xFF depending on the length
         of metadata).
-    
-    Details of the metadata semantics and format of the Telemetry Report can 
-    be accessed at the link below:
-    
-    https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf
-    
+
   - Reserved bits in the instruction bitmap are to be handled as described. If an
     INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
     set by a INT source that is running a newer version), the transit hop must either:
-    
-      - ensure that the corresponding reserved bits in "RepMdbits" and/or "DSMdbits"
+
+      - ensure that the corresponding reserved bits in *RepMdbits* and/or *DSMdbits*
          are not set in the Telemetry Report sent to the monitoring system, or
-         
-      - for "RepMdBits", send the all-ones reserved value (4 bytes of 0xFF);
-         for "DSMdbits", pad with the special all-ones reserved value in lieu of reserved
-         DS Metadata, out to MD Length.
-         
-    Details of the metadata semantics and format of the Telemetry Report can 
-    be accessed at the link below:
-    
-    https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2.0.pdf
-    
+
+      - for *RepMdBits*, send the all-ones reserved value (4 bytes of 0xFF);
+        for *DSMdbits*, pad with the special all-ones reserved value in lieu of
+        reserved DS Metadata, out to *MD Length*.
+
 * Summary of the field usage
   - The INT Source must set the following fields:
-    - Ver, D and Instruction Bitmap.
+    - *Ver*, *D* and *Instruction Bitmap*.
     - INT Source should set all reserved bits to zero.
-    - INT Source may set the Domain-specific fields. 
-  - Intermediate transit devices may set bits in the DS Flags field. Intermediate 
-    transit devices must not modify the Domain Specific ID and 
-    DS Instruction in the INT-MX header.
-  
-* The length (in bytes) of the INT metadata sent to the monitoring system 
+    - INT Source may set the Domain-specific fields.
+  - Intermediate transit nodes may set bits in the *DS Flags* field.
+    Intermediate transit nodes must not modify the *Hop ML*,
+    *Instruction Bitmap*, *Domain Specific ID* and *DS Instruction* in the
+    INT-MX header.
+
+* The length (in bytes) of the INT metadata sent to the monitoring system
 must always be a multiple of 4B.
 
+
+[]{tex-cmd: "\newpage"}
 
 # Examples
 
 This section shows example INT Headers with two hosts (Host1 and Host2),
-communicating over a network path composed of three network devices
+communicating over a network path composed of three network switches
 (Switch1, Switch2 and Switch3) as shown below.
 
 `
@@ -1445,21 +1490,21 @@ Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
 
 Detailed assumptions made for this example are as follows
 
-* INT source requests each INT hop to insert switch ID and queue occupancy
-(For the sake of illustration we only consider switch ID and queue occupancy
+* INT source requests each INT hop to insert node ID and queue occupancy
+(For the sake of illustration we only consider node ID and queue occupancy
 being inserted at each hop. Queue IDs are typically defined per port, hence
 in a real use-case queue occupancy is likely to be collected along with egress
 interface ID)
-* There are three devices (hops) on the path, and all the devices expose
-  both metadata (switch ID and queue occupancy).
+* There are three INT nodes (hops) on the path, and all the nodes expose
+  both metadata (node ID and queue occupancy).
 * The maximum number of hops (network diameter) is 8.
 * The values of INT metadata header fields in this example are as follows:
-  - Ver = 2
-  - D = 0 (Packet is not a clone/copy, hence the Sink must not Discard)
-  - E = 0 (Max Hop Count not exceeded)
-  - M = 0 (MTU not exceeded at any switch)
-  - Per-hop Metadata Length = 2 (for switch id & queue occupancy)
-  - Remaining hop count starts at 8, decremented by 1 at each hop
+  - *Ver* = 2
+  - *D* = 0 (Packet is not a clone/copy, hence the Sink must not Discard)
+  - *E* = 0 (Max Hop Count not exceeded)
+  - *M* = 0 (MTU not exceeded at any node)
+  - Per-hop Metadata Length = 2 (for node id & queue occupancy)
+  - *Remaining Hop Count* starts at 8, decremented by 1 at each hop
     that inserts INT metadata
 
 ## Example with INT-MD over TCP
@@ -1475,7 +1520,7 @@ header. We use the value of 0x17 for IPv4.DSCP to indicate the existence of
 INT headers.
 
 IP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1489,10 +1534,10 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 TCP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1508,20 +1553,20 @@ TCP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |           Checksum            |         Urgent Pointer        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for TCP/UDP, INT type is INT-MD (1) and
 NPT (Next Protocol Type) is zero:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=1 | 0 |R R|   Length=7    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MD Metadata Header and Metadata Stack, followed by TCP payload:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1531,23 +1576,23 @@ INT-MD Metadata Header and Metadata Stack, followed by TCP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop2                       |
+   |                          node id of hop2                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop2                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop1                       |
+   |                          node id of hop1                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop1                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          TCP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with INT-MX over TCP
 
 We consider a scenario where host1 sends a TCP packet to host2. The ToR switch
-of host1 (Switch1) acts as the INT source. It adds INT-MX header in the packet. 
-Switch2 processes the INT-MX header. Finally, the ToR switch of host2 (Switch3) 
+of host1 (Switch1) acts as the INT source. It adds INT-MX header in the packet.
+Switch2 processes the INT-MX header. Finally, the ToR switch of host2 (Switch3)
 acts as the INT sink and removes INT-MX header before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the IPv4
@@ -1555,7 +1600,7 @@ header. We use the value of 0x17 for IPv4.DSCP to indicate the existence of
 INT headers.
 
 IP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1569,10 +1614,10 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 TCP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1588,20 +1633,20 @@ TCP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |           Checksum            |         Urgent Pointer        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for TCP/UDP, INT type is INT-MX (3) and
 NPT (Next Protocol Type) is zero:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=3 | 0 |R R|   Length=3    |  Reserved     |   DSCP    |R R|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MX Header, followed by TCP payload:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1612,8 +1657,8 @@ INT-MX Header, followed by TCP payload:
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          TCP payload                          |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+   
-`
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 ## Example with new UDP header and INT-MD inserted before TCP
 
@@ -1626,11 +1671,11 @@ switch of host2 (Switch3) acts as the INT sink and removes the UDP and
 INT-MD headers before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the IPv4
-header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
+header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
 
 IP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1644,10 +1689,10 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 UDP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1655,21 +1700,21 @@ UDP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |           Length              |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for UDP, INT type is INT-MD (1) and
 NPT (Next Protocol Type) is 2 indicating another L4 header follows INT.
 IP proto is 6 to indicate that TCP follows INT:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=1 | 2 |R R|   Length=7    |  Reserved     |  IP proto = 6 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MD Metadata Header and Metadata Stack, followed by TCP header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1679,32 +1724,34 @@ INT-MD Metadata Header and Metadata Stack, followed by TCP header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop2                       |
+   |                          node id of hop2                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop2                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop1                       |
+   |                          node id of hop1                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop1                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          TCP header                           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with new UDP header and INT-MX inserted before TCP
 
 As before we consider a scenario where host1 sends a TCP packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source. It adds a new UDP header 
-and a new INT-MX header in the packet. Switch2 processes the INT-MX Header. 
-Finally, the ToR switch of host2 (Switch3) acts as the INT sink and removes 
-the UDP and INT-MX header before forwarding the packet to host2.
+The ToR switch of host1 (Switch1) acts as the INT source. It adds a new UDP header
+and a new INT-MX header in the packet. Switch2 processes the INT-MX Header.
+Finally, the ToR switch of host2 (Switch3) acts as the INT sink and removes
+the UDP and INT-MX headers before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the IPv4
-header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
+header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
 
+[]{tex-cmd: "\newpage"}
+
 IP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1718,10 +1765,10 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 UDP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1729,21 +1776,21 @@ UDP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |           Length              |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for UDP, INT type is INT-MX (3) and
 NPT (Next Protocol Type) is 2 indicating another L4 header follows INT.
 IP proto is 6 to indicate that TCP follows INT:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=3 | 2 |R R|   Length=3    |  Reserved     |  IP proto = 6 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MX Header, followed by TCP header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1755,7 +1802,7 @@ INT-MX Header, followed by TCP header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          TCP header                           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with INT-MD in-between UDP header and UDP payload
 
@@ -1768,11 +1815,11 @@ INT-MD headers and restores the original UDP destination port
 before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the IPv4
-header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
+header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
 
 IP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1786,10 +1833,10 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 UDP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1797,22 +1844,23 @@ UDP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |           Length              |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for UDP, INT type is INT-MD (1) and
 NPT (Next Protocol Type) is 1 indicating UDP payload follows the INT.
 The original port number XYZ is stored in the shim header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=1 | 1 |R R|   Length=7    |        UDP port = XYZ         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
+[]{tex-cmd: "\newpage"}
 
 INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1822,33 +1870,33 @@ INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop2                       |
+   |                          node id of hop2                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop2                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop1                       |
+   |                          node id of hop1                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop1                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
-# Example with INT-MX in-between UDP header and UDP payload
+## Example with INT-MX in-between UDP header and UDP payload
 
 In this scenario host1 sends a UDP packet to host2. The ToR switch
 of host1 (Switch1) acts as the INT source. It alters the UDP destination port
-to INT_TBD, inserts INT-MX header before the UDP payload. Switch2 processes 
-the INT-MX header. Finally, the ToR switch of host2 (Switch3) acts as the 
-INT sink and removes the INT-MX headers and restores the original UDP 
+to INT_TBD, inserts INT-MX header before the UDP payload. Switch2 processes
+the INT-MX header. Finally, the ToR switch of host2 (Switch3) acts as the
+INT sink and removes the INT-MX headers and restores the original UDP
 destination port before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the IPv4
-header. We use the INT_TBD for UDP.Destination_Port to indicate the existence of
+header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
 
 IP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1862,10 +1910,12 @@ IP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+
+[]{tex-cmd: "\newpage"}
 
 UDP Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1873,21 +1923,21 @@ UDP Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |           Length              |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for UDP, INT type is INT-MX (3) and
 NPT (Next Protocol Type) is 1 indicating UDP payload follows the INT.
 The original port number XYZ is stored in the shim header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=3 | 1 |R R|   Length=3    |        UDP port = XYZ         |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MX Header, followed by UDP payload:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1899,24 +1949,24 @@ INT-MX Header, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
    |                          UDP payload                          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with INT-MD over IPv4/GRE (Original packet IPv4)
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE 
-encapsulation and inserts INT-MD headers before the inner (original) IPv4. 
-Switch2 prepends its metadata. Finally, the ToR switch of host2 (Switch3) 
-acts as the INT sink and removes the INT-MD headers and decapsulates outer 
+The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE
+encapsulation and inserts INT-MD headers before the inner (original) IPv4.
+Switch2 prepends its metadata. Finally, the ToR switch of host2 (Switch3)
+acts as the INT sink and removes the INT-MD headers and decapsulates outer
 IPv4/GRE  before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
-the GRE was inserted by the INT source.
+GRE was inserted by the INT source.
 
+[]{tex-cmd: "\newpage"}
 
-INT-MD over IPv4/GRE
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
@@ -1948,33 +1998,32 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  I
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
-   |                           sw id of hop2                       |  T
+   |                          node id of hop2                      |  T
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop2                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-   |                           sw id of hop1                       |  |
+   |                          node id of hop1                      |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop1                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    |          Inner IP Header + Payload + Pad (L3/ESP...)          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with INT-MX over IPv4/GRE (Original packet IPv4)
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE 
-encapsulation and inserts INT-MX header before the inner (original) IPv4. 
-Switch2 processes the INT-MX header. Finally, the ToR switch of host2 
-(Switch3) acts as the INT sink and removes the INT-MX header and decapsulates 
+The ToR switch of host1 (Switch1) acts as the INT source. It does IPv4/GRE
+encapsulation and inserts INT-MX header before the inner (original) IPv4.
+Switch2 processes the INT-MX header. Finally, the ToR switch of host2
+(Switch3) acts as the INT sink and removes the INT-MX header and decapsulates
 outer IPv4/GRE before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer IPv4 header. The G bit of INT shim is set to 1 to indicate that
-the GRE was inserted by the INT source.
+GRE was inserted by the INT source.
 
-INT-MX over IPv4/GRE
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
@@ -2008,27 +2057,26 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    |          Inner IP Header + Payload + Pad (L3/ESP...)          |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 
 ## Example with INT-MD over IPv4/GRE (Original packet CE or IP)
 
 In this scenario host1 sends an IPv4 packet to host2.
-
-The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet 
+The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet
 (L2) header, does IPv4/GRE encapsulation and inserts INT-MD headers before the
-inner (original) packet that starts with an Ethernet header. Switch2 prepends 
-its metadata. Finally, the ToR switch of host2 (Switch3) acts as the INT sink 
-and removes the INT-MD headers and decapsulates outer L2 header, outer IPv4/GRE  
+inner (original) packet that starts with an Ethernet header. Switch2 prepends
+its metadata. Finally, the ToR switch of host2 (Switch3) acts as the INT sink
+and removes the INT-MD headers and decapsulates outer L2 header, outer IPv4/GRE
 before forwarding the packet to host2.
+
+[]{tex-cmd: "\newpage"}
 
 Below is the packet received by INT sink Switch3, starting from the
 outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
-the GRE was inserted by the INT source.
+GRE was inserted by the INT source.
 
-
-INT-MD over IPv4/GRE
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
@@ -2062,34 +2110,35 @@ INT-MD over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|  I
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  N
-   |                           sw id of hop2                       |  T
+   |                          node id of hop2                      |  T
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop2                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
-   |                           sw id of hop1                       |  |
+   |                          node id of hop1                      |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+  |
    |                      queue occupancy of hop1                  |  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+
+[]{tex-cmd: "\newpage"}
 
 ## Example with INT-MX over IPv4/GRE (Original packet CE or IP)
 
 In this scenario host1 sends an IPv4 packet to host2.
-The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet 
+The ToR switch of host1 (Switch1) acts as the INT source. It adds an Ethernet
 (L2) header, does IPv4/GRE encapsulation and inserts INT-MX header before the
-inner (original) packet that starts with an Ethernet header. Switch2 processes 
-the INT-MX header. Finally, the ToR switch of host2 (Switch3) acts as the INT 
-sink and removes the INT-MX header and decapsulates outer L2 header, outer 
+inner (original) packet that starts with an Ethernet header. Switch2 processes
+the INT-MX header. Finally, the ToR switch of host2 (Switch3) acts as the INT
+sink and removes the INT-MX header and decapsulates outer L2 header, outer
 IPv4/GRE before forwarding the packet to host2.
 
 Below is the packet received by INT sink Switch3, starting from the
 outer Ethernet header. The G bit of INT shim is set to 1 to indicate that
-the GRE was inserted by the INT source.
+GRE was inserted by the INT source.
 
-INT-MX over IPv4/GRE
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
@@ -2125,7 +2174,9 @@ INT-MX over IPv4/GRE
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+<-+
    |  Payload (Original Packet starting with an Ethernet header)   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+
+[]{tex-cmd: "\newpage"}
 
 ## Example with INT-MD over VXLAN GPE
 
@@ -2141,27 +2192,27 @@ The packet headers received at Host 2 are as follows, starting with the VXLAN
 GPE header (encapsulating ethernet, IP and UDP headers are not shown here):
 
 VXLAN GPE Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x80|
+   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x82|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for VXLAN-GPE, INT-MD type:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=1 |Rsvd=0 |    Length=9    |0|  Reserved   | NextProto=0x3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MD Metadata Header and Metadata Stack:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2171,19 +2222,19 @@ INT-MD Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop3                       |
+   |                          node id of hop3                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop3                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop2                       |
+   |                          node id of hop2                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop2                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop1                       |
+   |                          node id of hop1                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                      queue occupancy of hop1                  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with INT-MX over VXLAN GPE
 
@@ -2191,36 +2242,36 @@ We now consider a scenario where Host1 and Host2 use VXLAN encapsulation.
 Host1 acts as VXLAN tunnel endpoint and INT source, inserts VXLAN and INT-MX
 header with instruction bits corresponding to the network state to be
 reported at intermediate switches. In this example, Host1 itself does
-not send any metadata to the monitoring system. Intermediate switches parse 
-through VXLAN header, process the INT-MX header and send the INT 
-metadata requested to the monitoring system. Host2 acts as INT sink and 
+not send any metadata to the monitoring system. Intermediate switches parse
+through VXLAN header, process the INT-MX header and send the INT
+metadata requested to the monitoring system. Host2 acts as INT sink and
 VXLAN tunnel endpoint, removes INT-MX and VXLAN headers.
 
 The packet headers received at Host 2 are as follows, starting with the VXLAN
 GPE header (encapsulating ethernet, IP and UDP headers are not shown here):
 
 VXLAN GPE Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x80|
+   |R|R|Ver|1|1|0|0|           Reserved            | NextProto=0x82|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                VXLAN Network Identifier (VNI) |   Reserved    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT Shim Header for VXLAN-GPE, INT-MX type:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |Type=3 |Rsvd=0 |    Length=3    |0|  Reserved   | NextProto=0x3 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MX Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2230,7 +2281,9 @@ INT-MX Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+
+[]{tex-cmd: "\newpage"}
 
 ## Example with INT-MD over Geneve
 
@@ -2242,11 +2295,11 @@ not insert any INT metadata. Intermediate switches parse through Geneve
 header and populate the INT metadata. Host2 acts as INT sink and Geneve
 tunnel endpoint, removes INT-MD and Geneve headers.
 
-The following is the Geneve and INT Headers attached to the packet received by
+Following are the Geneve and INT Headers attached to the packet received by
 Host2.
 
 Geneve Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2254,20 +2307,19 @@ Geneve Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |        Virtual Network Identifier (VNI)       |    Reserved   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
-
+```
 
 Geneve Option for INT-MD type:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Option Class=0x00AB      |     Type=1    |R|R|R|  Len=9  |
+   |      Option Class=0x0103      |     Type=1    |R|R|R|  Len=9  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MD Metadata Header and Metadata Stack:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2277,19 +2329,19 @@ INT-MD Metadata Header and Metadata Stack:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                       sw id of hop3                           |
+   |                        node id of hop3                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                   queue occupancy of hop3                     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                         sw id of hop2                         |
+   |                        node id of hop2                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                   queue occupancy of hop2                     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                         sw id of hop1                         |
+   |                        node id of hop1                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                   queue occupancy of hop1                     |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 ## Example with INT-MX over Geneve
 
@@ -2302,11 +2354,11 @@ header, process the INT-MX header and send the INT metadata requested
 to the monitoring system. Host2 acts as INT sink and Geneve
 tunnel endpoint, removes INT-MX and Geneve headers.
 
-The following is the Geneve and INT Headers attached to the packet received by
+Following are the Geneve and INT Headers attached to the packet received by
 Host2.
 
 Geneve Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2314,20 +2366,20 @@ Geneve Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |        Virtual Network Identifier (VNI)       |    Reserved   |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 
 Geneve Option for INT-MX type:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |      Option Class=0x00AB      |     Type=3    |R|R|R|  Len=3  |
+   |      Option Class=0x0103      |     Type=3    |R|R|R|  Len=3  |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 INT-MX Header:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -2337,29 +2389,29 @@ INT-MX Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
 
 # Appendix: An extensive (but not exhaustive) set of Metadata {@h1:"A"}
 
-Here we list a set of examplary metadata that future versions of the spec may
+Here we list a set of exemplary metadata that future versions of the spec may
 support as well as those are supported in the current spec.
 
-## Switch-level
+## Node-level
 
-* Switch id
-  - The unique ID of a switch (generally administratively assigned). SwitchIDs
-must be unique within a domain.
+* Node id
+  : The unique ID of an INT node.
+    This is generally administratively assigned. Node IDs must be unique
+    within an INT domain.
 * Control plane state version number
-  - Whenever a control-plane state changes (e.g., IP FIB update), the switch
-control plane can also update this version number in the data plane. INT
-packets
-may use these version numbers to determine which control-plane state was active
-at the time packets were forwarded.
+  : Whenever a control-plane state changes (e.g., IP FIB update), the node's
+    control plane can also update this version number in the data plane. INT
+    packets may use these version numbers to determine which control-plane state
+    was active at the time packets were forwarded.
 
 ## Ingress
 
 * Ingress interface identifier
-  - The interface on which the INT packet was received. A packet may be received
+  : The interface on which the INT packet was received. A packet may be received
     on an arbitrary stack of interface constructs starting with a physical port.
     For example, a packet may be received on a physical port that belongs to a
     link aggregation port group, which in turn is part of a Layer 3 Switched
@@ -2369,28 +2421,28 @@ at the time packets were forwarded.
     identifiers. The semantics of interface identifiers may differ across devices,
     each INT hop chooses the interface type it reports at each of the two levels.
 * Ingress timestamp
-  - The device local time when the INT packet was received on the **_ingress_**
-physical or logical port.
+  : The device local time when the INT packet was received on the **_ingress_**
+    physical or logical port.
 * Ingress interface RX pkt count
-  - Total # of packets received so far (since device initialization or counter
-reset) on the ingress physical port or logical interface where the INT packet was
-received.
+  : Total # of packets received so far (since device initialization or counter
+    reset) on the ingress physical port or logical interface where the INT
+    packet was received.
 * Ingress interface RX byte count
-  - Total # of bytes received so far on the ingress physical port or logical interface
-where the INT packet was received.
+  : Total # of bytes received so far on the ingress physical port or logical
+    interface where the INT packet was received.
 * Ingress interface RX drop count
-  - Total # of packet drops occurred so far on the ingress physical port or logical
-interface where the INT packet was received.
+  : Total # of packet drops occurred so far on the ingress physical port or
+    logical interface where the INT packet was received.
 * Ingress interface RX utilization
-  - Current utilization of the ingress physical port or logical interface where the INT
-packet was received. The exact mechanism (bin bucketing, moving average, etc.)
-is device specific and while the latter is clearly superior to the former, the
-INT framework leaves those decisions to device vendors.
+  : Current utilization of the ingress physical port or logical interface where
+    the INT packet was received. The exact mechanism (bin bucketing, moving
+    average, etc.) is device specific and while the latter is clearly superior
+    to the former, the INT framework leaves those decisions to device vendors.
 
 ## Egress
 
 * Egress interface identifier
-  - The interface on which the INT packet was sent out. A packet may be transmitted
+  : The interface on which the INT packet was sent out. A packet may be transmitted
     on an arbitrary stack of interface constructs ending at a physical port.
     For example, a packet may be transmitted on a tunnel, out of a Layer 3
     Switched Virtual Interface, on a Link Aggregation Group, out of a
@@ -2400,65 +2452,68 @@ INT framework leaves those decisions to device vendors.
     identifiers. The semantics of interface identifiers may differ across devices,
     each INT hop chooses the interface type it reports at each of the two levels.
 * Egress timestamp
-  - The device local time when the INT packet was processed by the egress
-physical port or logical interface.
+  : The device local time when the INT packet was processed by the egress
+    physical port or logical interface.
+
+[]{tex-cmd: "\newpage"}
+
 * Egress interface TX pkt count
-  - Total # of packets forwarded so far (since device initialization or counter
-reset) through the egress physical port or logical interface where the INT packet was also
-forwarded.
+  : Total # of packets forwarded so far (since device initialization or counter
+    reset) through the egress physical port or logical interface where the INT
+    packet was also forwarded.
 * Egress interface TX byte count
-  - Total # of bytes forwarded so far through the egress physical port or logical
-interface where the INT packet was forwarded.
+  : Total # of bytes forwarded so far through the egress physical port or
+    logical interface where the INT packet was forwarded.
 * Egress interface TX drop count
-  - Total # of packet drops occurred so far on the egress physical port or logical
-interface where the INT packet was forwarded.
+  : Total # of packet drops occurred so far on the egress physical port or
+    logical interface where the INT packet was forwarded.
 * Egress interface TX utilization
-  - Current utilization of the egress interface via which the INT packet was sent
-out.
+  : Current utilization of the egress interface via which the INT packet was
+    sent out.
 
 ## Buffer Information
 
 * Queue id
-  - The id of the queue the device used to serve the INT packet.
+  : The id of the queue the device used to serve the INT packet.
 * Instantaneous queue length
-  - The instantaneous length (in bytes, cells, or packets) of the queue the INT
-packet has observed in the device while being forwarded.  The units used need
-not be consistent across an INT domain, but care must be taken to ensure that
-there is a known, consistent mapping of {device, queue} values to their
-respective unit {packets, bytes, cells}.
+  : The instantaneous length (in bytes, cells, or packets) of the queue the INT
+    packet has observed in the device while being forwarded.  The units used
+    need not be consistent across an INT domain, but care must be taken to
+    ensure that there is a known, consistent mapping of {device, queue} values
+    to their respective unit {packets, bytes, cells}.
 * Average queue length
-  - The average length (in bytes, cells, or packets) of the queue via which the
-INT packet was served.  The calculation mechanism of this value is device
-specific.
+  : The average length (in bytes, cells, or packets) of the queue via which the
+    INT packet was served.  The calculation mechanism of this value is device
+    specific.
 * Queue drop count
-  - Total # of packets dropped from the queue
+  : Total # of packets dropped from the queue.
 
-The metadata below are introduced to capture the buffer occupancy INT packet 
+The metadata below are introduced to capture the buffer occupancy INT packet
 observes in the device while being forwarded. Use case is when buffer is
-shared between multiple queue.
+shared between multiple queues.
 
 * Buffer id
-  - The id of the buffer the device used to serve the INT packet.
+  : The id of the buffer the device used to serve the INT packet.
 * Instantaneous buffer occupancy
-  - The instantaneous value (in bytes, or cells) of the buffer occupancy the INT
-packet has observed in the device while being forwarded.  The units used need
-not be consistent across an INT domain, but care must be taken to ensure that
-there is a known, consistent mapping of {device, buffer} values to their
-respective unit {bytes, cells}.
+  : The instantaneous value (in bytes, or cells) of the buffer occupancy the INT
+    packet has observed in the device while being forwarded.  The units used
+    need not be consistent across an INT domain, but care must be taken to
+    ensure that there is a known, consistent mapping of {device, buffer} values
+    to their respective unit {bytes, cells}.
 * Average buffer occupancy
-  - The average value (in bytes or cells) of the buffer occupancy that
-the INT packet was observed. The calculation mechanism of this value is device
-specific.
+  : The average value (in bytes or cells) of the buffer occupancy that the INT
+    packet was observed. The calculation mechanism of this value is device
+    specific.
 
 ## Miscellaneous
 
 * Checksum Complement
-  - This field enables a Checksum-neutral update when INT is encapsulated over
-an L4 protocol that uses a Checksum field, such as TCP or UDP.
+  : This field enables a Checksum-neutral update when INT is encapsulated over
+    an L4 protocol that uses a Checksum field, such as TCP or UDP.
 
 # Domain Specific Examples
 
-Here we list a set of examplary domain specific implemenations.
+Here we list a set of exemplary domain specific implementations.
 
 ## Example with INT-MD including source-only metadata
 
@@ -2466,51 +2521,57 @@ We consider a case where Host1 is on a wireless network behind a NAT
 and its identity can not be confirmed by port location.  Host1 does not support
 INT.  The gateway acts at the INT source, inserting the header and the MAC address
 of Host1.  Intermediate switches populate the INT metadata while preserving
-the source-only domain specific metadata. This examples uses UDP encapsulation,
-but this can work with any of the above enacapsulation methods.
+the source-only domain specific metadata. This example can work with any of
+the above encapsulation methods such as UDP encapsulation.
 
-The MAC addresss from host1 is copied from the source device on the Ethernet frame.
+The MAC address from host1 is copied from the source address in the Ethernet frame.
 The MAC is a 6 byte id.  Since the INT metadata header is measured in blocks of 4 bytes,
-the last 2 bytes are reserved.  For example a source device's MAC address is
-"a6:1a:f6:b1:64:7d" the device ID would be 0xA61AF6B1647d0000.
+the last 2 bytes are reserved.  For example if a source device's MAC address is
+"a6:1a:f6:b1:64:7d", the source-only INT metadata would be 0xA61AF6B1647d0000.
 
-The following is the UDP and INT Headers attached to the packet transmitted by
+Following is the INT-MD Header attached to the packet transmitted by
 the hop2 switch.
 
-Details of the Transparent Secuirty domain specific model can be accessed at the link below:
-https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md
+Details of the Transparent Security domain specific model can be accessed
+in the Transparent Security INT header reference definition
+[^transparent-security-INT].
 
-INT Metadata Header and Metadata Stack, followed by UDP payload. The Domain
-Specific ID is 0x5453 ('TS' in ascii), bit 0 is set in the domain bitmask to
-indicate the 16 bit source-only device source and bit 1 is set in the DS flag
+[^transparent-security-INT]: Transparent Security INT header reference definition, [https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md](https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md)
+
+INT Metadata Header and Metadata Stack. The *Domain
+Specific ID* is 0x5453 ('TS' in ascii), bit 0 is set in the domain bitmap to
+indicate the 16 bit source-only device source and bit 1 is set in the *DS Flags*
 to indicate that this was set by the gateway:
-`
+```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 |0|0|0|       Reserved        | HopML=1 |RemainingHopC=6|
+   | Ver=2 |0|0|0|       Reserved        | HopML=1 |RemainingHopC=5|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 1 0 1 0 0 0 1 0 1 0 0 1 1|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop2                       |
+   |                          node id of hop2                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                           sw id of hop1                       |
+   |                          node id of hop1                      |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                          sw id of gateway                     |
+   |                         node id of gateway                    |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                    First 4 bytes of host1 MAC                 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    | Last 2 bytes of host1 MAC     |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-`
+```
+
+[]{tex-cmd: "\newpage"}
 
 # Acknowledgements
 
 We thank the following individuals for their contributions to the design,
 specification and implementation of this spec.
 
+* Daniel Alvarez
 * Parag Bhide
 * Dennis Cai
 * Dan Daly
@@ -2523,15 +2584,14 @@ specification and implementation of this spec.
 * Raja Jayakumar
 * Changhoon Kim
 * Jeongkeun Lee
+* Randy Levensalor
 * Tal Mizrahi
 * Masoud Moshref
 * Michael Orr
-* Heidi OU
+* Heidi Ou
+* Ramesh Sivakolundu
 * Mickey Spiegel
 * Bapi Vinnakota
-* Ramesh Sivakolundu
-* Daniel Alvarez
-* Randy Levensalor
 
 
 # Change log
@@ -2549,9 +2609,8 @@ example in section [#sec-examples].
 definition and examples
   - Updated the INT instruction bitmap and the meaning of a few instructions
 (section [#sec-int-md-metadata-header-format])
-  - Moved the INT transit P4 program from Appendix to the main section
-[#sec-p4-program-specification-for-int-transit]. Re-wrote the program in
-p4_16.
+  - Moved the INT transit P4 program from Appendix to the main section.
+    Re-wrote the program in p4_16.
 * 2017-12-11
   - Increaed the size of Version field from 2b to 4b in INT Metadata Header
   - Improved the header presentation of the examples and clarified the
@@ -2632,12 +2691,20 @@ assumptions in section [#sec-examples]
   - Removed Rep bits and 'C' bit, introduced 'D' bit for Discarding Copy/Clone
     at INT Sink.
 * 2020-02-11
-  - Added 'source-only' metadata as part of DS instructions.
+  - Added 'source-only' metadata as part of DS instruction.
   - Changed the Hop ML to be required only by Transit and Sink devices.
 * 2020-02-14
   - Added IPv4/GRE transport for INT.
   - **Tag V2.0 spec**
-* 2020-04-06  
-  - Added INT-MX Header details
+* 2020-03-04
+  - Added example with 'source-only' domain-specific metadata.
+* 2020-04-06
+  - Added INT-MX Header format, per-hop header operations, and examples
+* 2020-04-17
+  - Changed 'port identifier' terminology to 'interface identifier'
+* 2020-04-30
+  - Added INT-MD alternative MTU processing, generating 'Intermediate Report'
+  - Changed 'switch id' terminology to 'node id'
+* 2020-05-12
+  - Changed Geneve Option Class codepoint to value assigned by IANA
   - **Tag V2.1 spec**
-
