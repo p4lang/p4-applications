@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-05-28
+Title Footer: 2020-06-09
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -1178,14 +1178,6 @@ INT-MD Metadata Header and Metadata Stack:
       is *excluded* from the *Hop ML*.
     - The largest value of *Hop ML* for baseline and domain specific
       metadata is 31.
-    - An INT-capable node may be limited in the maximum number
-      of instructions it can process and/or maximum length of metadata it can
-      insert in data packets. An INT hop that cannot process all instructions
-      must still insert *Hop ML* \* 4 bytes, with all-ones
-      reserved value (4 or 8 bytes of 0xFF depending on the length of metadata)
-      for the metadata corresponding to instructions it cannot process. An
-      INT hop that cannot insert Per-hop Metadata Length \* 4 bytes must skip
-      INT processing altogether and not insert any metadata in the packet.
 * **Remaining Hop Count (8b):** The remaining number of hops that are allowed to
     add their metadata to the packet.
     - Upon creation of an INT metadata header, the INT Source must set this
@@ -1231,8 +1223,6 @@ INT-MD Metadata Header and Metadata Stack:
   For this value, all *DS Instruction* bits are treated as reserved. Operators
   can assign values in the range 0x0001 to 0xFFFF.
 
-[]{tex-cmd: "\newpage"}
-
 * **DS Instruction (16b):** Instruction bitmap specific to the INT domain
   identified by the *Domain Specific ID*. Each bit that is set requests that
   Domain Specific Metadata be appended to the Baseline Metadata before the
@@ -1254,15 +1244,6 @@ INT-MD Metadata Header and Metadata Stack:
   Although the delta is excluded in *Hop ML*, it must be counted in the INT length field of
   the INT shim header.
 
-  If the *Domain Specific ID* does not match any Domain ID known to this node, then
-  the transit node is required to either:
-
-  - Pad the node's INT Metadata stack with the special all-ones reserved value for a
-    Domain Specific Metadata length, calculated by subtracting from the *Hop ML* a length
-    computed from all bits in the 16-bit *Instruction Bitmap*, or
-
-  - Skip INT processing altogether and not insert any metadata into the packet.
-
 * Each INT Transit node along the path that supports INT adds its own metadata
   values as specified in the *Instruction Bitmap* and *DS Instruction*
   immediately after the INT metadata header.
@@ -1271,16 +1252,12 @@ INT-MD Metadata Header and Metadata Stack:
     This is similar to the push operation on a stack data structure.
     Hence, the most recently
     added metadata appears at the top of the stack. The node must add
-    metadata in the order of bits set in the instruction bitmap.
+    metadata in the order of bits set in the *Instruction Bitmap* and *DS
+    Instruction*, except that the Checksum Complement is last.
   - If a node is unable to provide a metadata value specified in the
     instruction bitmap because its value is not available, it must add a
     special all-ones reserved value indicating "invalid" (4 or 8 bytes of 0xFF
     depending on metadata length).
-  - If a node cannot add all the metadata required by the instruction bitmap
-    (irrespective of the availability of the metadata values that are asked
-    for), it must skip processing that particular INT packet entirely. This
-    ensures that each INT Transit node adds either zero bytes or
-    *Hop ML* \* 4 bytes to the packet.
   - Reserved bits in the *Instruction Bitmap* are to be handled similarly. If an
     INT transit hop receives a reserved bit set in the *Instruction Bitmap* (e.g.
     set by a INT source that is running a newer version), the transit hop must
@@ -1295,6 +1272,23 @@ INT-MD Metadata Header and Metadata Stack:
     a version 2.0 INT node cannot operate alongside version 3.0 INT nodes
     if a new 8B metadata is introduced in version 3.0, as the version 2.0
     INT node could insert 0xFFFFFFFF reserved value for a 8B metadata field.
+  - If the *Domain Specific ID* does not match any Domain ID known to this node,
+    then the transit node is required to either:
+    - Pad the node's INT Metadata stack with the special all-ones reserved value
+      for a Domain Specific Metadata length, calculated by subtracting from the
+      *Hop ML* a length computed from all bits in the 16-bit *Instruction
+      Bitmap*, or
+    - Skip INT processing altogether and not insert any metadata into the packet.
+  - An INT-capable node may be limited in the maximum number
+    of instructions it can process and/or maximum length of metadata it can
+    insert in data packets. An INT hop that cannot process all instructions
+    must still insert *Hop ML* \* 4 bytes, with all-ones
+    reserved value (4 or 8 bytes of 0xFF depending on the length of metadata)
+    for the metadata corresponding to instructions it cannot process. An
+    INT hop that cannot insert Per-hop Metadata Length \* 4 bytes must skip
+    INT processing altogether and not insert any metadata in the packet. This
+    ensures that each INT Transit node adds either zero bytes or
+    *Hop ML* \* 4 bytes to the packet.
   - If an INT transit hop does not add metadata to a packet due to any of the
     above reasons, it must not decrement the *Remaining Hop Count* in the INT
     metadata header.
@@ -1360,20 +1354,8 @@ INT-MX Header:
       is *excluded* from the *Hop ML*.
     - The largest value of *Hop ML* for baseline and domain specific
       metadata is 31.
-    - An INT node may be limited in the maximum number
-      of instructions it can process and/or maximum length of metadata it can
-      gather for each data packet. An INT hop that cannot process all
-      instructions has the following alternatives:
-      - Send to the monitoring system *Hop ML* \* 4 bytes, with all-ones reserved
-        value (4 or 8 bytes of 0xFF depending on the length of metadata) for the
-        metadata corresponding to instructions it cannot process, or
-      - Send to the monitoring system the metadata it can process, update the
-        *RepMdBits*, *DSMdBits* and *MD Length* fields appropriately in the
-        Telemetry Report [^telem-report].
 * **R (8b):** Reserved bits.
     - Should be set to 0 by INT Source and ignored by other nodes.
-
-[]{tex-cmd: "\newpage"}
 
 * **Instruction Bitmap:** Each bit corresponds to a specific standard metadata
   as specified in Section 3.
@@ -1422,22 +1404,6 @@ INT-MX Header:
   either determined from the *DS Instruction* or consistent with the
   per-hop metadata length (*Hop ML*) set by the INT source (see *Hop ML* above).
 
-  []{tex-cmd: "\newpage"}
-
-  If the *Domain Specific ID* does not match any Domain ID known to this node, then
-  the transit node is required to either:
-
-  - Send the metadata corresponding to *Instruction Bitmap* and ensure that
-    *DSMdbits* is not set in the Telemetry Report and *MD Length* field reflects the length
-    of the metadata sent in the Telemetry Report [^telem-report], or
-
-  - Send the metadata corresponding to *Instruction Bitmap* and pad the node's INT Metadata
-    with the special all-ones reserved value for a Domain Specific Metadata length,
-    calculated by subtracting from the *Hop ML* a length computed from all bits in the
-    16-bit *Instruction Bitmap*, or
-
-  - Skip INT processing altogether and not send any metadata the monitoring systems.
-
 * Each INT Transit node along the path that supports INT-MX sends its own metadata
   values as specified in the *Instruction Bitmap* and *DS Instruction*.
 
@@ -1460,6 +1426,33 @@ INT-MX Header:
       - for *RepMdBits*, send the all-ones reserved value (4 bytes of 0xFF);
         for *DSMdbits*, pad with the special all-ones reserved value in lieu of
         reserved DS Metadata, out to *MD Length*.
+
+  - If the *Domain Specific ID* does not match any Domain ID known to this node,
+    then the transit node is required to either:
+
+    - Send the metadata corresponding to *Instruction Bitmap* and ensure that
+      *DSMdbits* is not set in the Telemetry Report and *MD Length* field
+      reflects the length of the metadata sent in the Telemetry Report
+      [^telem-report], or
+
+    - Send the metadata corresponding to *Instruction Bitmap* and pad the node's
+      INT Metadata with the special all-ones reserved value for a Domain
+      Specific Metadata length, calculated by subtracting from the *Hop ML* a
+      length computed from all bits in the 16-bit *Instruction Bitmap*, or
+
+    - Skip INT processing altogether and not send any metadata the monitoring
+      systems.
+
+  - An INT node may be limited in the maximum number
+    of instructions it can process and/or maximum length of metadata it can
+    gather for each data packet. An INT hop that cannot process all
+    instructions has the following alternatives:
+    - Send to the monitoring system *Hop ML* \* 4 bytes, with all-ones reserved
+      value (4 or 8 bytes of 0xFF depending on the length of metadata) for the
+      metadata corresponding to instructions it cannot process, or
+    - Send to the monitoring system the metadata it can process, update the
+      *RepMdBits*, *DSMdBits* and *MD Length* fields appropriately in the
+      Telemetry Report [^telem-report].
 
 * Summary of the field usage
   - The INT Source must set the following fields:
@@ -2707,4 +2700,5 @@ assumptions in section [#sec-examples]
   - Changed 'switch id' terminology to 'node id'
 * 2020-05-12
   - Changed Geneve Option Class codepoint to value assigned by IANA
+* 2020-06-09
   - **Tag V2.1 spec**
