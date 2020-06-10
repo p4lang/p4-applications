@@ -1405,54 +1405,76 @@ INT-MX Header:
   per-hop metadata length (*Hop ML*) set by the INT source (see *Hop ML* above).
 
 * Each INT Transit node along the path that supports INT-MX sends its own metadata
-  values as specified in the *Instruction Bitmap* and *DS Instruction*.
+  values as specified in the *Instruction Bitmap* and *DS Instruction*. Either
+  one of the following two procedures may be implemented:
 
-  - If a node is unable to provide a metadata value specified in the
-    instruction bitmap because its value is not available, it must either:
+  1. Modify *RepMdBits* and *DSMdbits* in the Telemetry Report [^telem-report],
+     after copying from INT-MX *Instruction Bitmap* and *DS Instruction*
+     respectively, and recompute *MD Length*.
 
-      - ensure that the corresponding bit in *RepMdbits* and/or *DSMdbits* is not set
-        in the Telemetry Report [^telem-report], or
+     - If a node is unable to provide a metadata value specified in the
+       instruction bitmap because its value is not available, or because it
+       corresponds to a reserved bit, the node must ensure that the
+       corresponding bit in *RepMdbits* and/or *DSMdbits* is not set in the
+       Telemetry Report sent to the monitoring system.
 
-      - send the all-ones reserved value (4 or 8 bytes of 0xFF depending on the length
-        of metadata).
+     - If the *Domain Specific ID* does not match any Domain ID known to this
+       node, then the transit node is required to either:
+       - Send the metadata corresponding to *Instruction Bitmap* and ensure that
+         *DSMdbits* is not set in the Telemetry Report and the *MD Length* field
+         reflects the length of the metadata sent in the Telemetry Report, or
+       - Skip INT processing altogether and not send any metadata to the
+         monitoring systems.
 
-  - Reserved bits in the instruction bitmap are to be handled as described. If an
-    INT transit hop receives a reserved bit set in the instruction bitmap (e.g.
-    set by a INT source that is running a newer version), the transit hop must either:
+     - An INT node may be limited in the maximum number of instructions it can
+       process and/or maximum length of metadata it can gather for each data
+       packet. An INT hop that cannot process all instructions must send to the
+       monitoring system the metadata it can process, updating the *RepMdBits*,
+       *DSMdBits* and *MD Length* fields appropriately in the Telemetry Report.
 
-      - ensure that the corresponding reserved bits in *RepMdbits* and/or *DSMdbits*
-         are not set in the Telemetry Report sent to the monitoring system, or
+  2. Copy INT-MX *Instruction Bitmap* and *DS Instruction* to *RepMdBits* and
+     *DSMdbits* in the Telemetry Report [^telem-report], make minimal
+     modifications as required, and adjust *MD Length*.
 
-      - for *RepMdBits*, send the all-ones reserved value (4 bytes of 0xFF);
-        for *DSMdbits*, pad with the special all-ones reserved value in lieu of
-        reserved DS Metadata, out to *MD Length*.
+     - If INT-MX *Instruction Bitmap* bit 0 was set, clear *RepMdBits* bit 0 and
+       decrement *MD Length*.
 
-  - If the *Domain Specific ID* does not match any Domain ID known to this node,
-    then the transit node is required to either:
+     - If a node is unable to provide a metadata value specified in the
+       instruction bitmap because its value is not available, the node must send
+       the all-ones reserved value (4 or 8 bytes of 0xFF depending on the length
+       of metadata).
 
-    - Send the metadata corresponding to *Instruction Bitmap* and ensure that
-      *DSMdbits* is not set in the Telemetry Report and *MD Length* field
-      reflects the length of the metadata sent in the Telemetry Report
-      [^telem-report], or
+     - Reserved bits in the instruction bitmap are to be handled as described.
+       If an INT transit hop receives a reserved bit set in the instruction
+       bitmap (e.g. set by a INT source that is running a newer version), the
+       transit hop must:
 
-    - Send the metadata corresponding to *Instruction Bitmap* and pad the node's
-      INT Metadata with the special all-ones reserved value for a Domain
-      Specific Metadata length, calculated by subtracting from the *Hop ML* a
-      length computed from all bits in the 16-bit *Instruction Bitmap*, or
+       - for *RepMdBits*, send the all-ones reserved value (4 bytes of 0xFF);
+       - for *DSMdbits*, pad with the special all-ones reserved value in lieu of
+         reserved DS Metadata, out to *MD Length*.
 
-    - Skip INT processing altogether and not send any metadata the monitoring
-      systems.
+     - If the *Domain Specific ID* does not match any Domain ID known to this
+       node, then the transit node is required to either:
 
-  - An INT node may be limited in the maximum number
-    of instructions it can process and/or maximum length of metadata it can
-    gather for each data packet. An INT hop that cannot process all
-    instructions has the following alternatives:
-    - Send to the monitoring system *Hop ML* \* 4 bytes, with all-ones reserved
-      value (4 or 8 bytes of 0xFF depending on the length of metadata) for the
-      metadata corresponding to instructions it cannot process, or
-    - Send to the monitoring system the metadata it can process, update the
-      *RepMdBits*, *DSMdBits* and *MD Length* fields appropriately in the
-      Telemetry Report [^telem-report].
+       - Send the metadata corresponding to *Instruction Bitmap* and pad the
+         node's INT Metadata with the special all-ones reserved value for a
+         Domain Specific Metadata length, calculated by subtracting from the
+         *Hop ML* a length computed from all bits in the 16-bit *Instruction
+         Bitmap*, or
+
+       - Skip INT processing altogether and not send any metadata to the
+         monitoring systems.
+
+     - An INT node may be limited in the maximum number of instructions it can
+       process and/or maximum length of metadata it can gather for each data
+       packet. An INT hop that cannot process all instructions has the following
+       alternatives:
+       - Send to the monitoring system *Hop ML* \* 4 bytes, with all-ones
+         reserved value (4 or 8 bytes of 0xFF depending on the length of
+         metadata) for the metadata corresponding to instructions it cannot
+         process, or
+       - Skip INT processing altogether and not send any metadata to the
+         monitoring systems.
 
 * Summary of the field usage
   - The INT Source must set the following fields:
