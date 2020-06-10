@@ -501,8 +501,9 @@ Destination-type header.
         decrement against INT Remaining Hop Count decrement (assuming each
         network device is an L3 hop)
   - The format of Destination-type headers will be defined in a future
-    revision. Note some Edge-to-Edge INT use cases can be supported by 'source-only'
-    metadata, part of Domain Specific Instructions in the MD-type header.
+    revision. Note some Edge-to-Edge INT use cases can be supported by
+    'source-only' metadata, part of Domain Specific Instructions in the MD-type
+    and MX-type headers.
 * MX-type (**INT Header type 3**)
   - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header and generate reports to the monitoring system as instructed.
@@ -1323,6 +1324,8 @@ INT-MX Header:
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |         DS Instruction        |            DS Flags           |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |        Optional Domain Specific 'Source-Only' Metadata        |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
 * The INT-MX header is 12 bytes long. Each metadata requested in the
@@ -1336,6 +1339,9 @@ INT-MX Header:
 [^telem-report]: [Telemetry Report Format Specification Version 2.0](https://github.com/p4lang/p4-applications/blob/master/docs/telemetry_report_v2_0.pdf), May 2020.
 
 * **Ver (4b):** INT-MX header version. Should be 2 for this version.
+
+[]{tex-cmd: "\newpage"}
+
 * **D (1b):** Discard.
     - INT Sink must Discard the packet after sending the metadata requested
       in the INT-MX header to the monitoring system.
@@ -1391,18 +1397,25 @@ INT-MX Header:
   identified by the *Domain Specific ID*. Each bit that is set requests that
   metadata be sent to the monitoring system.
 
-  Some metadata can be defined as 'source-only' metadata by the INT domain. Those metadata
-  will be sent only by the INT source, not by INT transit or sink nodes.
-  In a sense, 'source-only' bits do not serve as instructions for downstream INT nodes
-  to follow. In INT-MX mode, the source node must not set the bits corresponding to
-  "source-only" metadata in the *DS Instruction* bitmap. However, the source node must ensure
-  that it sets the bits corresponding to "source-only" metadata in *DSMdBits* bitmap of the
-  Telemetry Report. This is needed for the monitoring system (or any consumer of the metadata)
-  to know how to parse and use the data.
+  Some metadata can be defined as 'source-only' metadata by the INT domain.
+  Unlike other metadata, 'source-only' metadata is embedded in the packet by the
+  INT source node, as *Optional Domain Specific 'Source-Only' Metadata*. The
+  *DS Instruction* bits corresponding to 'source-only' metadata do not serve as
+  instructions for downstream INT nodes to insert their own metadata. Instead,
+  they indicate that the metadata is embedded, and that each node including
+  the source, transit, and sink nodes should report that source metadata to the
+  monitoring system along with the node's own metadata. Note that there are
+  several ways to include the 'source-only' metadata in the Telemetry Report,
+  described below.
 
   The amount of Domain Specific Metadata sent by each hop must be a multiple of 4 bytes,
   either determined from the *DS Instruction* or consistent with the
-  per-hop metadata length (*Hop ML*) set by the INT source (see *Hop ML* above).
+  per-hop metadata length (*Hop ML*) set by the INT source, as described below.
+
+* **Optional Domain Specific 'Source-Only' Metadata:** The metadata
+  corresponding to 'source-only' *DS Instruction* bits follows the
+  *DS Instruction* and the *DS Flags* fields in the INT-MX header. The length
+  of this field must be counted in the INT length field of the INT shim header.
 
 * Each INT Transit node along the path that supports INT-MX sends its own metadata
   values as specified in the *Instruction Bitmap* and *DS Instruction*. Either
@@ -1411,6 +1424,8 @@ INT-MX Header:
   1. Modify *RepMdBits* and *DSMdbits* in the Telemetry Report [^telem-report],
      after copying from INT-MX *Instruction Bitmap* and *DS Instruction*
      respectively, and recompute *MD Length*.
+
+     - If INT-MX *Instruction Bitmap* bit 0 was set, clear *RepMdBits* bit 0.
 
      - If a node is unable to provide a metadata value specified in the
        instruction bitmap because its value is not available, or because it
@@ -1425,6 +1440,33 @@ INT-MX Header:
          reflects the length of the metadata sent in the Telemetry Report, or
        - Skip INT processing altogether and not send any metadata to the
          monitoring systems.
+
+     - The INT node should make every effort to include 'source-only' metadata
+       (that was received in the INT-MX header) in the Telemetry Report. There
+       are several ways to accomplish this:
+       - The truncated packet in the *Individual Report Inner Contents* includes
+         the received INT-MX header with embedded 'source-only' metadata, or
+       - The domain specific extension data includes the 'source-only' metadata,
+         or
+       - The embedded 'source-only' metadata from the received INT-MX header is
+         copied into the *Variable Optional Domain Specific Metadata* in the
+         *Individual Report Main Contents*. Note that in order to achieve this,
+         the node must understand the *Domain Specific ID* and corresponding
+         *DSMdbits* definition, so that it can place that metadata in the proper
+         order relative to other domain specific metadata. The corresponding
+         bits in *DSMdbits* must remain set so that the monitoring system (or
+         any consumer of the metadata) knows how to parse and use the data.
+
+       Although typically only one of these ways would be applied to a given
+       packet at a specific node, any combination of the above is allowed.
+
+       If the 'source-only' metadata is *not* copied into the *Variable Optional
+       Domain Specific Metadata*, then the corresponding bits in *DSMdbits* must
+       be cleared.
+
+       Due to backward compatibility implications, domain administrators need
+       to be careful when leaving some bits in *DSMdbits* reserved, with regard
+       to defining any of those bits as 'source-only' in the future.
 
      - An INT node may be limited in the maximum number of instructions it can
        process and/or maximum length of metadata it can gather for each data
@@ -1463,7 +1505,37 @@ INT-MX Header:
          Bitmap*, or
 
        - Skip INT processing altogether and not send any metadata to the
-         monitoring systems.
+         monitoring systems. Note that if any 'source-only' domain specific
+         metadata is defined, then this is the only option.
+
+     - The INT node should make every effort to include 'source-only' metadata
+       (that was received in the INT-MX header) in the Telemetry Report. There
+       are several ways to accomplish this:
+       - The truncated packet in the *Individual Report Inner Contents* includes
+         the received INT-MX header with embedded 'source-only' metadata, or
+       - The domain specific extension data includes the 'source-only' metadata,
+         or
+       - The embedded 'source-only' metadata from the received INT-MX header is
+         copied into the *Variable Optional Domain Specific Metadata* in the
+         *Individual Report Main Contents*. Note that in order to achieve this,
+         the node must understand the *Domain Specific ID* and corresponding
+         *DSMdbits* definition, so that it can place that metadata in the proper
+         order relative to other domain specific metadata. The corresponding
+         bits in *DSMdbits* must remain set so that the monitoring system (or
+         any consumer of the metadata) knows how to parse and use the data. The
+         *MD Length* must be increased to account for the 'source-only'
+         metadata.
+
+       Although typically only one of these ways would be applied to a given
+       packet at a specific node, any combination of the above is allowed.
+
+       If the 'source-only' metadata is *not* copied into the *Variable Optional
+       Domain Specific Metadata*, then the corresponding bits in *DSMdbits* must
+       be cleared.
+
+       Due to backward compatibility implications, domain administrators need
+       to be careful when leaving some bits in *DSMdbits* reserved, with regard
+       to defining any of those bits as 'source-only' in the future.
 
      - An INT node may be limited in the maximum number of instructions it can
        process and/or maximum length of metadata it can gather for each data
@@ -1475,6 +1547,8 @@ INT-MX Header:
          process, or
        - Skip INT processing altogether and not send any metadata to the
          monitoring systems.
+
+[]{tex-cmd: "\newpage"}
 
 * Summary of the field usage
   - The INT Source must set the following fields:
@@ -1490,18 +1564,16 @@ INT-MX Header:
 must always be a multiple of 4B.
 
 
-[]{tex-cmd: "\newpage"}
-
 # Examples
 
 This section shows example INT Headers with two hosts (Host1 and Host2),
 communicating over a network path composed of three network switches
 (Switch1, Switch2 and Switch3) as shown below.
 
-`
+```
                  ==> packet P travels from Host1 to Host2 ==>
 Host1 --------> Switch1 ---------> Switch2 ---------> Switch3 --------> Host2
-`
+```
 
 Detailed assumptions made for this example are as follows
 
@@ -1580,6 +1652,8 @@ NPT (Next Protocol Type) is zero:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+[]{tex-cmd: "\newpage"}
+
 INT-MD Metadata Header and Metadata Stack, followed by TCP payload:
 ```
     0                   1                   2                   3
@@ -1630,6 +1704,8 @@ IP Header:
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
+
+[]{tex-cmd: "\newpage"}
 
 TCP Header:
 ```
@@ -1688,6 +1764,8 @@ INT-MD headers before forwarding the packet to host2.
 Below is the packet received by INT sink Switch3, starting from the IPv4
 header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
+
+[]{tex-cmd: "\newpage"}
 
 IP Header:
 ```
@@ -1762,8 +1840,6 @@ the UDP and INT-MX headers before forwarding the packet to host2.
 Below is the packet received by INT sink Switch3, starting from the IPv4
 header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
 INT headers.
-
-[]{tex-cmd: "\newpage"}
 
 IP Header:
 ```
@@ -1872,8 +1948,6 @@ The original port number XYZ is stored in the shim header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-[]{tex-cmd: "\newpage"}
-
 INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
 ```
     0                   1                   2                   3
@@ -1926,8 +2000,6 @@ IP Header:
    |                    Destination Address                        |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
-
-[]{tex-cmd: "\newpage"}
 
 UDP Header:
 ```
@@ -2723,4 +2795,6 @@ assumptions in section [#sec-examples]
 * 2020-05-12
   - Changed Geneve Option Class codepoint to value assigned by IANA
 * 2020-06-09
+  - Specify that INT-MX 'source-only' metadata must be embedded in the packet
+    and should be reported to the monitoring system by each node.
   - **Tag V2.1 spec**
