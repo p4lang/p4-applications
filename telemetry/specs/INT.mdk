@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-06-09
+Title Footer: 2020-06-10
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -1380,9 +1380,11 @@ INT-MX Header:
   those two metadata. Additional semantics as needed for different implementation
   can be defined in the metadata semantics YANG model [^metadata-yang].
 
-  Bits 0 - 14 are Baseline INT Instructions. Each instruction bit that is set
-  requests 4 bytes of metadata be sent to monitoring system at each hop,
-  except for bits 4-6, each requires 8 bytes of metadata.
+  Bits 0 - 14 are Baseline INT Instructions that will be reported in *RepMdBits*
+  and *Variable Optional Baseline Metadata* in the Telemetry Report. Each
+  instruction bit that is set requests 4 bytes of metadata to be sent to the
+  monitoring system at each hop, except for bits 4-6, each requires 8 bytes of
+  metadata.
 
 * **Domain Specific ID (16b):** The unique ID of the INT Domain.
   If the *Domain Specific ID* matches any Domain ID known to this node, then
@@ -1425,7 +1427,9 @@ INT-MX Header:
      after copying from INT-MX *Instruction Bitmap* and *DS Instruction*
      respectively, and recompute *MD Length*.
 
-     - If INT-MX *Instruction Bitmap* bit 0 was set, clear *RepMdBits* bit 0.
+     - If INT-MX *Instruction Bitmap* bit 0 was set, clear *RepMdBits* bit 0
+       since the *Node ID* is already included in the common *Telemetry Report
+       Group Header* that precedes the individual reports.
 
      - If a node is unable to provide a metadata value specified in the
        instruction bitmap because its value is not available, or because it
@@ -1443,22 +1447,27 @@ INT-MX Header:
 
      - The INT node should make every effort to include 'source-only' metadata
        (that was received in the INT-MX header) in the Telemetry Report. There
-       are several ways to accomplish this:
-       - The truncated packet in the *Individual Report Inner Contents* includes
-         the received INT-MX header with embedded 'source-only' metadata, or
-       - The domain specific extension data includes the 'source-only' metadata,
-         or
-       - The embedded 'source-only' metadata from the received INT-MX header is
-         copied into the *Variable Optional Domain Specific Metadata* in the
-         *Individual Report Main Contents*. Note that in order to achieve this,
-         the node must understand the *Domain Specific ID* and corresponding
-         *DSMdbits* definition, so that it can place that metadata in the proper
-         order relative to other domain specific metadata. The corresponding
-         bits in *DSMdbits* must remain set so that the monitoring system (or
-         any consumer of the metadata) knows how to parse and use the data.
+       are several ways to accomplish this, with differing implementation
+       dependent impact:
+       a. The truncated packet in the *Individual Report Inner Contents*
+          includes the INT-MX header with embedded 'source-only' metadata, or
+       b. The domain specific extension data includes the 'source-only' metadata
+          (note that this is free format, so this may require additional
+          implementation effort by the monitoring system), or
+       c. The embedded 'source-only' metadata from the received INT-MX header is
+          copied into the *Variable Optional Domain Specific Metadata* in the
+          *Individual Report Main Contents*. Note that in order to achieve this,
+          the node must understand the *Domain Specific ID* and corresponding
+          *DSMdbits* definition, so that it can place that metadata in the
+          proper order relative to other domain specific metadata. The
+          corresponding bits in *DSMdbits* must remain set so that the
+          monitoring system (or any consumer of the metadata) knows how to parse
+          and use the data.
 
        Although typically only one of these ways would be applied to a given
-       packet at a specific node, any combination of the above is allowed.
+       packet at a specific node, any combination of the above is allowed. The
+       expectation is that each INT node implementation will only support a
+       subset, while monitoring systems should support at least (a) and (c).
 
        If the 'source-only' metadata is *not* copied into the *Variable Optional
        Domain Specific Metadata*, then the corresponding bits in *DSMdbits* must
@@ -1971,7 +1980,7 @@ INT-MD Metadata Header and Metadata Stack, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-## Example with INT-MX in-between UDP header and UDP payload
+## Example with INT-MX in-between UDP header and UDP payload { #example-mx-udp }
 
 In this scenario host1 sends a UDP packet to host2. The ToR switch
 of host1 (Switch1) acts as the INT source. It alters the UDP destination port
@@ -2478,6 +2487,94 @@ INT-MX Header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+## Example with INT-MX including domain specific source-only metadata
+
+We consider a scenario similar to Section [#example-mx-udp], with the addition
+of 'source-only' metadata that consists of a Sequence Number with current value
+15 and a Flow ID with current value 0x12345678. The *Domain Specific ID* value
+is 0xabcd.
+
+INT Shim Header for UDP, INT type is INT-MX (3) and
+NPT (Next Protocol Type) is 1 indicating UDP payload follows the INT.
+The original port number XYZ is stored in the shim header:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Type=3 | 1 |R R|   Length=5    |        UDP port = XYZ         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+INT-MX Header, followed by UDP payload:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 |0|0|0|       Reserved        | HopML=2 |    Reserved   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|1 0 1 0 1 0 1 1 1 1 0 0 1 1 0 1|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
+   |           Sequence Number (assigned by source node)           |
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
+   |               Flow ID (assigned by source node)               |
+   |0 0 0 1 0 0 1 0 0 0 1 1 0 1 0 0 0 1 0 1 0 1 1 0 0 1 1 1 1 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
+   |                          UDP payload                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+## Example with INT-MD including domain specific source-only metadata
+
+We consider a scenario where Host1 is on a wireless network behind a NAT
+and its identity can not be confirmed by port location.  Host1 does not support
+INT.  The gateway acts at the INT source, inserting the header and the MAC address
+of Host1.  Intermediate switches populate the INT metadata while preserving
+the source-only domain specific metadata. This example can work with any of
+the above encapsulation methods such as UDP encapsulation.
+
+The MAC address from host1 is copied from the source address in the Ethernet frame.
+The MAC is a 6 byte id.  Since the INT metadata header is measured in blocks of 4 bytes,
+the last 2 bytes are reserved.  For example if a source device's MAC address is
+"a6:1a:f6:b1:64:7d", the source-only INT metadata would be 0xA61AF6B1647d0000.
+
+Following is the INT-MD Header attached to the packet transmitted by
+the hop2 switch.
+
+Details of the Transparent Security domain specific model can be accessed
+in the Transparent Security INT header reference definition
+[^transparent-security-INT].
+
+[^transparent-security-INT]: Transparent Security INT header reference definition, [https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md](https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md)
+
+INT Metadata Header and Metadata Stack. The *Domain
+Specific ID* is 0x5453 ('TS' in ascii), bit 0 is set in the domain bitmap to
+indicate the 16 bit source-only device source and bit 1 is set in the *DS Flags*
+to indicate that this was set by the gateway:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 |0|0|0|       Reserved        | HopML=1 |RemainingHopC=5|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 1 0 1 0 0 0 1 0 1 0 0 1 1|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          node id of hop2                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          node id of hop1                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         node id of gateway                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    First 4 bytes of host1 MAC                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Last 2 bytes of host1 MAC     |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
 # Appendix: An extensive (but not exhaustive) set of Metadata {@h1:"A"}
 
 Here we list a set of exemplary metadata that future versions of the spec may
@@ -2597,59 +2694,6 @@ shared between multiple queues.
 * Checksum Complement
   : This field enables a Checksum-neutral update when INT is encapsulated over
     an L4 protocol that uses a Checksum field, such as TCP or UDP.
-
-# Domain Specific Examples
-
-Here we list a set of exemplary domain specific implementations.
-
-## Example with INT-MD including source-only metadata
-
-We consider a case where Host1 is on a wireless network behind a NAT
-and its identity can not be confirmed by port location.  Host1 does not support
-INT.  The gateway acts at the INT source, inserting the header and the MAC address
-of Host1.  Intermediate switches populate the INT metadata while preserving
-the source-only domain specific metadata. This example can work with any of
-the above encapsulation methods such as UDP encapsulation.
-
-The MAC address from host1 is copied from the source address in the Ethernet frame.
-The MAC is a 6 byte id.  Since the INT metadata header is measured in blocks of 4 bytes,
-the last 2 bytes are reserved.  For example if a source device's MAC address is
-"a6:1a:f6:b1:64:7d", the source-only INT metadata would be 0xA61AF6B1647d0000.
-
-Following is the INT-MD Header attached to the packet transmitted by
-the hop2 switch.
-
-Details of the Transparent Security domain specific model can be accessed
-in the Transparent Security INT header reference definition
-[^transparent-security-INT].
-
-[^transparent-security-INT]: Transparent Security INT header reference definition, [https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md](https://github.com/cablelabs/transparent-security/blob/master/docs/int_header/INT_header.md)
-
-INT Metadata Header and Metadata Stack. The *Domain
-Specific ID* is 0x5453 ('TS' in ascii), bit 0 is set in the domain bitmap to
-indicate the 16 bit source-only device source and bit 1 is set in the *DS Flags*
-to indicate that this was set by the gateway:
-```
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Ver=2 |0|0|0|       Reserved        | HopML=1 |RemainingHopC=5|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 1 0 1 0 0 0 1 0 1 0 0 1 1|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                          node id of hop2                      |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                          node id of hop1                      |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                         node id of gateway                    |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                    First 4 bytes of host1 MAC                 |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   | Last 2 bytes of host1 MAC     |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
 
 []{tex-cmd: "\newpage"}
 
@@ -2794,7 +2838,7 @@ assumptions in section [#sec-examples]
   - Changed 'switch id' terminology to 'node id'
 * 2020-05-12
   - Changed Geneve Option Class codepoint to value assigned by IANA
-* 2020-06-09
+* 2020-06-10
   - Specify that INT-MX 'source-only' metadata must be embedded in the packet
     and should be reported to the monitoring system by each node.
   - **Tag V2.1 spec**
