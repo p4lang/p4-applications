@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : Version 2.0
-Title Footer : 2018-06-11
+Title Footer : 2020-06-15
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *CableLabs, Cisco Systems, Intel, VMware, Xilinx*
 Heading depth : 5
@@ -1243,7 +1243,7 @@ specification.
   - Added RepType codepoint for 'Inner Only'
 * 2020-05-25
   - Added 2 examples of telemetry reports with embedded telemetry metadata
-* 2020-06-11
+* 2020-06-15
   - Simplify metadata processing by removing padding option, relying on
     clearing of bits instead.
   - **Tag v2.0 spec**
