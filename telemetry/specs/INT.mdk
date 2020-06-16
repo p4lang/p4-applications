@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-06-11
+Title Footer: 2020-06-15
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -1777,7 +1777,7 @@ INT-MD Metadata Header and Metadata Stack, followed by TCP header:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-## Example with new UDP header and INT-MX inserted before TCP
+## Example with new UDP header and INT-MX inserted before TCP { #example-mx-udp-tcp }
 
 As before we consider a scenario where host1 sends a TCP packet to host2.
 The ToR switch of host1 (Switch1) acts as the INT source. It adds a new UDP header
@@ -2430,23 +2430,23 @@ INT-MX Header:
 
 ## Example with INT-MX including domain specific source-only metadata
 
-We consider a scenario similar to Section [#example-mx-udp], with the addition
+We consider a scenario similar to Section [#example-mx-udp-tcp], with the addition
 of 'source-only' metadata that consists of a Sequence Number with current value
 15 and a Flow ID with current value 0x12345678. The *Domain Specific ID* value
 is 0xabcd.
 
 INT Shim Header for UDP, INT type is INT-MX (3) and
-NPT (Next Protocol Type) is 1 indicating UDP payload follows the INT.
-The original port number XYZ is stored in the shim header:
+NPT (Next Protocol Type) is 2 indicating another L4 header follows INT.
+IP proto is 6 to indicate that TCP follows INT:
 ```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Type=3 | 1 |R R|   Length=5    |        UDP port = XYZ         |
+   |Type=3 | 2 |R R|   Length=5    |  Reserved     |  IP proto = 6 |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-INT-MX Header, followed by UDP payload:
+INT-MX Header, followed by TCP header and payload:
 ```
     0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -2463,7 +2463,7 @@ INT-MX Header, followed by UDP payload:
    |               Flow ID (assigned by source node)               |
    |0 0 0 1 0 0 1 0 0 0 1 1 0 1 0 0 0 1 0 1 0 1 1 0 0 1 1 1 1 0 0 0|
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
-   |                          UDP payload                          |
+   |                          TCP header                           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -2788,6 +2788,6 @@ assumptions in section [#sec-examples]
 * 2020-06-10
   - Specified that INT-MX 'source-only' metadata must be embedded in the packet
     and should be reported to the monitoring system by each node.
-* 2020-06-11
+* 2020-06-15
   - Simplified INT-MX processing by removing the padding option.
   - **Tag V2.1 spec**
