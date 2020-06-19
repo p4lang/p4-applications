@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : Version 2.0
-Title Footer : 2018-05-27
+Title Footer : 2020-06-15
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *CableLabs, Cisco Systems, Intel, VMware, Xilinx*
 Heading depth : 5
@@ -715,11 +715,12 @@ Header with the length in the UDP header.
 
       - Set the Telemetry Report *DSMdBits* field to zero and rederive the
         Telemetry Report *MD Length* from *RepMdBits*, or
-      - Copy the INT *Hop ML* to the Telemetry Report *MD Length*, subtracting
-        1 or 2 if INT *Instruction Bitmap* bits 0 and/or 15 is set, copy the
-        INT *DS Instruction* to the Telemetry Report *DSMdBits* field, and pad
-        the Variable Optional Baseline & DS Metadata with the special all-ones
-        reserved value out to *MD Length*.
+      - Not send any of its own metadata to the monitoring systems, doing
+        any of the following:
+        - Not generate any Telemetry Report, or
+        - Clear *RepMdBits* and *MD Length* as well as *DSMdBits* (this only
+          makes sense for INT-MD), or
+        - Use *RepType* value *Inner Only* (this only makes sense for INT-MD).
 
 * DSMdstatus (16b): Domain Specific Md Status
   : Indicates the domain specific metadata status.
@@ -730,21 +731,21 @@ Header with the length in the UDP header.
 
     If a node receives an INT-MX or INT-MD packet with an *Instruction Bitmap*
     that requests one or more metadata values that are not available or
-    reserved, then the node may either:
-
-      - Ensure that the corresponding bit(s) in the Telemetry Report
-        *RepMdBits* that specify the unavailable metadata are not set, and
-        rederive the Telemetry Report *MD Length* based on the adjusted
-        *RepMdBits* (and *DSMdBits*) values, or
-      - Copy the INT *Instruction Bitmap* to the Telemetry Report *RepMdBits*
-        and copy the INT *Hop ML* to the Telemetry Report *MD Length*, clearing
-        bits 0 and 15 if set and subtracting from *MD Length*, and send the
-        all-ones reserved value (4 or 8 bytes of 0xFF depending on the length
-        of metadata) in the Variable Optional Baseline Metadata.
+    reserved, then the node must ensure that the corresponding bit(s) in the
+    Telemetry Report *RepMdBits* that specify the unavailable metadata are not
+    set. The Telemetry Report *MD Length* must be derived based on the adjusted
+    *RepMdBits* (and *DSMdBits*) values.
 
 * Variable Optional Domain Specific Metadata
   : The metadata corresponding to *DSMdBits*, 4 octets or a multiple of
     4 octets for each bit.
+
+    If a node receives an INT-MX or INT-MD packet with a *DS Instruction*
+    that requests one or more metadata values that are not available or
+    reserved, then the node must ensure that the corresponding bit(s) in the
+    Telemetry Report *DSMdBits* that specify the unavailable metadata are not
+    set. The Telemetry Report *MD Length* must be derived based on the adjusted
+    *DSMdBits* (and *RepMdBits*) values.
 
 []{tex-cmd: "\newpage"}
 
@@ -1242,6 +1243,9 @@ specification.
   - Added RepType codepoint for 'Inner Only'
 * 2020-05-25
   - Added 2 examples of telemetry reports with embedded telemetry metadata
+* 2020-06-15
+  - Simplify metadata processing by removing padding option, relying on
+    clearing of bits instead.
   - **Tag v2.0 spec**
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
@@ -1257,4 +1261,3 @@ specification.
 [^IPFIX]: Specification of the IP Flow Information Export (IPFIX) Protocol for the Exchange of Flow Information, [RFC 7011](https://www.ietf.org/rfc/rfc7011.txt), September 2013.
 
 [^IOAM_VXLAN_GPE]: VXLAN-GPE Encapsulation for In-situ OAM Data, [draft-brockners-ioam-vxlan-gpe-00](https://tools.ietf.org/html/draft-brockners-ioam-vxlan-gpe-03), November 2019.
-
