@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-06-15
+Title Footer: 2020-08-19
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -270,7 +270,7 @@ embed its own metadata into the packet, playing the roles of INT Transit as well
 * **INT Metadata**:
   : Information that an INT Source or an INT Transit Hop node inserts into the
     INT Header, or into a telemetry report. Examples of metadata are described
-    in Section [#sec-what-to-monitor].
+    in Section [#what-to-monitor].
 
 * **INT Domain**:
   : A set of inter-connected INT nodes under the same administration. This
@@ -313,6 +313,10 @@ There are three variations based on the level of packet modifications.
   instruction header before forwarding the packet to the receiver. Packet
   modification is limited to the instruction header, the packet size doesn't
   grow as the packet traverses more Transit nodes.
+
+  INT-MX also supports 'source-inserted' metadata as part of Domain Specific
+  Instructions. This allows the INT Source to embed additional metadata that
+  other nodes or the monitoring system can consume.
 
   This mode is inspired by IOAM's "Direct Export" [^IOAM] [^IOAM-DEX].
 
@@ -502,12 +506,12 @@ Destination-type header.
         network device is an L3 hop)
   - The format of Destination-type headers will be defined in a future
     revision. Note some Edge-to-Edge INT use cases can be supported by
-    'source-only' metadata, part of Domain Specific Instructions in the MD-type
-    and MX-type headers.
+    'source-only' and 'source-inserted' metadata, part of Domain Specific
+    Instructions in the MD-type and MX-type headers.
 * MX-type (**INT Header type 3**)
   - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header and generate reports to the monitoring system as instructed.
-    The format of this header is defined in Section [#sec-int-mx-header-format].
+    The format of this header is defined in Section [#int-mx-header].
 
 ## Per-Hop Header Operations
 
@@ -1352,7 +1356,7 @@ INT-MX Header:
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |         DS Instruction        |            DS Flags           |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |        Optional Domain Specific 'Source-Only' Metadata        |
+    |      Optional Domain Specific 'Source-Inserted' Metadata      |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -1408,25 +1412,48 @@ INT-MX Header:
   can assign values in the range 0x0001 to 0xFFFF.
 
 * **DS Instruction (16b):** Instruction bitmap specific to the INT domain
-  identified by the *Domain Specific ID*. Each bit that is set requests that
-  metadata be sent to the monitoring system.
+  identified by the *Domain Specific ID*. When a bit is defined for a particular
+  domain, in addition to the metadata semantics and syntax, the definition must
+  specify the behavior with respect to the following properties:
 
-  Some metadata can be defined as 'source-only' metadata by the INT domain.
-  Unlike other metadata, 'source-only' metadata is embedded in the packet by the
-  INT source node, as *Optional Domain Specific 'Source-Only' Metadata*. The
-  *DS Instruction* bits corresponding to 'source-only' metadata do not serve as
-  instructions for downstream INT nodes to insert their own metadata. Instead,
-  they indicate that the metadata is embedded, and that each node including
-  the source, transit, and sink nodes should report that source metadata to the
-  monitoring system along with the node's own metadata. Note that there are
-  two ways to include the 'source-only' metadata in the Telemetry Report,
-  described below.
+    - **DS Instruction Mode:**
+      - **Export**: Each bit that is set requests that each node send this
+        metadata in its telemetry report. This is similar to the bits in the
+        *Instruction Bitmap*, except that the metadata syntax and semantics are
+        defined in a domain specific manner.
+      - **Source-Inserted**: Each bit that is set represents metadata that is
+        inserted by the source node into the *Optional Domain Specific
+        'Source-Inserted' Metadata* in this packet.
+
+    - **Source-Inserted Metadata Reporting Requirement:**
+      - **All Nodes**: Each node including the source, transit, and sink nodes
+        should report this source-inserted metadata to the monitoring system
+        along with the node's own metadata. One example of a type of metadata
+        that would benefit from *All Nodes* behavior is a sequence number, which
+        can be used by the monitoring system to assist in correlation of
+        multiple telemetry reports for the same flow. Note that there are two
+        ways to include the 'source-inserted' metadata in the Telemetry Report,
+        described below.
+      - **Sink Node**: The sink node should report this source-inserted metadata
+        to the monitoring system along with the node's own metadata. One example
+        of a type of metadata that would benefit from *Sink Node* behavior is a
+        timestamp, which could be used to determine the latency experienced by a
+        packet from the source node to the sink node.
+      - **None**: This source-inserted metadata is meant to be consumed by other
+        nodes, and need not be included in any of the telemetry reports directed
+        to the monitoring system.
+
+    - **Source-Inserted Metadata Mutability:**
+      - **Source-Only**: The source node inserts the metadata. Transit and sink
+        nodes must not change the value of this source-inserted metadata.
+      - **Cumulative**: Transit and sink nodes may update or replace the value
+        of the source-inserted metadata.
 
   The amount of Domain Specific Metadata sent by each hop must be a multiple of
   4 bytes, determined from the *DS Instruction*, as described below.
 
-* **Optional Domain Specific 'Source-Only' Metadata:** The metadata
-  corresponding to 'source-only' *DS Instruction* bits follows the
+* **Optional Domain Specific 'Source-Inserted' Metadata:** The metadata
+  corresponding to 'source-inserted' *DS Instruction* bits follows the
   *DS Instruction* and the *DS Flags* fields in the INT-MX header. The length
   of this field must be counted in the INT length field of the INT shim header.
 
@@ -1455,12 +1482,16 @@ INT-MX Header:
          *DSMdBits* is not set in the Telemetry Report, or
        - Not send any of its own metadata to the monitoring systems.
 
-     - The INT node should make every effort to include 'source-only' metadata
-       (from the INT-MX header) in the Telemetry Report. Two ways to accomplish
-       this are described, with differing implementation dependent impact:
+     - The INT node should make every effort to include domain specific
+       'source-inserted' metadata (from the INT-MX header) in the Telemetry
+       Report, if that metadata's *Source-Inserted Metadata Reporting
+       Requirement* is *All Nodes*, or *Sink Node* if this is the sink node.
+       Two ways to accomplish this are described, with differing implementation
+       dependent impact:
        a. The truncated packet in the *Individual Report Inner Contents*
-          includes the INT-MX header with embedded 'source-only' metadata, or
-       b. The embedded 'source-only' metadata from the INT-MX header is
+          includes the INT-MX header with embedded 'source-inserted' metadata,
+          or
+       b. The embedded 'source-inserted' metadata from the INT-MX header is
           copied into the *Variable Optional Domain Specific Metadata* in the
           *Individual Report Main Contents*. Note that in order to achieve this,
           the node must understand the *Domain Specific ID* and corresponding
@@ -1472,17 +1503,17 @@ INT-MX Header:
 
        Although typically only one of these ways would be applied to a given
        packet at a specific node, the combination of both of the above is
-       allowed. The expectation is that each INT node implementation will rely
-       on one of these to report 'source-only' metadata, while monitoring
-       systems should support both.
+       allowed. The expectation is that for each role (source, transit, sink),
+       each INT node implementation will rely on one of these to report
+       'source-inserted' metadata, while monitoring systems should support both.
 
-       If the 'source-only' metadata is *not* copied into the *Variable Optional
-       Domain Specific Metadata*, then the corresponding bits in *DSMdBits* must
-       be cleared.
+       If the 'source-inserted' metadata is *not* copied into the *Variable
+       Optional Domain Specific Metadata*, then the corresponding bits in
+       *DSMdBits* must be cleared.
 
        Due to backward compatibility implications, domain administrators need
        to be careful when leaving some bits in *DSMdBits* reserved, with regard
-       to defining any of those bits as 'source-only' in the future.
+       to defining any of those bits as 'source-inserted' in the future.
 
      - An INT node may be limited in the maximum number of instructions it can
        process and/or maximum length of metadata it can gather for each data
@@ -2428,12 +2459,12 @@ INT-MX Header:
 
 []{tex-cmd: "\newpage"}
 
-## Example with INT-MX including domain specific source-only metadata
+## Example with INT-MX including domain specific source-inserted metadata
 
 We consider a scenario similar to Section [#example-mx-udp-tcp], with the addition
-of 'source-only' metadata that consists of a Sequence Number with current value
-15 and a Flow ID with current value 0x12345678. The *Domain Specific ID* value
-is 0xabcd.
+of 'source-inserted' metadata that consists of a Sequence Number with current
+value 15 and a Flow ID with current value 0x12345678. The *Domain Specific ID*
+value is 0xabcd.
 
 INT Shim Header for UDP, INT type is INT-MX (3) and
 NPT (Next Protocol Type) is 2 indicating another L4 header follows INT.
@@ -2790,4 +2821,8 @@ assumptions in section [#sec-examples]
     and should be reported to the monitoring system by each node.
 * 2020-06-15
   - Simplified INT-MX processing by removing the padding option.
+* 2020-08-19
+  - Generalized INT-MX 'source-only' metadata to 'source-inserted' metadata.
+    When the bit is defined for a domain, the definition specifies the
+    reporting requirement and whether the 'source-inserted' metadata is mutable.
   - **Tag V2.1 spec**
