@@ -618,6 +618,30 @@ Considering all these factors, this specification requires that an INT
 node must not fragment packets in order to append INT information to
 the packet.
 
+## Congestion Considerations
+
+Use of the INT encapsulation should not increase the impact of congestion on
+the network. While many transport protocols (e.g. TCP, SCTP, DCCP, QUIC)
+inherently provide congestion control mechanisms, other transport protocols
+(e.g. UDP) do not. For the latter case, applications may provide congestion
+control or limit the traffic volume.
+
+It is recommended not to apply INT to application traffic that is known not to
+be congestion controlled (as described in RFC 8085 [^RFC8085] Section 3.1.11).
+In order to achieve this, packet filtering mechanisms such as access control
+lists should be provided, with match criteria including IP protocol and L4
+ports.
+
+Because INT encapsulation endpoints are located within the same administrative
+domain, an operator may allow for INT encapsulation of traffic that is known
+not to be congestion controlled. In this case, the operator should carefully
+consider the potential impact of congestion, and implement appropriate
+mechanisms for controlling or mitigating the effects of congestion. This
+includes capacity planning, traffic engineering, rate limiting, and other
+mechanisms.
+
+[^RFC8085]: UDP Usage Guidelines, [RFC 8085](https://www.rfc-editor.org/info/rfc8085), March 2017.
+
 ## INT over any encapsulation
 
 The specific location for INT Headers is intentionally not specified:
