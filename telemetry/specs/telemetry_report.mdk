@@ -1,6 +1,6 @@
 Title : Telemetry Report Format Specification
 Title Note : Version 2.0
-Title Footer : 2020-06-15
+Title Footer : 2020-10-08
 Author : The P4.org Applications Working Group
 Affiliation: Contributions from *CableLabs, Cisco Systems, Intel, VMware, Xilinx*
 Heading depth : 5
@@ -582,10 +582,14 @@ Header with the length in the UDP header.
     *Individual Report Inner Contents*, but excluding the length of the first
     4-byte word (*RepType, InType, Report Length, MD Length, D, Q, F, I, Rsvd*).
 
-    For *RepType* codepoint 1 *INT*, this includes the length of *RepMdBits,
-    Domain Specific ID, DSMdBits, DSMdstatus, Variable Optional Baseline
-    Metadata,* and *Variable Optional Domain Specific Metadata* (see Section
-    [#int-report]).
+    For *RepType* codepoint 1 *INT*, the *Report Length* includes the lengths
+    of *RepMdBits, Domain Specific ID, DSMdBits, DSMdstatus, Variable Optional
+    Baseline Metadata,* and *Variable Optional Domain Specific Metadata* (see
+    Section [#int-report]).
+
+    The *Report Length* value 0xFF is a special value that indicates a length
+    greater than or equal to 0xFF, extending to the end of the UDP payload,
+    i.e. there are no subsequent individual reports in this telemetry report.
 
 * MD Length (8b): Metadata Length
   : Indicates the length of metadata included in this report in a multiple
@@ -642,7 +646,8 @@ Header with the length in the UDP header.
     indicated by *InType* codepoint 3, 4, or 5, which identifies the type of
     header at the beginning of the truncated packet. The length of the
     truncated packet can be determined as *Report Length* - ((fixed length of
-    *Individual Report Main Contents*) + *MD Length*).
+    *Individual Report Main Contents*) + *MD Length*), unless the
+    *Report Length* value is 0xFF.
 
 * Additional DS Extension Data
   : Additional Domain Specific Extension Data, whose format can be
@@ -687,8 +692,6 @@ Header with the length in the UDP header.
     * bit 8: Buffer ID (8 bits) + Buffer Occupancy (24 bits)
     * bit 9-14: Reserved.
     * bit 15: Queue ID (8 bits) + Drop Reason (8 bits) + Padding (16 bits)
-
-    []{tex-cmd: "\newpage"}
 
     This specification defines the following metadata:
     * Drop reason
@@ -1246,6 +1249,11 @@ specification.
 * 2020-06-15
   - Simplify metadata processing by removing padding option, relying on
     clearing of bits instead.
+* 2020-10-08
+  - Specified the 'Report Length' value 0xFF as a special value that indicates
+    a length greater than or equal to 0xFF in 4-byte words, extending to the
+    end of the UDP payload, i.e. there are no subsequent individual reports in
+    this telemetry report.
   - **Tag v2.0 spec**
 
 [^IOAM_reqs]: Requirements for In-situ OAM, [draft-brockners-inband-oam-requirements-03](https://tools.ietf.org/html/draft-brockners-inband-oam-requirements-03), March 2017.
