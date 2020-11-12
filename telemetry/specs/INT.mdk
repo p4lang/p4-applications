@@ -618,6 +618,30 @@ Considering all these factors, this specification requires that an INT
 node must not fragment packets in order to append INT information to
 the packet.
 
+## Congestion Considerations
+
+Use of the INT encapsulation should not increase the impact of congestion on
+the network. While many transport protocols (e.g. TCP, SCTP, DCCP, QUIC)
+inherently provide congestion control mechanisms, other transport protocols
+(e.g. UDP) do not. For the latter case, applications may provide congestion
+control or limit the traffic volume.
+
+It is recommended not to apply INT to application traffic that is known not to
+be congestion controlled (as described in RFC 8085 [^RFC8085] Section 3.1.11).
+In order to achieve this, packet filtering mechanisms such as access control
+lists should be provided, with match criteria including IP protocol and L4
+ports.
+
+Because INT encapsulation endpoints are located within the same administrative
+domain, an operator may allow for INT encapsulation of traffic that is known
+not to be congestion controlled. In this case, the operator should carefully
+consider the potential impact of congestion, and implement appropriate
+mechanisms for controlling or mitigating the effects of congestion. This
+includes capacity planning, traffic engineering, rate limiting, and other
+mechanisms.
+
+[^RFC8085]: UDP Usage Guidelines, [RFC 8085](https://www.rfc-editor.org/info/rfc8085), March 2017.
+
 ## INT over any encapsulation
 
 The specific location for INT Headers is intentionally not specified:
@@ -635,8 +659,6 @@ if better suited to their needs and environment.
 * INT over TCP (as payload)
 * INT over UDP (as payload)
 * INT over GRE (as a shim between GRE header and encapsulated payload)
-
-[]{tex-cmd: "\newpage"}
 
 ## Checksum Update
 
@@ -699,8 +721,6 @@ checksum validation. If full checksum computation is performed at an INT
 node, it should be preceded by checksum validation so as to not mask out any
 corruption at preceding hops.
 
-[]{tex-cmd: "\newpage"}
-
 ## Header Location
 
 We describe four encapsulation formats in this specification, covering
@@ -746,9 +766,6 @@ the INT Metadata Header and Metadata following the GRE header. The sink node
 of the INT domain should remove the GRE encapsulation along with removing
 the INT Metadata Header and the Metadata stack before forwarding the packet
 to the destination.
-
-
-[]{tex-cmd: "\newpage"}
 
 IPv4 GRE Option format for carrying INT Header and
 Metadata:
@@ -862,8 +879,6 @@ INT header exists after the TCP/UDP header. We propose three options.
   restore the original destination port number from the shim header
   into the UDP header and strip the INT headers.
 
-[]{tex-cmd: "\newpage"}
-
 2. IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
 INT header into a packet, it sets the reserved value in the field or sets the
@@ -915,8 +930,6 @@ the likelihood of conflicting with user traffic in a data center is
 low, but cannot be completely eliminated. To further reduce the chance of
 conflict, a deployment could choose to also examine TCP/UDP port numbers
 to validate INT probe marker.
-
-[]{tex-cmd: "\newpage"}
 
 Any of the above options may be used in an INT domain, provided that the INT
 transit and sink nodes in the INT domain comply with the mechanism chosen
