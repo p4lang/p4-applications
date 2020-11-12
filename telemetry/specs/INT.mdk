@@ -1,6 +1,6 @@
 Title         : In-band Network Telemetry (INT) Dataplane Specification
 Title Note : Version 2.1
-Title Footer: 2020-06-15
+Title Footer: 2020-10-08
 Author : The P4.org Applications Working Group. Contributions from
 
 Affiliation : *Alibaba, Arista, CableLabs, Cisco Systems, Dell, Intel, Marvell, Netronome, VMware*
@@ -270,7 +270,7 @@ embed its own metadata into the packet, playing the roles of INT Transit as well
 * **INT Metadata**:
   : Information that an INT Source or an INT Transit Hop node inserts into the
     INT Header, or into a telemetry report. Examples of metadata are described
-    in Section [#sec-what-to-monitor].
+    in Section [#what-to-monitor].
 
 * **INT Domain**:
   : A set of inter-connected INT nodes under the same administration. This
@@ -507,7 +507,7 @@ Destination-type header.
 * MX-type (**INT Header type 3**)
   - Intermediate nodes (INT Transit Hops) must process this type of INT
     Header and generate reports to the monitoring system as instructed.
-    The format of this header is defined in Section [#sec-int-mx-header-format].
+    The format of this header is defined in Section [#int-mx-header].
 
 ## Per-Hop Header Operations
 
@@ -660,8 +660,6 @@ if better suited to their needs and environment.
 * INT over UDP (as payload)
 * INT over GRE (as a shim between GRE header and encapsulated payload)
 
-[]{tex-cmd: "\newpage"}
-
 ## Checksum Update
 
 As described above in Section [#sec-int-over-any-encapsulation], INT
@@ -723,8 +721,6 @@ checksum validation. If full checksum computation is performed at an INT
 node, it should be preceded by checksum validation so as to not mask out any
 corruption at preceding hops.
 
-[]{tex-cmd: "\newpage"}
-
 ## Header Location
 
 We describe four encapsulation formats in this specification, covering
@@ -770,9 +766,6 @@ the INT Metadata Header and Metadata following the GRE header. The sink node
 of the INT domain should remove the GRE encapsulation along with removing
 the INT Metadata Header and the Metadata stack before forwarding the packet
 to the destination.
-
-
-[]{tex-cmd: "\newpage"}
 
 IPv4 GRE Option format for carrying INT Header and
 Metadata:
@@ -886,8 +879,6 @@ INT header exists after the TCP/UDP header. We propose three options.
   restore the original destination port number from the shim header
   into the UDP header and strip the INT headers.
 
-[]{tex-cmd: "\newpage"}
-
 2. IPv4 DSCP or IPv6 Traffic Class field: A value or a bit can be used to
 indicate the existence of INT after TCP/UDP. When the INT source inserts the
 INT header into a packet, it sets the reserved value in the field or sets the
@@ -939,8 +930,6 @@ the likelihood of conflicting with user traffic in a data center is
 low, but cannot be completely eliminated. To further reduce the chance of
 conflict, a deployment could choose to also examine TCP/UDP port numbers
 to validate INT probe marker.
-
-[]{tex-cmd: "\newpage"}
 
 Any of the above options may be used in an INT domain, provided that the INT
 transit and sink nodes in the INT domain comply with the mechanism chosen
@@ -2010,6 +1999,98 @@ INT-MX Header, followed by UDP payload:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+## Example with new IP and UDP headers and INT-MX inserted before IPSec
+
+We consider a scenario where host1 sends an IPSec transport mode packet to
+host2.
+The ToR switch of host1 (Switch1) acts as the INT source. It adds new IP and
+UDP headers and a new INT-MX header in the packet. Switch2 processes the
+INT-MX Header.
+Finally, the ToR switch of host2 (Switch3) acts as the INT sink and removes
+the UDP and INT-MX headers before forwarding the packet to host2.
+
+Below is the packet received by INT sink Switch3, starting from the outer IPv4
+header. We use INT_TBD for UDP.Destination_Port to indicate the existence of
+INT headers.
+
+[]{tex-cmd: "\newpage"}
+
+IP Header:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Identification        |Flags|      Fragment Offset    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Time to Live |   Proto = 17  |        Header Checksum        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Source Address                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Destination Address                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+UDP Header:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Source Port          |  Destination Port = INT_TBD   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Length              |           Checksum            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+INT Shim Header for UDP, INT type is INT-MX (3) and
+NPT (Next Protocol Type) is 2 indicating an IP protocol value specifies
+the header that follows INT.
+IP proto is 4 to indicate that an inner IPv4 header follows INT:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Type=3 | 2 |R R|   Length=3    |  Reserved     |  IP proto = 4 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+INT-MX Header:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=2 |0|                  Reserved                           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+[]{tex-cmd: "\newpage"}
+
+Inner IP Header followed by AH Header and IP Payload:
+```
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ver=4 | IHL=5 |    DSCP   |ECN|          Length               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Identification        |Flags|      Fragment Offset    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Time to Live |   Proto = 51  |        Header Checksum        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Source Address                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Destination Address                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         AH Header                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         IP Payload                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
 ## Example with INT-MD over IPv4/GRE (Original packet IPv4)
 
 In this scenario host1 sends an IPv4 packet to host2.
@@ -2814,4 +2895,6 @@ assumptions in section [#sec-examples]
     and should be reported to the monitoring system by each node.
 * 2020-06-15
   - Simplified INT-MX processing by removing the padding option.
+* 2020-10-08
+  - Added an example of INT over UDP with an IPSec payload
   - **Tag V2.1 spec**
