@@ -17,7 +17,7 @@ Meeting Minutes
 WG meeting minutes prior to Oct 2019 are posted to the [Wiki](https://github.com/p4lang/p4-applications/wiki) of thie repo.
 
 Meeting minutes from Oct 2019 and after are directly distributed to the mailing list. You can find them in the archive
-[http://lists.p4.org/pipermail/p4-apps_lists.p4.org/](http://lists.p4.org/pipermail/p4-apps_lists.p4.org/)
+[https://lists.p4.org/list/p4-apps.lists.p4.org](https://lists.p4.org/list/p4-apps.lists.p4.org)
 
 Directory Structure
 ------------------
