@@ -1,11 +1,11 @@
-module p4-dtel-metadata-semantics {
+module p4-int-metadata-semantics {
 
   yang-version "1";
 
   // namespace value needs to be updated
-  namespace "urn:p4:yang:p4-dtel-metadata-semantics";
+  namespace "urn:p4:yang:p4-int-metadata-semantics";
 
-  prefix "dtel-md";
+  prefix "int-metadata";
 
   // import from openconfig or redefine locally?
   import openconfig-inet-types { prefix oc-inet; }
@@ -22,12 +22,12 @@ module p4-dtel-metadata-semantics {
      specifications, primarily to report metadata semantics to
      telemetry monitoring systems.";
 
-  revision "2018-07-03" {
+  revision "2021-04-01" {
     description "Initial version";
     reference
       "In-band Network Telemetry (INT) Dataplane Specification,
-       Version 1.0, 2018-04-20;
-       Telemetry Report Format Specification 1.0, 2018-04-20";
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
   }
 
   // identity statements
@@ -112,7 +112,7 @@ module p4-dtel-metadata-semantics {
 
   // typedef statements
 
-  typedef queue-md-timing {
+  typedef queue-metadata-timing {
     type enumeration {
       enum ENQUEUE_TIME {
         description
@@ -127,7 +127,7 @@ module p4-dtel-metadata-semantics {
       "Specifies the timing of retrieval of queue related metadata";
   }
 
-  typedef int-last-hop-md-report-position {
+  typedef int-last-hop-metadata-report-position {
     type enumeration {
       enum EMBEDDED_INT {
         description
@@ -155,7 +155,7 @@ module p4-dtel-metadata-semantics {
 
   // grouping statemenets
 
-  grouping dtel-md-semantics-time-units {
+  grouping int-metadata-semantics-time-units {
     description
       "Units of time used for specific instances of INT metadata and
        telemetry report metadata";
@@ -169,7 +169,7 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-semantics-size-units {
+  grouping int-metadata-semantics-size-units {
     description
       "Units of size used for specific instances of INT metadata and
        telemetry report metadata";
@@ -194,7 +194,7 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-semantics-utilization-units {
+  grouping int-metadata-semantics-utilization-units {
     description
       "Units of utilization used for specific instances of INT
        metadata and telemetry report metadata";
@@ -208,7 +208,7 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-switch-id {
+  grouping int-metadata-switch-id {
     description
       "Switch identifier used in dataplane telemetry metadata";
 
@@ -220,7 +220,7 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-metadata-supported {
+  grouping int-metadata-metadata-supported {
     description
       "Indicates whether a field is supported in INT metadata and
        telemetry report metadata";
@@ -239,58 +239,58 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-hop-latency {
+  grouping int-metadata-hop-latency {
     description
       "Detailed semantics of hop latency in INT metadata and
        telemetry report metadata";
 
-    uses dtel-md-semantics-time-units;
+    uses int-metadata-semantics-time-units;
   }
 
-  grouping dtel-md-queue-occupancy {
+  grouping int-metadata-queue-occupancy {
     description
       "Detailed semantics of queue occupancy in INT metadata and
        telemetry report metadata";
 
-    uses dtel-md-semantics-size-units;
+    uses int-metadata-semantics-size-units;
 
     leaf packet-timing {
-      type queue-md-timing;
+      type queue-metadata-timing;
       description
         "Whether this queue occupancy was measured when the packet
          was enqueued, or when the packet was dequeued";
     }
   }
 
-  grouping dtel-md-ingress-timestamp {
+  grouping int-metadata-ingress-timestamp {
     description
       "Detailed semantics of ingress timestamp in INT metadata and
        telemetry report metadata";
 
-    uses dtel-md-semantics-time-units;
+    uses int-metadata-semantics-time-units;
   }
 
-  grouping dtel-md-egress-timestamp {
+  grouping int-metadata-egress-timestamp {
     description
       "Detailed semantics of egress timestamp in INT metadata and
        telemetry report metadata";
 
-    uses dtel-md-semantics-time-units;
+    uses int-metadata-semantics-time-units;
   }
 
-  grouping dtel-md-egress-port-tx-utilization {
+  grouping int-metadata-egress-port-tx-utilization {
     description
       "Detailed semantics of egress port tx utilization INT metadata
        and telemetry report metadata";
 
-    uses dtel-md-semantics-utilization-units;
+    uses int-metadata-semantics-utilization-units;
 
     // TBD: Need to specify something about computation
     // Moving average?
     // Time frame?
   }
 
-  grouping dtel-md-drop-reason {
+  grouping int-metadata-drop-reason {
     description
       "Detailed semantics of drop reason in telemetry report
        metadata";
@@ -302,13 +302,13 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-int-last-hop-md-report {
+  grouping int-metadata-int-last-hop-report {
     description
       "Properties of INT last hop telemetry reports generated by
        this node";
 
-    leaf int-last-hop-md-report {
-      type int-last-hop-md-report-position;
+    leaf int-last-hop-metadata-report {
+      type int-last-hop-metadata-report-position;
       description
         "Specifies whether last hop metadata is included in the same
          telemetry report as the embedded INT metadata from previous
@@ -317,7 +317,7 @@ module p4-dtel-metadata-semantics {
     }
   }
 
-  grouping dtel-md-semantics-identifiers {
+  grouping int-metadata-semantics-identifiers {
     description
       "Identifiers used in dataplane telemetry metadata";
 
@@ -328,14 +328,14 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "switch_id config";
-        uses dtel-md-switch-id;
+        uses int-metadata-switch-id;
       }
 
       container state {
         config false;
         description
           "State information for switch_id";
-        uses dtel-md-switch-id;
+        uses int-metadata-switch-id;
       }
     }
 
@@ -343,7 +343,7 @@ module p4-dtel-metadata-semantics {
 
   }
 
-  grouping dtel-md-semantics-details {
+  grouping int-metadata-semantics-details {
     description
       "Detailed semantics of dataplane telemetry metadata";
 
@@ -354,15 +354,15 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "Hop latency config";
-        uses dtel-md-hop-latency;
+        uses int-metadata-hop-latency;
       }
 
       container state {
         config false;
         description
           "State information for hop latency";
-        uses dtel-md-hop-latency;
-        uses dtel-md-metadata-supported;
+        uses int-metadata-hop-latency;
+        uses int-metadata-metadata-supported;
       }
     }
 
@@ -373,15 +373,15 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "Queue occupancy config";
-        uses dtel-md-queue-occupancy;
+        uses int-metadata-queue-occupancy;
       }
 
       container state {
         config false;
         description
           "State information for queue occupancy";
-        uses dtel-md-queue-occupancy;
-        uses dtel-md-metadata-supported;
+        uses int-metadata-queue-occupancy;
+        uses int-metadata-metadata-supported;
       }
     }
 
@@ -392,15 +392,15 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "Ingress timestamp config";
-        uses dtel-md-ingress-timestamp;
+        uses int-metadata-ingress-timestamp;
       }
 
       container state {
         config false;
         description
           "State information for ingress timestamp";
-        uses dtel-md-ingress-timestamp;
-        uses dtel-md-metadata-supported;
+        uses int-metadata-ingress-timestamp;
+        uses int-metadata-metadata-supported;
       }
     }
 
@@ -411,15 +411,15 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "Egress timestamp config";
-        uses dtel-md-egress-timestamp;
+        uses int-metadata-egress-timestamp;
       }
 
       container state {
         config false;
         description
           "State information for egress timestamp";
-        uses dtel-md-egress-timestamp;
-        uses dtel-md-metadata-supported;
+        uses int-metadata-egress-timestamp;
+        uses int-metadata-metadata-supported;
       }
     }
 
@@ -430,15 +430,15 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "Egress port tx utilization config";
-        uses dtel-md-egress-port-tx-utilization;
+        uses int-metadata-egress-port-tx-utilization;
       }
 
       container state {
         config false;
         description
           "State information for egress port tx utilization";
-        uses dtel-md-egress-port-tx-utilization;
-        uses dtel-md-metadata-supported;
+        uses int-metadata-egress-port-tx-utilization;
+        uses int-metadata-metadata-supported;
       }
     }
 
@@ -449,65 +449,65 @@ module p4-dtel-metadata-semantics {
       container config {
         description
           "Drop reason config";
-        uses dtel-md-drop-reason;
+        uses int-metadata-drop-reason;
       }
 
       container state {
         config false;
         description
           "State information for drop reason";
-        uses dtel-md-drop-reason;
-        uses dtel-md-metadata-supported;
+        uses int-metadata-drop-reason;
+        uses int-metadata-metadata-supported;
       }
     }
   }
 
-  grouping dtel-md-semantics-report-properties {
+  grouping int-metadata-semantics-report-properties {
     description
       "Properties of telemetry reports generated by this node";
 
-    container int-last-hop-md-report {
+    container int-last-hop-report-properties {
       description
         "Container for INT last hop telemetry report properties";
 
       container config {
         description
           "INT last hop telemetry report config";
-        uses dtel-md-int-last-hop-md-report;
+        uses int-metadata-int-last-hop-report;
       }
 
       container state {
         description
           "State information for INT last hop telemetry reports";
-        uses dtel-md-int-last-hop-md-report;
+        uses int-metadata-int-last-hop-report;
       }
     }
   }
 
-  grouping dtel-md-semantics-top {
+  grouping int-metadata-semantics-top {
     description
       "Top level grouping for dataplane telemetry metadata semantics";
 
     container identifiers {
       description
         "Identifiers used in dataplane telemetry metadata";
-      uses dtel-md-semantics-identifiers;
+      uses int-metadata-semantics-identifiers;
     }
 
-    container md-semantics {
+    container metadata-semantics {
       description
         "Semantics of dataplane telemetry metadata";
-      uses dtel-md-semantics-details;
+      uses int-metadata-semantics-details;
     }
 
     container report-properties {
       description
         "Properties of telemetry reports generated by this node";
-      uses dtel-md-semantics-report-properties;
+      uses int-metadata-semantics-report-properties;
     }
   }
 
   // data definition statements
-  uses dtel-md-semantics-top;
+  uses int-metadata-semantics-top;
 
 }
