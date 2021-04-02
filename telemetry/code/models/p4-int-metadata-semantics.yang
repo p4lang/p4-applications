@@ -1,6 +1,6 @@
 module p4-int-metadata-semantics {
 
-  yang-version "1";
+  yang-version 1.1;
 
   // namespace value needs to be updated
   namespace "urn:p4:yang:p4-int-metadata-semantics";
@@ -22,7 +22,7 @@ module p4-int-metadata-semantics {
      specifications, primarily to report metadata semantics to
      telemetry monitoring systems.";
 
-  revision "2021-04-01" {
+  revision "2021-04-02" {
     description "Initial version";
     reference
       "In-band Network Telemetry (INT) Dataplane Specification,
@@ -30,12 +30,24 @@ module p4-int-metadata-semantics {
        Telemetry Report Format Specification 2.0, 2020-10-08";
   }
 
-  // identity statements
+  // identity statements for metadata units
 
   identity METADATA_UNITS {
     description
       "Base identity for specifying units used to encode specific
        metadata";
+  }
+
+  identity METADATA_UNITS_IDENTIFIER {
+    base METADATA_UNITS;
+    description
+      "Encoding an identifier";
+  }
+
+  identity METADATA_UNITS_INTEGER {
+    base METADATA_UNITS;
+    description
+      "Encoding an integer";
   }
 
   identity METADATA_TIME_UNITS {
@@ -44,19 +56,19 @@ module p4-int-metadata-semantics {
       "Base identity for specifying units of time";
   }
 
-  identity METADATA_NANOSECONDS {
+  identity METADATA_TIME_NANOSECONDS {
     base METADATA_TIME_UNITS;
     description
       "Encoding time in units of nanoseconds";
   }
 
-  identity METADATA_FRACTIONAL_SECONDS {
+  identity METADATA_TIME_FRACTIONAL_SECONDS {
     base METADATA_TIME_UNITS;
     description
       "Encoding time in units of 2^(-32) seconds";
   }
 
-  identity METADATA_MICROSECONDS {
+  identity METADATA_TIME_MICROSECONDS {
     base METADATA_TIME_UNITS;
     description
       "Encoding time in units of microseconds";
@@ -68,19 +80,19 @@ module p4-int-metadata-semantics {
       "Base identity for specifying units of size, e.g. queue size";
   }
 
-  identity METADATA_BYTES {
+  identity METADATA_SIZE_BYTES {
     base METADATA_SIZE_UNITS;
     description
       "Encoding size in units of bytes";
   }
 
-  identity METADATA_CELLS {
+  identity METADATA_SIZE_CELLS {
     base METADATA_SIZE_UNITS;
     description
       "Encoding size in units of cells";
   }
 
-  identity METADATA_PACKETS {
+  identity METADATA_SIZE_PACKETS {
     base METADATA_SIZE_UNITS;
     description
       "Encoding size in units of packets";
@@ -92,27 +104,183 @@ module p4-int-metadata-semantics {
       "Base identity for specifying units of utilization";
   }
 
-  identity METADATA_PERCENT {
+  identity METADATA_UTIL_PERCENT {
     base METADATA_UTILIZATION_UNITS;
     description
       "Encoding utilization in units of percent";
   }
 
-  identity METADATA_TENTHS_OF_PERCENT {
+  identity METADATA_UTIL_TENTHS_OF_PERCENT {
     base METADATA_UTILIZATION_UNITS;
     description
       "Encoding utilization in units of tenths of percent";
   }
 
-  identity METADATA_HUNDREDTHS_OF_PERCENT {
+  identity METADATA_UTIL_HUNDREDTHS_OF_PERCENT {
     base METADATA_UTILIZATION_UNITS;
     description
       "Encoding utilization in units of hundredths of percent";
   }
 
+  // identity statements for metadata fields
+
+  identity METADATA_FIELD {
+    description
+      "Base identity from which all metadata field definitions
+       are derived";
+  }
+
+  identity METADATA_BASELINE_FIELD {
+    base METADATA_FIELD;
+    description
+      "Base identity from which all baseline metadata field definitions
+       are derived";
+  }
+
+  identity METADATA_FIELD_NODE_ID {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Node ID";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_LEVEL_1_INTERFACE_IDS {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Level 1 Ingress Interface ID
+       and the Level 1 Egress Interface ID";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_HOP_LATENCY {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Hop Latency";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_QUEUE_OCCUPANCY {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Queue ID and Queue Occupancy";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_INGRESS_TIMESTAMP {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Ingress Timestamp";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_EGRESS_TIMESTAMP {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Egress Timestamp";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_LEVEL_2_INTERFACE_IDS {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Level 2 Ingress Interface ID
+       and the Level 2 Egress Interface ID";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_EGRESS_PORT_TX_UTILIZATION {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Egress Port TX Utilization";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_BUFFER_OCCUPANCY {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Buffer ID and Buffer Occupancy";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11;
+       Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_FIELD_CHECKSUM_COMPLEMENT {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Checksum Complement";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11";
+  }
+
+  identity METADATA_FIELD_DROP_REASON {
+    base METADATA_BASELINE_FIELD;
+    description
+      "Metadata field used to specify the Queue ID and Drop Reason";
+    reference
+      "Telemetry Report Format Specification 2.0, 2020-10-08";
+  }
+
+  identity METADATA_DOMAIN_SPECIFIC_FIELD {
+    base METADATA_FIELD;
+    description
+      "Base identity from which all domain specific metadata field
+       definitions are derived. While some common well-known definitions
+       are included in this module, other domain specific metadata field
+       definitions may be specified in other modules.";
+  }
+
+  identity METADATA_FIELD_FLOW_ID {
+    base METADATA_DOMAIN_SPECIFIC_FIELD;
+    description
+      "An identifier for the flow that this packet is associated with,
+       from the point of view of the source node. This identifier should
+       be unique over the lifetime of the flow.";
+  }
+
+  identity METADATA_FIELD_SEQUENCE_NUMBER {
+    base METADATA_DOMAIN_SPECIFIC_FIELD;
+    description
+      "A number that increments for each successive packet associated with
+       the same flow, from the point of view of the source node";
+  }
+
+  identity METADATA_FIELD_SOURCE_MAC_ADDRESS {
+    base METADATA_DOMAIN_SPECIFIC_FIELD;
+    description
+      "Metadata field used to specify a MAC address associated with the
+       source. The MAC address is right justified within the field, with
+       leading 0s prepended in the MSB bits.";
+  }
+
   // typedef statements
 
-  typedef queue-metadata-timing {
+  typedef int-queue-metadata-timing {
     type enumeration {
       enum ENQUEUE_TIME {
         description
@@ -153,74 +321,80 @@ module p4-int-metadata-semantics {
        embedded INT metadata or in the Telemetry Report header";
   }
 
+  typedef int-ds-instruction-mode {
+    type enumeration {
+      enum EXPORT {
+        description
+          "When requested, this domain specific metadata field is
+           exported in each node's telemetry report";
+      }
+      enum SOURCE_INSERTED {
+        description
+          "This domain specific metadata field is inserted by the source
+           node into the Optional Domain Specific Source-Inserted
+           Metadata in the packet";
+      }
+    }
+    description
+      "Whether this domain specific metadata field is exported by each
+       node, or inserted into the packet by the source node";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11";
+  }
+
+  typedef int-source-inserted-reporting-requirement {
+    type enumeration {
+      enum ALL_NODES {
+        description
+          "Each node including the source, transit, and sink nodes
+           should report this source-inserted metadata to the monitoring
+           system along with the node's own metadata";
+      }
+      enum SINK_NODE {
+        description
+          "The sink node should report this source-inserted metadata to
+           the monitoring system along with the node's own metadata";
+      }
+      enum NONE {
+        description
+          "This source-inserted metadata is meant to be consumed by
+           other nodes, and need not be included in any of the telemetry
+           reports directed to the monitoring system";
+      }
+    }
+    description
+      "Which nodes should include this source-inserted metadata field
+       in telemetry reports";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11";
+  }
+
+  typedef int-source-inserted-metadata-mutability {
+    type enumeration {
+      enum SOURCE_ONLY {
+        description
+          "The source node inserts the metadata. Transit and sink nodes
+           must not change the value of this source-inserted metadata.";
+      }
+      enum CUMULATIVE {
+        description
+          "Transit and sink nodes may update or replace the value of the
+           source-inserted metadata";
+      }
+    }
+    description
+      "Whether this metadata field may be updated or replaced by transit
+       and sink nodes";
+    reference
+      "In-band Network Telemetry (INT) Dataplane Specification,
+       Version 2.1, 2020-11-11";
+  }
+
   // grouping statemenets
 
-  grouping int-metadata-semantics-time-units {
-    description
-      "Units of time used for specific instances of INT metadata and
-       telemetry report metadata";
-
-    leaf time-units {
-      type identityref {
-        base METADATA_TIME_UNITS;
-      }
-      description
-        "Units of time";
-    }
-  }
-
-  grouping int-metadata-semantics-size-units {
-    description
-      "Units of size used for specific instances of INT metadata and
-       telemetry report metadata";
-
-    leaf size-units {
-      type identityref {
-        base METADATA_SIZE_UNITS;
-      }
-      description
-        "Units of size";
-    }
-
-    leaf cell-size {
-      when "../size-units = 'METADATA_CELLS'" {
-        description
-          "Cell size is valid only when the size is in units of
-           cells";
-      }
-      type uint16;
-      description
-        "The size in bytes of one cell";
-    }
-  }
-
-  grouping int-metadata-semantics-utilization-units {
-    description
-      "Units of utilization used for specific instances of INT
-       metadata and telemetry report metadata";
-
-    leaf utilization-units {
-      type identityref {
-        base METADATA_UTILIZATION_UNITS;
-      }
-      description
-        "Units of utilization";
-    }
-  }
-
-  grouping int-metadata-switch-id {
-    description
-      "Switch identifier used in dataplane telemetry metadata";
-
-    leaf switch-id {
-      type uint32;
-      description
-        "The switch_id value that this node inserts in INT metadata
-         and telemetry report metadata";
-    }
-  }
-
-  grouping int-metadata-metadata-supported {
+  grouping int-metadata-field-supported {
     description
       "Indicates whether a field is supported in INT metadata and
        telemetry report metadata";
@@ -239,66 +413,138 @@ module p4-int-metadata-semantics {
     }
   }
 
-  grouping int-metadata-hop-latency {
+  grouping int-metadata-domain-specific-field-details {
     description
-      "Detailed semantics of hop latency in INT metadata and
-       telemetry report metadata";
+      "Properties of domain specific fields";
 
-    uses int-metadata-semantics-time-units;
-  }
-
-  grouping int-metadata-queue-occupancy {
-    description
-      "Detailed semantics of queue occupancy in INT metadata and
-       telemetry report metadata";
-
-    uses int-metadata-semantics-size-units;
-
-    leaf packet-timing {
-      type queue-metadata-timing;
+    leaf size {
+      type uint8 {
+        range "1..8";
+      }
+      default 1;
       description
-        "Whether this queue occupancy was measured when the packet
-         was enqueued, or when the packet was dequeued";
+        "The size of the domain specific field in 4-byte words";
+    }
+
+    leaf ds-instruction-mode {
+      type int-ds-instruction-mode;
+      default EXPORT;
+      description
+        "For INT-MX packets, whether this domain specific metadata field
+         is exported by each node, or inserted into the packet by the
+         source node";
+    }
+
+    leaf source-inserted-reporting-requirement {
+      when "../ds-instruction-mode = 'SOURCE_INSERTED'";
+      type int-source-inserted-reporting-requirement;
+      default ALL_NODES;
+      description
+        "For INT-MX packets, which nodes should include this
+         source-inserted metadata field in telemetry reports";
+    }
+
+    leaf source-inserted-metadata-mutability {
+      when "../ds-instruction-mode = 'SOURCE_INSERTED'";
+      type int-source-inserted-metadata-mutability;
+      default SOURCE_ONLY;
+      description
+        "For INT-MX packets, whether this source-inserted metadata field
+         may be updated or replaced by transit and sink nodes";
     }
   }
 
-  grouping int-metadata-ingress-timestamp {
+  grouping int-metadata-field-details {
     description
-      "Detailed semantics of ingress timestamp in INT metadata and
-       telemetry report metadata";
+      "Detailed semantics of a particular metadata field";
 
-    uses int-metadata-semantics-time-units;
-  }
+    leaf units {
+      type identityref {
+        base METADATA_UNITS;
+      }
+      description
+        "The units that are used when this node adds this metadata field";
+    }
 
-  grouping int-metadata-egress-timestamp {
-    description
-      "Detailed semantics of egress timestamp in INT metadata and
-       telemetry report metadata";
+    leaf cell-size {
+      when "../units = 'METADATA_SIZE_CELLS'" {
+        description
+          "Cell size is valid only when the size is in units of cells";
+      }
+      type uint16;
+      description
+        "The size in bytes of one cell";
+    }
 
-    uses int-metadata-semantics-time-units;
-  }
+    leaf node-id {
+      when "../../metadata-field-id = 'METADATA_FIELD_NODE_ID'";
+      type uint32;
+      description
+        "The node_id value that this node inserts in INT metadata
+         and telemetry report metadata";
+    }
 
-  grouping int-metadata-egress-port-tx-utilization {
-    description
-      "Detailed semantics of egress port tx utilization INT metadata
-       and telemetry report metadata";
+    leaf packet-timing {
+      when "../../metadata-field-id[.='METADATA_FIELD_QUEUE_OCCUPANCY' or
+                                    .='METADATA_FIELD_BUFFER_OCCUPANCY']";
+      type int-queue-metadata-timing;
+      description
+        "Whether this queue or buffer occupancy was measured when the
+         packet was enqueued, or when the packet was dequeued";
+    }
 
-    uses int-metadata-semantics-utilization-units;
-
-    // TBD: Need to specify something about computation
+    // TBD: Need to specify something about Egress Tx Port Util computation?
     // Moving average?
     // Time frame?
-  }
-
-  grouping int-metadata-drop-reason {
-    description
-      "Detailed semantics of drop reason in telemetry report
-       metadata";
 
     leaf drop-reason-reference {
+      when "../../metadata-field-id = 'METADATA_FIELD_DROP_REASON'";
       type oc-inet:url;
       description
         "A reference to a URL where the drop reasons are defined";
+    }
+
+    uses int-metadata-domain-specific-field-details {
+      // Note: "derived-from" is only present in YANG 1.1, not 1.0
+      // OpenConfig does not yet support YANG 1.1
+      when "derived-from(../metadata-field-id,
+                         'METADATA_DOMAIN_SPECIFIC_FIELD')";
+    }
+  }
+
+  grouping int-metadata-semantics-details {
+    description
+      "Detailed semantics of dataplane telemetry metadata";
+
+    list metadata-field {
+      key "metadata-field-id";
+      description
+        "A list of INT metadata fields known to this implementation,
+         along with related details such as units and clarification of
+         semantics";
+
+      leaf metadata-field-id {
+        type identityref {
+          base METADATA_FIELD;
+        }
+        description
+          "A metadata field whose detailed semantics are reported and
+           optionally configured";
+      }
+
+      container config {
+        description
+          "Configuration of units and semantics for this field";
+        uses int-metadata-field-details;
+      }
+
+      container state {
+        config false;
+        description
+          "State information for this field";
+        uses int-metadata-field-details;
+        uses int-metadata-field-supported;
+      }
     }
   }
 
@@ -317,151 +563,6 @@ module p4-int-metadata-semantics {
     }
   }
 
-  grouping int-metadata-semantics-identifiers {
-    description
-      "Identifiers used in dataplane telemetry metadata";
-
-    container switch-id {
-      description
-        "Container for switch_id";
-
-      container config {
-        description
-          "switch_id config";
-        uses int-metadata-switch-id;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for switch_id";
-        uses int-metadata-switch-id;
-      }
-    }
-
-    // TBD: Add anything related to port IDs?
-
-  }
-
-  grouping int-metadata-semantics-details {
-    description
-      "Detailed semantics of dataplane telemetry metadata";
-
-    container hop-latency {
-      description
-        "Container for hop latency";
-
-      container config {
-        description
-          "Hop latency config";
-        uses int-metadata-hop-latency;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for hop latency";
-        uses int-metadata-hop-latency;
-        uses int-metadata-metadata-supported;
-      }
-    }
-
-    container queue-occupancy {
-      description
-        "Container for queue occupancy";
-
-      container config {
-        description
-          "Queue occupancy config";
-        uses int-metadata-queue-occupancy;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for queue occupancy";
-        uses int-metadata-queue-occupancy;
-        uses int-metadata-metadata-supported;
-      }
-    }
-
-    container ingress-timestamp {
-      description
-        "Container for ingress timestamp";
-
-      container config {
-        description
-          "Ingress timestamp config";
-        uses int-metadata-ingress-timestamp;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for ingress timestamp";
-        uses int-metadata-ingress-timestamp;
-        uses int-metadata-metadata-supported;
-      }
-    }
-
-    container egress-timestamp {
-      description
-        "Container for egress timestamp";
-
-      container config {
-        description
-          "Egress timestamp config";
-        uses int-metadata-egress-timestamp;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for egress timestamp";
-        uses int-metadata-egress-timestamp;
-        uses int-metadata-metadata-supported;
-      }
-    }
-
-    container egress-port-tx-utilization {
-      description
-        "Container for egress port tx utilization";
-
-      container config {
-        description
-          "Egress port tx utilization config";
-        uses int-metadata-egress-port-tx-utilization;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for egress port tx utilization";
-        uses int-metadata-egress-port-tx-utilization;
-        uses int-metadata-metadata-supported;
-      }
-    }
-
-    container drop-reason {
-      description
-        "Container for drop reason";
-
-      container config {
-        description
-          "Drop reason config";
-        uses int-metadata-drop-reason;
-      }
-
-      container state {
-        config false;
-        description
-          "State information for drop reason";
-        uses int-metadata-drop-reason;
-        uses int-metadata-metadata-supported;
-      }
-    }
-  }
-
   grouping int-metadata-semantics-report-properties {
     description
       "Properties of telemetry reports generated by this node";
@@ -477,6 +578,7 @@ module p4-int-metadata-semantics {
       }
 
       container state {
+        config false;
         description
           "State information for INT last hop telemetry reports";
         uses int-metadata-int-last-hop-report;
@@ -484,15 +586,82 @@ module p4-int-metadata-semantics {
     }
   }
 
+  grouping int-metadata-domain-specific-field {
+    description
+      "Properties of a metadata field used by this specific domain";
+
+    leaf domain-specific-metadata-field-id {
+      type identityref {
+        base METADATA_DOMAIN_SPECIFIC_FIELD;
+      }
+      description
+        "A metadata field that is used by this specific domain";
+    }
+  }
+
+  grouping int-metadata-for-specific-domain {
+    description
+      "The domain specific metadata used by a particular domain,
+       including the identity references and bit positions for each
+       associated domain specific metadata field.";
+
+    list domain-specific-metadata {
+      key "domain-metadata-bit-position";
+      description
+        "A list of the domain specific metadata used by a particular
+         domain";
+
+      leaf domain-metadata-bit-position {
+        type int8 {
+          range "0..15";
+        }
+        description
+          "The bit position in the INT DS Instruction field or the
+           Telemetry Report DSMdBits field used for this metadata field.
+           The value 0 represents the MSB and 15 represents the LSB.";
+      }
+
+      container config {
+        description
+          "Domain specific metadata configuration";
+        uses int-metadata-domain-specific-field;
+      }
+
+      container state {
+        config false;
+        description
+          "State information for domain specific metadata";
+        uses int-metadata-domain-specific-field;
+      }
+    }
+  }
+
+  grouping int-metadata-domain-specific-metadata {
+    description
+      "Domain specific IDs known to this node, including the identity
+       references and bit positions for each associated domain
+       specific metadata field";
+
+    list domain {
+      key "domain-specific-id";
+      description
+        "A list of domains known to this node, along with the details of
+         the domain specific metadata used by each domain";
+
+      leaf domain-specific-id {
+        type uint16;
+        description
+          "A domain specific ID, identifying a domain that has specific
+           metadata definitions";
+      }
+
+      uses int-metadata-for-specific-domain;
+    }
+  }
+
   grouping int-metadata-semantics-top {
     description
       "Top level grouping for dataplane telemetry metadata semantics";
-
-    container identifiers {
-      description
-        "Identifiers used in dataplane telemetry metadata";
-      uses int-metadata-semantics-identifiers;
-    }
 
     container metadata-semantics {
       description
@@ -504,6 +673,14 @@ module p4-int-metadata-semantics {
       description
         "Properties of telemetry reports generated by this node";
       uses int-metadata-semantics-report-properties;
+    }
+
+    container domain-specific-metadata {
+      description
+        "Domain specific IDs known to this node, including the identity
+         references and bit positions for each associated domain
+         specific metadata field";
+      uses int-metadata-domain-specific-metadata;
     }
   }
 
