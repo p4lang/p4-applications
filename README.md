@@ -31,7 +31,7 @@ Directory Structure
 Mailing list
 -------------------
 - To subscribe, visit
-  [http://lists.p4.org/mailman/listinfo/p4-apps_lists.p4.org](http://lists.p4.org/mailman/listinfo/p4-apps_lists.p4.org)
+  [https://lists.p4.org/list/p4-apps.lists.p4.org](https://lists.p4.org/list/p4-apps.lists.p4.org)
 - To post a message to all list members, send an email to <p4-apps@lists.p4.org>
 
 To create a pull request
