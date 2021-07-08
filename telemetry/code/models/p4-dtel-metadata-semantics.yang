@@ -110,6 +110,44 @@ module p4-dtel-metadata-semantics {
       "Encoding utilization in units of hundredths of percent";
   }
 
+  identity INTERFACE_TYPE {
+    description
+      "Base identity for specifying port types";
+  }
+
+  identity PHYSICAL_PORT {
+    base INTERFACE_TYPE;
+    description
+      "Physical port on a switch";
+  }
+
+  identity FRONT_PANEL_PORT {
+    base INTERFACE_TYPE;
+    description
+      "A number that indicates the front panel port and optionally channel
+       on a switch";
+  }
+
+  identity LOGICAL_INTERFACE {
+    base INTERFACE_TYPE;
+    description
+      "A logical interface on a switch";
+  }
+
+  identity L2_LOGICAL_INTERFACE {
+    base INTERFACE_TYPE;
+    description
+      "An interface representing a VLAN or VNI on a switch";
+  }
+
+  identity VTEP_LOGICAL_INTERFACE {
+    base INTERFACE_TYPE;
+    description
+      "An interface representing a VTEP on a switch";
+  }
+
+  // TODO: Add identity statements for L3 interfaces
+
   // typedef statements
 
   typedef queue-md-timing {
@@ -218,6 +256,15 @@ module p4-dtel-metadata-semantics {
         "The switch_id value that this node inserts in INT metadata
          and telemetry report metadata";
     }
+
+    leaf switch-id-mask {
+      type uint32;
+      description
+        "The subset of the switch_id value that identifies the switch.
+         The remainder of the switch_id value may be automatically
+         assigned by the switch, or may be defined using yang
+         augments.";
+    }
   }
 
   grouping dtel-md-metadata-supported {
@@ -237,6 +284,22 @@ module p4-dtel-metadata-semantics {
         "Indicates whether a field is supported in telemetry report
          metadata";
     }
+  }
+
+  grouping dtel-md-level-1-interface {
+    description
+      "The list of interface types reported as level 1 interface IDs."
+
+    uses dtel-md-interface-types;
+    // TODO: define dtel-md-interface-types
+  }
+
+  grouping dtel-md-level-2-interface {
+    description
+      "The list of interface types reported as level 1 interface IDs."
+
+    uses dtel-md-interface-types;
+    // TODO: define dtel-md-interface-types
   }
 
   grouping dtel-md-hop-latency {
