@@ -1,0 +1,155 @@
+{
+  "arp": {
+    "192.168.1.12": "00:90:fb:65:d6:6b",
+    "192.168.1.4": "00:90:fb:65:d6:6b",
+    "192.168.1.8": "00:90:fb:65:d6:6b",
+    "192.168.1.0": "00:90:fb:65:d6:6b"
+  },
+  "allow_pessimism": 0,
+  "rates": [
+    {
+      "shaper_burst_kbits": "15000",
+      "eg_port": 0,
+      "shaper_rate_kbps": "27000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "1000",
+      "port_speed": "25G",
+      "port_bufsize": "4500000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "15000",
+      "eg_port": 4,
+      "shaper_rate_kbps": "27000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "1000",
+      "port_speed": "25G",
+      "port_bufsize": "4500000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "15000",
+      "eg_port": 8,
+      "shaper_rate_kbps": "27000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "1000",
+      "port_speed": "25G",
+      "port_bufsize": "4500000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "15000",
+      "eg_port": 12,
+      "shaper_rate_kbps": "27000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "1000",
+      "port_speed": "25G",
+      "port_bufsize": "4500000",
+      "fec": "NONE"
+    }
+  ],
+  "entries": [
+    {
+      "smac": "0a:10:ad:be:ef:01",
+      "dip": "10.0.8.0/24",
+      "eg_port": 4,
+      "nhop": "192.168.1.4"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:01",
+      "dip": "10.0.19.0/24",
+      "eg_port": 4,
+      "nhop": "192.168.1.4"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:00",
+      "dip": "10.0.16.0/24",
+      "eg_port": 0,
+      "nhop": "192.168.1.0"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:00",
+      "dip": "10.0.12.0/24",
+      "eg_port": 0,
+      "nhop": "192.168.1.0"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:00",
+      "dip": "10.0.13.0/24",
+      "eg_port": 0,
+      "nhop": "192.168.1.0"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:01",
+      "dip": "10.0.10.0/24",
+      "eg_port": 4,
+      "nhop": "192.168.1.4"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:03",
+      "dip": "10.0.23.0/24",
+      "eg_port": 12,
+      "nhop": "192.168.1.12"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:00",
+      "dip": "10.0.17.0/24",
+      "eg_port": 0,
+      "nhop": "192.168.1.0"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:00",
+      "dip": "10.0.15.0/24",
+      "eg_port": 0,
+      "nhop": "192.168.1.0"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:00",
+      "dip": "10.0.14.0/24",
+      "eg_port": 0,
+      "nhop": "192.168.1.0"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:02",
+      "dip": "10.0.7.0/24",
+      "eg_port": 8,
+      "nhop": "192.168.1.8"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:01",
+      "dip": "10.0.18.0/24",
+      "eg_port": 4,
+      "nhop": "192.168.1.4"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:01",
+      "dip": "10.0.9.0/24",
+      "eg_port": 4,
+      "nhop": "192.168.1.4"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:02",
+      "dip": "10.0.20.0/24",
+      "eg_port": 8,
+      "nhop": "192.168.1.8"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:01",
+      "dip": "10.0.11.0/24",
+      "eg_port": 4,
+      "nhop": "192.168.1.4"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:03",
+      "dip": "10.0.22.0/24",
+      "eg_port": 12,
+      "nhop": "192.168.1.12"
+    },
+    {
+      "smac": "0a:10:ad:be:ef:02",
+      "dip": "10.0.21.0/24",
+      "eg_port": 8,
+      "nhop": "192.168.1.8"
+    }
+  ]
+}
