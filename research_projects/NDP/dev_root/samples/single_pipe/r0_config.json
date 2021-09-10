@@ -1,0 +1,439 @@
+{
+  "arp": {
+    "10.0.14.13": "b0:26:28:82:ae:fa",
+    "10.0.10.13": "a0:36:9f:5f:dc:cc",
+    "10.0.20.13": "40:a6:b7:0a:7f:08",
+    "10.0.11.13": "a0:36:9f:5c:52:f1",
+    "10.0.16.13": "40:a6:b7:0a:7c:c0",
+    "10.0.9.13": "a0:36:9f:5c:52:f0",
+    "10.0.18.13": "40:a6:b7:0a:7f:f8",
+    "10.0.13.13": "b0:26:28:82:af:c3",
+    "10.0.22.13": "40:a6:b7:0a:7d:e8",
+    "10.0.8.13": "a0:36:9f:5c:5a:ac",
+    "10.0.21.13": "40:a6:b7:0a:7f:09",
+    "10.0.7.13": "a0:36:9f:5c:58:84",
+    "192.168.1.7": "0b:00:ad:be:ef:13",
+    "192.168.1.5": "0b:00:ad:be:ef:12",
+    "192.168.1.3": "0b:00:ad:be:ef:11",
+    "10.0.15.13": "b0:26:28:82:ae:fb",
+    "192.168.1.1": "0b:00:ad:be:ef:10",
+    "10.0.12.13": "b0:26:28:82:af:c2",
+    "192.168.1.9": "0b:00:ad:be:ef:14",
+    "10.0.23.13": "40:a6:b7:0a:7d:e9",
+    "192.168.1.11": "0b:00:ad:be:ef:15",
+    "192.168.1.13": "0b:00:ad:be:ef:16",
+    "192.168.1.15": "0b:00:ad:be:ef:17",
+    "10.0.19.13": "40:a6:b7:0a:7f:f9",
+    "10.0.17.13": "40:a6:b7:0a:7c:c1"
+  },
+  "allow_pessimism": 1,
+  "default_rate": {
+    "burst_kbits": 6000,
+    "rate_kbps": 25000000
+  },
+  "rates": [
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 128,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 0,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 16,
+      "shaper_rate_kbps": "25000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "6000",
+      "port_speed": "25G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 19,
+      "shaper_rate_kbps": "25000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "6000",
+      "port_speed": "25G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 8,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 12,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 18,
+      "shaper_rate_kbps": "25000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "6000",
+      "port_speed": "25G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 17,
+      "shaper_rate_kbps": "25000000",
+      "rate_kbps": "25000000",
+      "burst_kbits": "6000",
+      "port_speed": "25G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 272,
+      "shaper_rate_kbps": "10000000",
+      "rate_kbps": "10000000",
+      "burst_kbits": "6000",
+      "port_speed": "10G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 264,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 268,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 132,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 4,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 256,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 384,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 260,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 388,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 144,
+      "shaper_rate_kbps": "10000000",
+      "rate_kbps": "10000000",
+      "burst_kbits": "6000",
+      "port_speed": "10G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 145,
+      "shaper_rate_kbps": "10000000",
+      "rate_kbps": "10000000",
+      "burst_kbits": "6000",
+      "port_speed": "10G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 136,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 140,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 392,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "960",
+      "eg_port": 396,
+      "shaper_rate_kbps": "99000000",
+      "rate_kbps": "99000000",
+      "burst_kbits": "960",
+      "port_speed": "100G",
+      "port_bufsize": "120000",
+      "fec": "RS"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 147,
+      "shaper_rate_kbps": "10000000",
+      "rate_kbps": "10000000",
+      "burst_kbits": "6000",
+      "port_speed": "10G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    },
+    {
+      "shaper_burst_kbits": "6000",
+      "eg_port": 146,
+      "shaper_rate_kbps": "10000000",
+      "rate_kbps": "10000000",
+      "burst_kbits": "6000",
+      "port_speed": "10G",
+      "port_bufsize": "120000",
+      "fec": "NONE"
+    }
+  ],
+  "entries": [
+    {
+      "smac": "0a:00:ad:be:ef:00",
+      "dip": "10.0.16.1/24",
+      "eg_port": 8,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:01",
+      "dip": "10.0.17.1/24",
+      "eg_port": 12,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:02",
+      "dip": "10.0.12.1/24",
+      "eg_port": 18,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:03",
+      "dip": "10.0.13.1/24",
+      "eg_port": 17,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:04",
+      "dip": "10.0.14.1/24",
+      "eg_port": 16,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:05",
+      "dip": "10.0.15.1/24",
+      "eg_port": 19,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:00",
+      "dip": "10.0.18.1/24",
+      "eg_port": 140,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:01",
+      "dip": "10.0.19.1/24",
+      "eg_port": 136,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:02",
+      "dip": "10.0.8.1/24",
+      "eg_port": 145,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:03",
+      "dip": "10.0.9.1/24",
+      "eg_port": 144,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:04",
+      "dip": "10.0.10.1/24",
+      "eg_port": 146,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:05",
+      "dip": "10.0.11.1/24",
+      "eg_port": 147,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:02:ad:be:ef:00",
+      "dip": "10.0.20.1/24",
+      "eg_port": 264,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:02:ad:be:ef:01",
+      "dip": "10.0.21.1/24",
+      "eg_port": 268,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:02:ad:be:ef:02",
+      "dip": "10.0.7.1/24",
+      "eg_port": 272,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:03:ad:be:ef:00",
+      "dip": "10.0.22.1/24",
+      "eg_port": 396,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:03:ad:be:ef:01",
+      "dip": "10.0.23.1/24",
+      "eg_port": 392,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:06",
+      "dip": "192.168.1.0/31",
+      "eg_port": 0,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:00:ad:be:ef:07",
+      "dip": "192.168.1.2/31",
+      "eg_port": 128,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:06",
+      "dip": "192.168.1.4/31",
+      "eg_port": 256,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:01:ad:be:ef:07",
+      "dip": "192.168.1.6/31",
+      "eg_port": 384,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:02:ad:be:ef:03",
+      "dip": "192.168.1.8/31",
+      "eg_port": 4,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:02:ad:be:ef:04",
+      "dip": "192.168.1.10/31",
+      "eg_port": 132,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:03:ad:be:ef:02",
+      "dip": "192.168.1.12/31",
+      "eg_port": 260,
+      "nhop": 0
+    },
+    {
+      "smac": "0a:03:ad:be:ef:03",
+      "dip": "192.168.1.14/31",
+      "eg_port": 388,
+      "nhop": 0
+    }
+  ],
+  "ports": []
+}
