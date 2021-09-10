@@ -5,10 +5,9 @@ implementation targetting the TNA architecture.
 For more details, see our paper [Re-architecting datacenter networks and stacks for low latency and high performance](http://nets.cs.pub.ro/~costin/files/ndp.pdf).
 
 The p4 code, table population scripts and instructions for building and running
-NDP for the Tofino switch are in the `dev_root/` directory. In the final section
-of [dev_root/README.md](dev_root/README.md), the architecture and implementation details behind
-`ndp.p4` are reveiled. 
-
+NDP for the Tofino switch are in the `dev_root/` directory. In
+[](dev_root/README.md#how-it-works), we describe the architecture and
+implementation details behind `ndp.p4`. 
 
 # How it works
 To summarize, `ndp.p4` keeps an under-approximation of
